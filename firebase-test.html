@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Прогноз — Тест подключения Firebase</title>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.1);
+    --text: #1a1a18;
+    --text2: #5f5e5a;
+    --text3: #9a9890;
+    --blue: #185FA5;
+    --blue-bg: #E6F1FB;
+    --green: #3B6D11;
+    --green-bg: #EAF3DE;
+    --red: #A32D2D;
+    --red-bg: #FCEBEB;
+    --amber: #854F0B;
+    --amber-bg: #FAEEDA;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+  
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  .logo { font-size: 16px; font-weight: 600; color: var(--blue); }
+  .logo span { color: var(--text); font-weight: 400; }
+  .badge { background: var(--amber-bg); color: var(--amber); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+  
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px; }
+  .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .step-title { font-size: 15px; font-weight: 600; }
+  .step-done .step-num { background: var(--green); }
+  .step p { color: var(--text2); margin-bottom: 10px; }
+  
+  .input-row { display: flex; gap: 8px; margin: 12px 0; }
+  .input-field { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; }
+  .input-field:focus { outline: none; border-color: var(--blue); }
+  .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all .15s; }
+  .btn-blue { background: var(--blue); color: #fff; }
+  .btn-blue:hover { opacity: .9; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+
+  .status { padding: 12px 16px; border-radius: 6px; margin-top: 12px; font-size: 13px; display: none; }
+  .status.show { display: block; }
+  .status-ok { background: var(--green-bg); color: var(--green); }
+  .status-err { background: var(--red-bg); color: var(--red); }
+  .status-wait { background: var(--blue-bg); color: var(--blue); }
+  .status-warn { background: var(--amber-bg); color: var(--amber); }
+
+  .log-box { background: #1a1a18; color: #b8e986; border-radius: 6px; padding: 14px; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; line-height: 1.8; margin-top: 12px; max-height: 300px; overflow-y: auto; display: none; }
+  .log-box.show { display: block; }
+  .log-line { margin: 0; white-space: pre-wrap; word-break: break-all; }
+  .log-ok { color: #b8e986; }
+  .log-err { color: #ff6b6b; }
+  .log-info { color: #69b4ff; }
+  .log-warn { color: #ffd93d; }
+
+  code { background: var(--surface2); padding: 2px 6px; border-radius: 3px; font-size: 13px; font-family: 'Consolas', monospace; }
+
+  .result-card { background: var(--surface2); border-radius: 6px; padding: 14px; margin-top: 12px; }
+  .result-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .result-label { color: var(--text2); }
+  .result-value { font-weight: 500; }
+
+  .nav-links { margin-top: 20px; display: flex; gap: 8px; }
+  .nav-link { padding: 8px 16px; border: 1px solid var(--border); border-radius: 20px; text-decoration: none; color: var(--text2); font-size: 13px; transition: all .15s; }
+  .nav-link:hover { border-color: var(--blue); color: var(--blue); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">Прогноз <span>/ тест Firebase</span></div>
+  <span class="badge">настройка</span>
+</header>
+
+<div class="container">
+
+  <!-- ШАГ 1 -->
+  <div class="step" id="step1">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Вставь URL своего Firebase проекта</div>
+    </div>
+    <p>Зайди на <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a>, 
+       открой свой проект → Realtime Database → скопируй URL базы.</p>
+    <p>URL выглядит так: <code>https://prognoz-archive-default-rtdb.europe-west1.firebasedatabase.app</code></p>
+    <div class="input-row">
+      <input type="text" class="input-field" id="firebaseUrl" 
+             placeholder="https://prognoz-archive-default-rtdb.europe-west1.firebasedatabase.app"
+             value="">
+      <button class="btn btn-blue" onclick="saveFirebaseUrl()">Сохранить</button>
+    </div>
+    <div class="status" id="status1"></div>
+  </div>
+
+  <!-- ШАГ 2 -->
+  <div class="step" id="step2">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Проверяем подключение к Firebase</div>
+    </div>
+    <p>Нажми кнопку — мы попробуем записать и прочитать тестовые данные.</p>
+    <button class="btn btn-blue" onclick="testConnection()" id="btnTest">Проверить подключение</button>
+    <div class="status" id="status2"></div>
+    <div class="log-box" id="log2"></div>
+  </div>
+
+  <!-- ШАГ 3 -->
+  <div class="step" id="step3">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">Записываем тестовый архив</div>
+    </div>
+    <p>Запишем тестовые данные по 3 риэлторам в Firebase, чтобы проверить всю цепочку.</p>
+    <button class="btn btn-blue" onclick="writeTestArchive()" id="btnWrite">Записать тестовый архив</button>
+    <div class="status" id="status3"></div>
+    <div class="log-box" id="log3"></div>
+  </div>
+
+  <!-- ШАГ 4 -->
+  <div class="step" id="step4">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div class="step-title">Читаем архив и считаем средние</div>
+    </div>
+    <p>Проверяем что дашборд может прочитать данные и рассчитать аналитику.</p>
+    <button class="btn btn-blue" onclick="readAndAnalyze()" id="btnRead">Прочитать и проанализировать</button>
+    <div class="status" id="status4"></div>
+    <div class="log-box" id="log4"></div>
+    <div id="results4"></div>
+  </div>
+
+  <!-- ШАГ 5 -->
+  <div class="step" id="step5">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div class="step-title">Всё работает! Следующие шаги</div>
+    </div>
+    <p>Если все шаги прошли успешно — Firebase настроен и готов к работе.</p>
+    <p>Теперь нужно:</p>
+    <p>1. Установить скрипт архивации в Google Sheets (файл <code>firebase-archiver.gs</code>)</p>
+    <p>2. Настроить ежедневный триггер</p>
+    <p>3. Обновить дашборд для чтения реальных данных</p>
+    
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">→ Дашборд риэлтора</a>
+      <a href="mop.html" class="nav-link">→ Дашборд МОПа</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// =====================================================
+// FIREBASE URL — сохраняется в памяти страницы
+// =====================================================
+let FIREBASE_URL = "";
+
+function saveFirebaseUrl() {
+  const input = document.getElementById('firebaseUrl');
+  let url = input.value.trim();
+  
+  // Убираем слэш в конце
+  if (url.endsWith('/')) url = url.slice(0, -1);
+  
+  // Проверяем формат
+  if (!url.startsWith('https://') || (!url.includes('firebaseio.com') && !url.includes('firebasedatabase.app'))) {
+    showStatus('status1', 'err', '❌ Неверный формат. URL должен начинаться с https:// и содержать firebasedatabase.app или firebaseio.com');
+    return;
+  }
+  
+  FIREBASE_URL = url;
+  showStatus('status1', 'ok', '✅ URL сохранён: ' + url);
+  document.getElementById('step1').classList.add('step-done');
+}
+
+
+// =====================================================
+// ШАГ 2 — Тест подключения
+// =====================================================
+async function testConnection() {
+  if (!FIREBASE_URL) {
+    showStatus('status2', 'err', '❌ Сначала вставь URL Firebase в шаге 1');
+    return;
+  }
+  
+  const log = startLog('log2');
+  showStatus('status2', 'wait', '⏳ Проверяем подключение...');
+  
+  try {
+    // 1. Пробуем записать
+    addLog(log, 'info', '→ Записываем тестовое значение...');
+    const writeUrl = FIREBASE_URL + '/test/ping.json';
+    const writeResp = await fetch(writeUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ time: new Date().toISOString(), status: 'ok' })
+    });
+    
+    if (!writeResp.ok) {
+      addLog(log, 'err', '✗ Ошибка записи: HTTP ' + writeResp.status);
+      addLog(log, 'err', '  Проверь что база в "тестовом режиме" (Rules → read/write: true)');
+      showStatus('status2', 'err', '❌ Не удалось записать. Проверь правила доступа Firebase.');
+      return;
+    }
+    addLog(log, 'ok', '✓ Запись успешна');
+    
+    // 2. Пробуем прочитать
+    addLog(log, 'info', '→ Читаем обратно...');
+    const readResp = await fetch(writeUrl);
+    const data = await readResp.json();
+    
+    if (data && data.status === 'ok') {
+      addLog(log, 'ok', '✓ Чтение успешно: ' + JSON.stringify(data));
+    } else {
+      addLog(log, 'err', '✗ Прочитанные данные не совпадают');
+      showStatus('status2', 'err', '❌ Данные записались, но прочитались неправильно.');
+      return;
+    }
+    
+    // 3. Удаляем тестовое значение
+    addLog(log, 'info', '→ Удаляем тестовые данные...');
+    await fetch(FIREBASE_URL + '/test.json', { method: 'DELETE' });
+    addLog(log, 'ok', '✓ Тестовые данные удалены');
+    
+    addLog(log, 'ok', '');
+    addLog(log, 'ok', '🎉 Firebase работает! Подключение успешно.');
+    showStatus('status2', 'ok', '✅ Подключение работает! Переходи к шагу 3.');
+    document.getElementById('step2').classList.add('step-done');
+    
+  } catch (e) {
+    addLog(log, 'err', '✗ Ошибка: ' + e.message);
+    addLog(log, 'err', '');
+    addLog(log, 'warn', 'Возможные причины:');
+    addLog(log, 'warn', '  1. Неправильный URL Firebase');
+    addLog(log, 'warn', '  2. База данных не создана');
+    addLog(log, 'warn', '  3. Правила доступа запрещают запись');
+    showStatus('status2', 'err', '❌ Ошибка подключения. Смотри лог ниже.');
+  }
+}
+
+
+// =====================================================
+// ШАГ 3 — Запись тестового архива
+// =====================================================
+async function writeTestArchive() {
+  if (!FIREBASE_URL) {
+    showStatus('status3', 'err', '❌ Сначала вставь URL Firebase в шаге 1');
+    return;
+  }
+  
+  const log = startLog('log3');
+  showStatus('status3', 'wait', '⏳ Записываем тестовый архив...');
+  
+  // Генерируем данные за 6 месяцев
+  const agents = {
+    "1231215411": { name: "Веденёва Мария Сергеевна", mop: "Бондарчук Е.В.", stazh: 12 },
+    "17224": { name: "Алипченков Сергей Сергеевич", mop: "Бондарчук Е.В.", stazh: 85 },
+    "60755": { name: "Емельянова Любовь Владимировна", mop: "Бондарчук Е.В.", stazh: 97 }
+  };
+  
+  // Базовые ИР для каждого агента (с ростом по месяцам)
+  const irBase = {
+    "1231215411": [38, 44, 49, 52, 52, 58],
+    "17224": [65, 67, 70, 72, 73, 74],
+    "60755": [50, 48, 45, 43, 42, 41]
+  };
+  
+  const incomeBase = {
+    "1231215411": [95000, 110000, 125000, 138000, 142000, 148618],
+    "17224": [180000, 190000, 195000, 200000, 208000, 213763],
+    "60755": [65000, 58000, 52000, 48000, 47000, 46367]
+  };
+  
+  const today = new Date();
+  let totalWritten = 0;
+  
+  try {
+    // Записываем по одному снимку в месяц за последние 6 месяцев
+    for (let m = 5; m >= 0; m--) {
+      const d = new Date(today);
+      d.setMonth(d.getMonth() - m);
+      // Берём 15-е число каждого месяца
+      d.setDate(15);
+      
+      const dateStr = formatDate(d);
+      const yearMonth = dateStr.substring(0, 7);
+      const monthIdx = 5 - m;
+      
+      addLog(log, 'info', '→ Записываем снимок за ' + dateStr + '...');
+      
+      const snapshot = {
+        meta: {
+          date: dateStr,
+          yearMonth: yearMonth,
+          timestamp: d.getTime(),
+          agentsCount: 3,
+          version: "1.0",
+          isTest: true
+        },
+        agents: {}
+      };
+      
+      for (const code in agents) {
+        const a = agents[code];
+        const ir = irBase[code][monthIdx] + Math.round((Math.random() - 0.5) * 4);
+        const income = incomeBase[code][monthIdx];
+        
+        snapshot.agents[code] = {
+          name: a.name,
+          mop: a.mop,
+          stazh: a.stazh + monthIdx,
+          ir: ir,
+          irBuyer: Math.round(ir * (0.9 + Math.random() * 0.2)),
+          irSeller: Math.round(ir * (0.8 + Math.random() * 0.3)),
+          income: income,
+          prod: +(income / 120000).toFixed(1),
+          position: ir > 60 ? 200 + Math.round(Math.random()*100) : 400 + Math.round(Math.random()*200),
+          buyerCode: ir > 60 ? "111011" : ir > 40 ? "101010" : "010000",
+          sellerCode: ir > 60 ? "111011" : ir > 40 ? "101010" : "010000",
+          buyer: {
+            all: { flow: 8 + Math.round(Math.random()*6), hot: 4 + Math.round(Math.random()*4), deposits: Math.round(Math.random()*3), deals: +(Math.random()*2).toFixed(1) }
+          },
+          seller: {
+            all: { objects: 3 + Math.round(Math.random()*6), hot: Math.round(Math.random()*3), deposits: Math.round(Math.random()*2), deals: +(Math.random()*1.5).toFixed(1) }
+          }
+        };
+      }
+      
+      // Записываем в Firebase
+      const url = FIREBASE_URL + '/archive/' + yearMonth + '/' + dateStr + '.json';
+      const resp = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(snapshot)
+      });
+      
+      if (resp.ok) {
+        addLog(log, 'ok', '✓ ' + dateStr + ' — записано ' + Object.keys(snapshot.agents).length + ' риэлторов');
+        totalWritten++;
+      } else {
+        addLog(log, 'err', '✗ Ошибка записи за ' + dateStr + ': HTTP ' + resp.status);
+      }
+      
+      // Обновляем индекс
+      await fetch(FIREBASE_URL + '/index/months/' + yearMonth + '/' + dateStr + '.json', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: 3, timestamp: d.getTime() })
+      });
+    }
+    
+    // Обновляем latest
+    const latestDate = formatDate(today);
+    await fetch(FIREBASE_URL + '/index/latest.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: formatDate(new Date(today.getFullYear(), today.getMonth(), 15)), count: 3, timestamp: Date.now() })
+    });
+    
+    addLog(log, 'ok', '');
+    addLog(log, 'ok', '🎉 Записано ' + totalWritten + ' снимков за 6 месяцев!');
+    showStatus('status3', 'ok', '✅ Тестовый архив записан! Переходи к шагу 4.');
+    document.getElementById('step3').classList.add('step-done');
+    
+  } catch (e) {
+    addLog(log, 'err', '✗ Ошибка: ' + e.message);
+    showStatus('status3', 'err', '❌ Ошибка записи. Смотри лог.');
+  }
+}
+
+
+// =====================================================
+// ШАГ 4 — Чтение и анализ
+// =====================================================
+async function readAndAnalyze() {
+  if (!FIREBASE_URL) {
+    showStatus('status4', 'err', '❌ Сначала вставь URL Firebase в шаге 1');
+    return;
+  }
+  
+  const log = startLog('log4');
+  showStatus('status4', 'wait', '⏳ Читаем архив...');
+  
+  try {
+    // 1. Читаем индекс
+    addLog(log, 'info', '→ Читаем индекс...');
+    const indexResp = await fetch(FIREBASE_URL + '/index.json');
+    const index = await indexResp.json();
+    
+    if (!index || !index.months) {
+      addLog(log, 'err', '✗ Индекс пустой. Сначала запиши архив (шаг 3).');
+      showStatus('status4', 'err', '❌ Нет данных. Сначала выполни шаг 3.');
+      return;
+    }
+    
+    const months = Object.keys(index.months).sort();
+    addLog(log, 'ok', '✓ Найдено месяцев: ' + months.length + ' (' + months.join(', ') + ')');
+    
+    // 2. Собираем все даты
+    const allDates = [];
+    for (const ym of months) {
+      const dates = Object.keys(index.months[ym]).sort();
+      allDates.push(...dates);
+    }
+    addLog(log, 'ok', '✓ Всего снимков: ' + allDates.length);
+    
+    // 3. Читаем данные по Веденёвой за все даты
+    const agentCode = "1231215411";
+    const agentName = "Веденёва Мария Сергеевна";
+    addLog(log, 'info', '→ Читаем историю по ' + agentName + '...');
+    
+    const history = [];
+    for (const date of allDates) {
+      const ym = date.substring(0, 7);
+      const resp = await fetch(FIREBASE_URL + '/archive/' + ym + '/' + date + '/agents/' + agentCode + '.json');
+      const data = await resp.json();
+      if (data) {
+        history.push({ date, ...data });
+        addLog(log, 'ok', '  ' + date + ': ИР=' + (data.ir || 0) + '%, доход=' + (data.income || 0) + '₽');
+      }
+    }
+    
+    if (history.length === 0) {
+      addLog(log, 'err', '✗ Данные по риэлтору не найдены');
+      showStatus('status4', 'err', '❌ Нет данных по риэлтору.');
+      return;
+    }
+    
+    // 4. Считаем средние
+    addLog(log, 'info', '→ Считаем аналитику...');
+    
+    const n = history.length;
+    const avgIR = Math.round(history.reduce((s, h) => s + (h.ir || 0), 0) / n);
+    const avgIncome = Math.round(history.reduce((s, h) => s + (h.income || 0), 0) / n);
+    const firstIR = history[0].ir || 0;
+    const lastIR = history[n-1].ir || 0;
+    const irDelta = lastIR - firstIR;
+    const trend = irDelta > 3 ? '📈 Растёт' : irDelta < -3 ? '📉 Падает' : '➡️ Стабильно';
+    
+    addLog(log, 'ok', '');
+    addLog(log, 'ok', '🎉 Анализ завершён!');
+    addLog(log, 'ok', '  Средний ИР за ' + n + ' месяцев: ' + avgIR + '%');
+    addLog(log, 'ok', '  Динамика: ' + firstIR + '% → ' + lastIR + '% (' + (irDelta > 0 ? '+' : '') + irDelta + '%)');
+    addLog(log, 'ok', '  Тренд: ' + trend);
+    
+    // 5. Показываем результаты
+    const resultsEl = document.getElementById('results4');
+    resultsEl.innerHTML = `
+      <div class="result-card">
+        <div style="font-size:13px;font-weight:500;margin-bottom:10px;color:var(--text2)">📊 Аналитика: ${agentName}</div>
+        <div class="result-row"><span class="result-label">Период</span><span class="result-value">${history[0].date} — ${history[n-1].date}</span></div>
+        <div class="result-row"><span class="result-label">Средний ИР</span><span class="result-value" style="color:var(--blue)">${avgIR}%</span></div>
+        <div class="result-row"><span class="result-label">Средний доход</span><span class="result-value">${avgIncome.toLocaleString('ru-RU')} ₽</span></div>
+        <div class="result-row"><span class="result-label">ИР в начале</span><span class="result-value">${firstIR}%</span></div>
+        <div class="result-row"><span class="result-label">ИР сейчас</span><span class="result-value" style="color:${lastIR>firstIR?'var(--green)':'var(--red)'}">${lastIR}%</span></div>
+        <div class="result-row"><span class="result-label">Изменение ИР</span><span class="result-value" style="color:${irDelta>0?'var(--green)':'var(--red)'}">${irDelta > 0 ? '+' : ''}${irDelta}%</span></div>
+        <div class="result-row"><span class="result-label">Тренд</span><span class="result-value">${trend}</span></div>
+        <div class="result-row"><span class="result-label">Точек данных</span><span class="result-value">${n}</span></div>
+      </div>
+    `;
+    
+    showStatus('status4', 'ok', '✅ Всё работает! Firebase подключён, данные читаются, аналитика считается.');
+    document.getElementById('step4').classList.add('step-done');
+    
+  } catch (e) {
+    addLog(log, 'err', '✗ Ошибка: ' + e.message);
+    showStatus('status4', 'err', '❌ Ошибка чтения. Смотри лог.');
+  }
+}
+
+
+// =====================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// =====================================================
+function formatDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function showStatus(id, type, text) {
+  const el = document.getElementById(id);
+  el.className = 'status show status-' + type;
+  el.textContent = text;
+}
+
+function startLog(id) {
+  const el = document.getElementById(id);
+  el.className = 'log-box show';
+  el.innerHTML = '';
+  return el;
+}
+
+function addLog(el, type, text) {
+  const line = document.createElement('p');
+  line.className = 'log-line log-' + type;
+  line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+
+</body>
+</html>
