@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — Прогноз</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 420px;
+    }
+    .logo {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a365d;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #718096;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .step { display: none; }
+    .step.active { display: block; }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+    input:focus { border-color: #4299e1; }
+    .otp-input {
+      letter-spacing: 8px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      background: #2b6cb0;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: #2c5282; }
+    button:disabled { background: #a0aec0; cursor: not-allowed; }
+    .link {
+      display: block;
+      text-align: center;
+      margin-top: 16px;
+      color: #4299e1;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .link:hover { text-decoration: underline; }
+    .info {
+      background: #ebf8ff;
+      color: #2c5282;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .info b { font-family: 'Courier New', monospace; }
+    .error {
+      background: #fff5f5;
+      color: #c53030;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid white;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">Прогноз</div>
+    <div class="subtitle">Вход в систему</div>
+
+    <div id="error" class="error" style="display:none"></div>
+
+    <!-- ШАГ 1: код сотрудника -->
+    <div id="step-code" class="step active">
+      <label for="code">Код сотрудника</label>
+      <input type="text" id="code" inputmode="numeric" autocomplete="off"
+             placeholder="Например, 113970" />
+      <button id="btn-request" onclick="requestOtp()">Получить код</button>
+    </div>
+
+    <!-- ШАГ 2: ввод OTP -->
+    <div id="step-otp" class="step">
+      <div class="info">
+        Код отправлен на <b id="email-mask">***</b>
+      </div>
+      <label for="otp">Код из письма (6 цифр)</label>
+      <input type="text" id="otp" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="6" class="otp-input" placeholder="••••••" />
+      <button id="btn-verify" onclick="verifyOtp()">Войти</button>
+      <button class="link" onclick="resetToStep1()">← Указать другой код</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+    import { getAuth, signInWithCustomToken, setPersistence, browserLocalPersistence }
+      from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+    import { getFunctions, httpsCallable }
+      from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+
+    const firebaseConfig = {
+      databaseURL: 'https://prognoz-archive-default-rtdb.europe-west1.firebasedatabase.app',
+      apiKey: 'AIzaSyCOSLUKCQMhV4HL5Rgle38e3NHeZis6wyU',
+      authDomain: 'prognoz-archive.firebaseapp.com',
+      projectId: 'prognoz-archive',
+      appId: '1:47892435250:web:2efc1123c3191ce556472b',
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const functions = getFunctions(app, 'europe-west1');
+
+    await setPersistence(auth, browserLocalPersistence);
+
+    const requestOtpFn = httpsCallable(functions, 'requestOtp');
+    const verifyOtpFn = httpsCallable(functions, 'verifyOtp');
+
+    const $ = (id) => document.getElementById(id);
+    const showError = (msg) => { $('error').textContent = msg; $('error').style.display = 'block'; };
+    const hideError = () => { $('error').style.display = 'none'; };
+    const setLoading = (btnId, loading, text) => {
+      const btn = $(btnId);
+      btn.disabled = loading;
+      btn.innerHTML = loading ? `<span class="spinner"></span>${text}` : text;
+    };
+
+    window.requestOtp = async () => {
+      hideError();
+      const code = $('code').value.trim();
+      if (!/^\d+$/.test(code)) {
+        showError('Введите числовой код сотрудника.');
+        return;
+      }
+      setLoading('btn-request', true, 'Отправляем...');
+      try {
+        const res = await requestOtpFn({ code });
+        $('email-mask').textContent = res.data.emailMask;
+        $('step-code').classList.remove('active');
+        $('step-otp').classList.add('active');
+        $('otp').focus();
+      } catch (e) {
+        showError(e.message || 'Ошибка отправки кода.');
+      } finally {
+        setLoading('btn-request', false, 'Получить код');
+      }
+    };
+
+    window.verifyOtp = async () => {
+      hideError();
+      const code = $('code').value.trim();
+      const otp = $('otp').value.trim();
+      if (!/^\d{6}$/.test(otp)) {
+        showError('Введите 6 цифр из письма.');
+        return;
+      }
+      setLoading('btn-verify', true, 'Проверяем...');
+      try {
+        const res = await verifyOtpFn({ code, otp });
+        await signInWithCustomToken(auth, res.data.token);
+        // Учитываем ?back=... — если есть, вернёмся туда
+        const params = new URLSearchParams(location.search);
+        const back = params.get('back');
+        const role = res.data.role;
+        const dest = back ? decodeURIComponent(back)
+                   : role === 'mop' ? 'mop.html'
+                   : role === 'rop' ? 'mop.html'
+                   : role === 'aup' ? 'mop.html'
+                   : role === 'admin' ? 'mop.html'
+                   : 'index.html';
+        location.href = dest;
+      } catch (e) {
+        showError(e.message || 'Ошибка проверки кода.');
+      } finally {
+        setLoading('btn-verify', false, 'Войти');
+      }
+    };
+
+    window.resetToStep1 = () => {
+      hideError();
+      $('otp').value = '';
+      $('step-otp').classList.remove('active');
+      $('step-code').classList.add('active');
+      $('code').focus();
+    };
+
+    // Enter для удобства
+    $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') window.requestOtp(); });
+    $('otp').addEventListener('keydown', (e) => { if (e.key === 'Enter') window.verifyOtp(); });
+  </script>
+</body>
+</html>
