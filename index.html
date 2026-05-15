@@ -31,13 +31,15 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
-  
+
   /* Header */
   .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 56px; position: sticky; top: 0; z-index: 100; }
   .logo { font-size: 16px; font-weight: 600; color: var(--blue); letter-spacing: -0.3px; }
   .logo span { color: var(--text); font-weight: 400; }
   .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
   .date-badge { font-size: 12px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+  .logout-btn { font-size: 12px; color: var(--text2); background: transparent; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-family: inherit; transition: all .15s; }
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
 
   /* Layout */
   .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
@@ -173,6 +175,10 @@
   /* Footer */
   .footer { text-align: center; padding: 32px 16px 16px; font-size: 12px; color: var(--text3); }
 
+  /* Loading overlay */
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 14px; color: var(--text2); }
+  .loading-overlay.hidden { display: none; }
+
   /* Responsive */
   @media (max-width: 600px) {
     .sv-wrap { flex-direction: column; }
@@ -186,10 +192,13 @@
 </head>
 <body>
 
+<div class="loading-overlay" id="loadingOverlay">Загрузка...</div>
+
 <header class="header">
   <div class="logo">Прогноз <span>/ система управления продажами</span></div>
   <div class="header-right">
     <div class="date-badge" id="currentDate"></div>
+    <button class="logout-btn" id="logoutBtn">Выйти</button>
   </div>
 </header>
 
@@ -432,6 +441,25 @@
 
 <div class="footer">Система «Прогноз» · Агентство Космос · Данные обновлены: <span id="footerDate"></span></div>
 
+<!-- ============================================================
+     AUTH GUARD — должен запуститься ПЕРВЫМ, до остальной логики.
+     Если пользователь не залогинен — редиректит на login.html.
+     ============================================================ -->
+<script type="module">
+  import { requireAuth, logout } from './auth-guard.js';
+  const user = await requireAuth();
+  // Прокидываем в global, чтобы остальной (не-module) скрипт ниже мог использовать
+  window.currentUser = user;
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+  // Скрываем оверлей загрузки
+  document.getElementById('loadingOverlay').classList.add('hidden');
+</script>
+
+<!-- ============================================================
+     ОСНОВНОЙ КОД ДАШБОРДА (пока на тестовых данных).
+     ВНИМАНИЕ: следующий этап — заменить DATA на загрузку из Firebase
+     с использованием window.currentUser.code.
+     ============================================================ -->
 <script>
 const DATA = {
   name: 'Веденёва Мария Сергеевна',
@@ -556,6 +584,17 @@ function init() {
   document.getElementById('currentDate').textContent = dateStr;
   document.getElementById('footerDate').textContent = dateStr;
 
+  // Если есть данные из auth — покажем имя в шапке (имя только, остальное — пока DATA)
+  if (window.currentUser && window.currentUser.name) {
+    document.getElementById('profileName').textContent = window.currentUser.name;
+    // Инициалы
+    const parts = window.currentUser.name.split(' ');
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : window.currentUser.name.slice(0, 2).toUpperCase();
+    document.getElementById('avatarEl').textContent = initials;
+  }
+
   // Month grid
   const mg = document.getElementById('monthGrid');
   mg.innerHTML = DATA.irHistory.map((m, i) => {
@@ -623,8 +662,13 @@ function init() {
   `).join('');
 }
 
-init();
+// Запускаем после короткой задержки, чтобы auth-guard успел сработать
+// (он асинхронный, поэтому ждём чуть-чуть. На след. шаге заменим на await.)
+setTimeout(init, 100);
 </script>
+
+<!-- Модуль чтения архива (готовим к Этапу Б, пока не используется в render) -->
+<script src="firebase-reader.js"></script>
+
 </body>
-  <script src="firebase-reader.js"></script>
 </html>
