@@ -36,7 +36,10 @@
   .logo { font-size: 16px; font-weight: 600; color: var(--blue); }
   .logo span { color: var(--text); font-weight: 400; }
   .role-badge { background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
-  .header-right { margin-left: auto; font-size: 12px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .date-badge { font-size: 12px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+  .logout-btn { font-size: 12px; color: var(--text2); background: transparent; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-family: inherit; transition: all .15s; }
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
 
   .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
 
@@ -159,6 +162,10 @@
   .gp-bar-fill { height: 100%; border-radius: 4px; transition: width .5s; }
   .gp-val { font-size: 12px; font-weight: 500; min-width: 36px; text-align: right; }
 
+  /* Loading overlay */
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 14px; color: var(--text2); }
+  .loading-overlay.hidden { display: none; }
+
   @media (max-width: 600px) {
     .mop-card { flex-wrap: wrap; }
     .nav-links { margin-left: 0; width: 100%; }
@@ -168,20 +175,25 @@
 </head>
 <body>
 
+<div class="loading-overlay" id="loadingOverlay">Загрузка...</div>
+
 <header class="header">
   <div class="logo">Прогноз <span>/ система управления продажами</span></div>
-  <span class="role-badge">МОП</span>
-  <div class="header-right" id="currentDate"></div>
+  <span class="role-badge" id="roleBadge">МОП</span>
+  <div class="header-right">
+    <div class="date-badge" id="currentDate"></div>
+    <button class="logout-btn" id="logoutBtn">Выйти</button>
+  </div>
 </header>
 
 <div class="container">
 
   <!-- MOP profile -->
   <div class="mop-card">
-    <div class="avatar av-blue">БЕ</div>
+    <div class="avatar av-blue" id="mopAvatar">БЕ</div>
     <div class="mop-info">
-      <div class="mop-name">Бондарчук Егор Валерьевич</div>
-      <div class="mop-meta">РОП: Колмогорова Е.Ю. &nbsp;·&nbsp; Группа: 8 риэлторов &nbsp;·&nbsp; Обновлено сегодня</div>
+      <div class="mop-name" id="mopName">Бондарчук Егор Валерьевич</div>
+      <div class="mop-meta" id="mopMeta">РОП: Колмогорова Е.Ю. &nbsp;·&nbsp; Группа: 8 риэлторов &nbsp;·&nbsp; Обновлено сегодня</div>
     </div>
     <div class="nav-links">
       <a href="index.html" class="nav-link">👤 Риэлтор</a>
@@ -335,6 +347,35 @@
 
 <div style="text-align:center;padding:28px 16px 16px;font-size:12px;color:var(--text3)">Система «Прогноз» · Агентство Космос · МОП-дашборд</div>
 
+<!-- ============================================================
+     AUTH GUARD — допускаются только роли mop/rop/aup/admin.
+     Если рядовой риелтор попадёт сюда — увидит alert и редирект.
+     ============================================================ -->
+<script type="module">
+  import { requireAuth, logout } from './auth-guard.js';
+  const user = await requireAuth({ allowedRoles: ['mop', 'rop', 'aup', 'admin'] });
+  window.currentUser = user;
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+
+  // Подменяем имя/инициалы и бейдж роли в шапке
+  if (user.name) {
+    document.getElementById('mopName').textContent = user.name;
+    const parts = user.name.split(' ');
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : user.name.slice(0, 2).toUpperCase();
+    document.getElementById('mopAvatar').textContent = initials;
+  }
+  const roleLabels = { mop: 'МОП', rop: 'РОП', aup: 'АУП', admin: 'Админ' };
+  document.getElementById('roleBadge').textContent = roleLabels[user.role] || user.role;
+
+  document.getElementById('loadingOverlay').classList.add('hidden');
+</script>
+
+<!-- ============================================================
+     ОСНОВНОЙ КОД ДАШБОРДА (пока на тестовых данных).
+     Следующий этап: загружать TEAM из /users/{currentUser.code}/subordinates
+     ============================================================ -->
 <script>
 const TEAM = [
   { id:1, name:'Веденёва Мария Сергеевна', initials:'ВМ', stazh:12, pos:554, ir:58, irDelta:6, income:148618, prod:1.2, zone:'avg', situationP:'101010', situationS:'101010',
@@ -631,7 +672,7 @@ function init() {
   initCharts();
 }
 
-init();
+setTimeout(init, 100);
 </script>
 </body>
 </html>
