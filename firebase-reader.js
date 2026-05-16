@@ -9,8 +9,8 @@
  *     const me = await getAgent(user.code);   // мои данные из последнего снимка
  *   </script>
  *
- * Все запросы идут через Firebase SDK (использует токен текущего пользователя)
- * либо через REST с `?auth=<idToken>`. Firebase Rules применяются автоматически.
+ * Все запросы идут через Firebase SDK — токен текущего пользователя
+ * подкладывается автоматически, Firebase Rules применяются как обычно.
  *
  * Принцип: при отсутствии данных или ошибке прав — возвращаем null + console.warn.
  * Дашборд сам решает, показать ли хардкод-fallback или сообщение об ошибке.
@@ -52,56 +52,34 @@ async function readNode(path) {
 }
 
 /**
- * Получить только список ключей узла (без значений) через REST shallow-запрос.
- * Используется для поиска последней даты в /archive/{месяц}.
- */
-async function listChildKeys(path) {
-  const user = auth.currentUser;
-  if (!user) {
-    console.warn('[firebase-reader] listChildKeys: пользователь не авторизован');
-    return null;
-  }
-  try {
-    const idToken = await user.getIdToken();
-    const url = `${firebaseConfig.databaseURL}/${path}.json`
-      + `?shallow=true&auth=${encodeURIComponent(idToken)}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn(`[firebase-reader] shallow ${path}: HTTP ${res.status}`);
-      return null;
-    }
-    const data = await res.json();
-    return data ? Object.keys(data) : [];
-  } catch (e) {
-    console.warn(`[firebase-reader] shallow ${path}: ${e.message}`);
-    return null;
-  }
-}
-
-/**
  * Найти последнюю дату снимка в /archive/.
- * Алгоритм: читаем ключи /archive/{текущий-месяц}, берём максимальный.
- * Если месяц пуст — откатываемся на предыдущий, до 12 месяцев назад.
+ * Алгоритм: зондируем /archive/{ym}/{date}/meta с сегодня назад по дням.
+ * Узел meta содержит { agentsCount, date, timestamp, version, yearMonth }
+ * и открыт на чтение любому авторизованному пользователю (Firebase Rules).
+ * В normal case — 1-2 запроса (сегодня → вчера, в зависимости от времени
+ * запуска архиватора). Лимит 30 дней покрывает любой реалистичный простой.
  *
  * @returns {Promise<string|null>} 'YYYY-MM-DD' или null, если ничего не найдено
  */
 export async function getLatestSnapshotDate() {
   if (_cachedLatestDate) return _cachedLatestDate;
 
+  const MAX_DAYS_BACK = 30;
   const today = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+
+  for (let i = 0; i < MAX_DAYS_BACK; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
     const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const keys = await listChildKeys(`archive/${ym}`);
-    if (keys && keys.length > 0) {
-      const dates = keys.filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
-      if (dates.length > 0) {
-        _cachedLatestDate = dates[dates.length - 1];
-        return _cachedLatestDate;
-      }
+    const date = `${ym}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const meta = await readNode(`archive/${ym}/${date}/meta`);
+    if (meta) {
+      _cachedLatestDate = date;
+      return _cachedLatestDate;
     }
   }
-  console.warn('[firebase-reader] последний снимок не найден за 12 месяцев');
+
+  console.warn(`[firebase-reader] последний снимок не найден за ${MAX_DAYS_BACK} дней`);
   return null;
 }
 
