@@ -521,6 +521,10 @@
 
     const norms = getNormatives(agent.division);
     const ir = calculateIR(agent, norms);
+    // Сделки/мес по комиссионной модели: одна квартира с двумя сторонами =
+    // две комиссии. agent.prod считает только покупательскую сторону —
+    // занижено, не используем. mop.html уже считает так же.
+    const totalDeals = (agent.b?.all?.deals ?? 0) + (agent.s?.all?.deals ?? 0);
 
     return {
       isEmpty: false,
@@ -533,8 +537,8 @@
       division: agent.division,
       zone: zoneFromDivision(agent.division),
       income: agent.income,
-      productivity: agent.prod,
-      deals: agent.prod,
+      productivity: totalDeals,
+      deals: totalDeals,
       ir:       Math.round((ir?.irTotal  || 0) * 100),
       irBuyer:  Math.round((ir?.irBuyer  || 0) * 100),
       irSeller: Math.round((ir?.irSeller || 0) * 100),
