@@ -204,6 +204,11 @@
 
 <div class="container">
 
+  <!-- Кнопка возврата в команду: видна, только когда index.html?agent=КОД -->
+  <a id="backToTeam" href="mop.html" style="display:none; align-items:center; gap:6px; padding:8px 12px; margin-bottom:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text2); text-decoration:none; font-size:13px; width:max-content;">
+    ← Назад к команде
+  </a>
+
   <!-- Profile -->
   <div class="profile-card">
     <div class="avatar" id="avatarEl">ВМ</div>
@@ -452,7 +457,7 @@
      Если пользователь не залогинен — редиректит на login.html.
      ============================================================ -->
 <script type="module">
-  import { requireAuth, logout } from './auth-guard.js';
+  import { requireAuth, logout, canRead } from './auth-guard.js';
   import { getAgent, getUser, getLatestSnapshotDate } from './firebase-reader.js';
   import { calculateIR, getNormatives } from './ir.js';
 
@@ -460,21 +465,42 @@
   window.currentUser = user;
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  // Параллельно тянем профиль, агента и дату последнего снимка
-  const [profile, agent, snapDate] = await Promise.all([
+  // Режим просмотра: ?agent=КОД переключает дашборд на показ
+  // другого риелтора (МОП пришёл из таблицы команды).
+  const params = new URLSearchParams(location.search);
+  const requestedAgent = params.get('agent');
+  const isViewingOther = requestedAgent && requestedAgent !== user.code;
+
+  // Сначала: свой профиль (нужен для canRead) и дата снимка — параллельно.
+  const [myProfile, snapDate] = await Promise.all([
     getUser(user.code),
-    getAgent(user.code),
     getLatestSnapshotDate(),
   ]);
+
+  // Определяем, какого агента грузить.
+  let targetCode = user.code;
+  let targetProfile = myProfile;
+
+  if (isViewingOther) {
+    if (!canRead(user, requestedAgent, myProfile)) {
+      alert('У вас нет прав смотреть этого риелтора.');
+      location.href = 'mop.html';
+      throw new Error('canRead denied');  // на случай, если редирект задержится
+    }
+    targetCode = requestedAgent;
+    // Профиль просматриваемого нужен для имени в шапке (надёжнее, чем agent.name).
+    targetProfile = await getUser(requestedAgent);
+  }
+
+  const agent = await getAgent(targetCode);
 
   // ФИО менеджера/РОПа берём из архива (agent.mop / agent.rop).
   // Через /users/{mopCode|ropCode} ходить нельзя: Rules не разрешают
   // читать «вверх» по иерархии — только себя/подчинённых/admin/aup.
-  // Строки в архиве могут отличаться написанием (CLAUDE.md §9), но
-  // для шапки риелтора это терпимо.
 
   window.SNAPSHOT_DATE = snapDate;
-  window.DATA = buildData({ user, profile, agent });
+  window.VIEW_MODE = isViewingOther ? { backTo: 'mop.html' } : null;
+  window.DATA = buildData({ user, profile: targetProfile, agent });
 
   document.getElementById('loadingOverlay').classList.add('hidden');
   window.init();
@@ -703,6 +729,16 @@ function showZone(key, el) {
 }
 
 function init() {
+  // 0. Режим просмотра другого риелтора (мы пришли из mop.html?agent=КОД).
+  //    Показываем кнопку «Назад к команде».
+  if (window.VIEW_MODE) {
+    const back = document.getElementById('backToTeam');
+    if (back) {
+      back.href = window.VIEW_MODE.backTo || 'mop.html';
+      back.style.display = 'inline-flex';
+    }
+  }
+
   // 1. Берём реальные данные (от модуля сверху); если их нет — фоллбек.
   //    Слияние нужно, чтобы статические поля (svZones) подтянулись из fallback,
   //    даже если в реальных данных их нет.

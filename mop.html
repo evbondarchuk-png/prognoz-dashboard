@@ -335,20 +335,6 @@
 
 </div>
 
-<!-- Realtor detail modal -->
-<div class="detail-overlay" id="detailOverlay" onclick="closeDetail(event)">
-  <div class="detail-modal" id="detailModal">
-    <div class="detail-header">
-      <div class="avatar av-blue" id="detailAvatar" style="width:40px;height:40px;font-size:13px"></div>
-      <div>
-        <div style="font-weight:600;font-size:15px" id="detailName"></div>
-        <div style="font-size:12px;color:var(--text2)" id="detailMeta"></div>
-      </div>
-      <button class="detail-close" onclick="document.getElementById('detailOverlay').classList.remove('open')">×</button>
-    </div>
-    <div class="detail-body" id="detailBody"></div>
-  </div>
-</div>
 
 <div style="text-align:center;padding:28px 16px 16px;font-size:12px;color:var(--text3)">Система «Прогноз» · Агентство Космос · МОП-дашборд</div>
 
@@ -358,17 +344,19 @@
      ============================================================ -->
 <script type="module">
   import { requireAuth, logout } from './auth-guard.js';
-  import { getSubordinates, getUser } from './firebase-reader.js';
+  import { getSubordinates, getUser, getAgent } from './firebase-reader.js';
   import { calculateIR, getNormatives } from './ir.js';
 
   const user = await requireAuth({ allowedRoles: ['mop', 'rop', 'aup', 'admin'] });
   window.currentUser = user;
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  // Параллельно: профиль МОПа и подчинённые с архивом
-  const [profile, subs] = await Promise.all([
+  // Параллельно: профиль МОПа, подчинённые с архивом, и СВОИ архивные данные
+  // (МОП показывается в списке команды как риелтор — клик ведёт на его дашборд).
+  const [profile, subs, myAgent] = await Promise.all([
     getUser(user.code),
     getSubordinates(user.code),
+    getAgent(user.code),
   ]);
 
   // Для подчинённых без архивных данных — подтянуть имя из /users/{код}
@@ -379,46 +367,51 @@
     emptyCodes.map((c, i) => [c, emptyProfiles[i]?.name || c])
   );
 
-  window.MOP_DATA = buildMopData({ user, profile, subs, nameByCode });
+  window.MOP_DATA = buildMopData({ user, profile, subs, myAgent, nameByCode });
   document.getElementById('loadingOverlay').classList.add('hidden');
   window.init();
 
   // ===== helpers =====
 
-  function buildMopData({ user, profile, subs, nameByCode }) {
+  function buildMopData({ user, profile, subs, myAgent, nameByCode }) {
     const mopName = profile?.name || user.name || 'Без имени';
-    // РОПа берём из архива любого подчинённого с данными — у него agent.rop = ФИО.
+    // РОПа берём из архива (свой или любого подчинённого) — agent.rop = ФИО.
     // Через /users/{ropCode} ходить нельзя (Rules запрещают читать «вверх»).
-    const anyAgent = subs.find(s => s.data)?.data;
-    const rop = anyAgent?.rop || '';
+    const rop = myAgent?.rop || subs.find(s => s.data)?.data?.rop || '';
 
-    const team = subs.map(s => {
-      if (!s.data) {
+    const toRow = (code, data, fallbackName) => {
+      if (!data) {
         return {
-          code: s.code,
-          name: nameByCode[s.code] || s.code,
-          isEmpty: true,
+          code, name: fallbackName || code, isEmpty: true,
           pos: null, stazh: null, ir: null,
           income: null, deals: null, zone: null, funnel: [],
         };
       }
-      const ir = calculateIR(s.data, getNormatives(s.data.division));
+      const ir = calculateIR(data, getNormatives(data.division));
       return {
-        code: s.code,
-        name: s.data.name || s.code,
+        code,
+        name: data.name || fallbackName || code,
         isEmpty: false,
-        pos: s.data.position,
-        stazh: s.data.stazh,
+        pos: data.position,
+        stazh: data.stazh,
         ir: Math.round((ir?.irTotal || 0) * 100),
-        income: s.data.income || 0,
-        deals: (s.data.b?.all?.deals ?? 0) + (s.data.s?.all?.deals ?? 0),
-        zone: zoneFromDivision(s.data.division),
-        division: s.data.division,
-        funnel: buildFunnel(s.data),
+        income: data.income || 0,
+        deals: (data.b?.all?.deals ?? 0) + (data.s?.all?.deals ?? 0),
+        zone: zoneFromDivision(data.division),
+        division: data.division,
+        funnel: buildFunnel(data),
       };
-    });
+    };
 
-    // Агрегаты — ТОЛЬКО по подчинённым с данными в архиве.
+    // МОП — первой строкой команды, с пометкой isSelf. Решено: входит в
+    // агрегаты наравне с подчинёнными («один код, одно представление»).
+    const selfRow = { ...toRow(user.code, myAgent, mopName), isSelf: true };
+
+    const subRows = subs.map(s => toRow(s.code, s.data, nameByCode[s.code]));
+
+    const team = [selfRow, ...subRows];
+
+    // Агрегаты — по всем строкам с данными в архиве (включая самого МОПа).
     // Пустые строки видны в таблице, но в суммы и распределение не входят.
     const withData = team.filter(t => !t.isEmpty);
     const sum = (arr, k) => arr.reduce((s, x) => s + (x[k] || 0), 0);
@@ -603,10 +596,15 @@ function renderTeam() {
 }
 
 function renderRow(r) {
+  const selfBadge = r.isSelf
+    ? '<span class="pill pill-blue" style="font-size:10px;padding:2px 6px;margin-left:6px">вы</span>'
+    : '';
+  const rowStyle = r.isSelf ? 'background:rgba(24,95,165,0.04)' : '';
+
   if (r.isEmpty) {
-    return `<tr onclick="openDetail('${r.code}')" style="opacity:0.55">
+    return `<tr onclick="goToAgent('${r.code}')" style="${rowStyle};opacity:0.7">
       <td>
-        <div class="r-name">${r.name}</div>
+        <div class="r-name">${r.name}${selfBadge}</div>
         <div class="r-sub" style="color:var(--text3)">Нет данных в архиве на эту дату</div>
       </td>
       <td>—</td>
@@ -627,9 +625,9 @@ function renderRow(r) {
   const dotColor = zc === 'green' ? '#3B6D11' : zc === 'teal' ? '#0F6E56'
                  : zc === 'amber' ? '#854F0B' : zc === 'red'  ? '#A32D2D' : '#888780';
   const dealsStr = Number(r.deals || 0).toFixed(2).replace('.', ',');
-  return `<tr onclick="openDetail('${r.code}')">
+  return `<tr onclick="goToAgent('${r.code}')" style="${rowStyle}">
     <td>
-      <div class="r-name">${r.name}</div>
+      <div class="r-name">${r.name}${selfBadge}</div>
       <div class="r-sub">Стаж: ${r.stazh != null ? r.stazh + ' мес' : '—'}</div>
     </td>
     <td>${r.pos ? '#' + r.pos : '—'}</td>
@@ -654,54 +652,10 @@ function renderRow(r) {
   </tr>`;
 }
 
-function openDetail(code) {
-  const r = TEAM.find(x => String(x.code) === String(code));
-  if (!r) return;
-  const initials = (function (name) {
-    if (!name) return '??';
-    const parts = String(name).trim().split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return String(name).slice(0, 2).toUpperCase();
-  })(r.name);
-  document.getElementById('detailAvatar').textContent = initials;
-  document.getElementById('detailName').textContent = r.name;
-  if (r.isEmpty) {
-    document.getElementById('detailMeta').textContent = 'Нет данных в архиве на эту дату';
-  } else {
-    document.getElementById('detailMeta').textContent =
-      `Стаж: ${r.stazh != null ? r.stazh + ' мес' : '—'} · Позиция: ${r.pos ? '#'+r.pos : 'без светофора'} · ИР: ${r.ir}%`;
-  }
-  const body = document.getElementById('detailBody');
-  if (r.isEmpty || !r.funnel || r.funnel.length === 0) {
-    body.innerHTML = `
-      <div style="padding:12px;color:var(--text2);font-size:13px">Воронку построить не из чего — в архиве за выбранную дату нет данных по этому риелтору.</div>
-      <div style="margin-top:16px">
-        <button onclick="document.getElementById('detailOverlay').classList.remove('open')" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500">Закрыть</button>
-      </div>
-    `;
-  } else {
-    body.innerHTML = `
-      <div class="section-label">Воронка покупателя</div>
-      ${r.funnel.map(f => {
-        const pct = f.n > 0 ? Math.round((f.f/f.n)*100) : 0;
-        return `<div class="funnel-row">
-          <div class="funnel-stage">${f.s}</div>
-          <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${Math.min(pct,100)}%;background:${barColor(pct)}"></div><span class="funnel-val">${f.f}</span></div>
-          <div class="funnel-norm">норма: ${f.n}</div>
-        </div>`;
-      }).join('')}
-      <div style="margin-top:16px">
-        <button onclick="document.getElementById('detailOverlay').classList.remove('open')" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500">Закрыть</button>
-      </div>
-    `;
-  }
-  document.getElementById('detailOverlay').classList.add('open');
-}
-
-function closeDetail(e) {
-  if (e.target === document.getElementById('detailOverlay')) {
-    document.getElementById('detailOverlay').classList.remove('open');
-  }
+// Навигация: клик по строке команды → дашборд риелтора с этим кодом.
+// index.html?agent=КОД покажет данные этого агента + кнопку «Назад к команде».
+function goToAgent(code) {
+  location.href = 'index.html?agent=' + encodeURIComponent(code);
 }
 
 function renderRisks() {
