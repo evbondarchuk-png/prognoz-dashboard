@@ -465,11 +465,13 @@
   window.currentUser = user;
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  // Режим просмотра: ?agent=КОД переключает дашборд на показ
-  // другого риелтора (МОП пришёл из таблицы команды).
+  // Режим просмотра: ?agent=КОД означает «пришёл из таблицы команды».
+  // hasAgentParam — управляет показом кнопки «Назад» (даже если КОД === твой).
+  // isViewingOther — управляет тем, чьи данные грузим и нужна ли canRead-проверка.
   const params = new URLSearchParams(location.search);
   const requestedAgent = params.get('agent');
-  const isViewingOther = requestedAgent && requestedAgent !== user.code;
+  const hasAgentParam = !!requestedAgent;
+  const isViewingOther = hasAgentParam && requestedAgent !== user.code;
 
   // Сначала: свой профиль (нужен для canRead) и дата снимка — параллельно.
   const [myProfile, snapDate] = await Promise.all([
@@ -499,7 +501,7 @@
   // читать «вверх» по иерархии — только себя/подчинённых/admin/aup.
 
   window.SNAPSHOT_DATE = snapDate;
-  window.VIEW_MODE = isViewingOther ? { backTo: 'mop.html' } : null;
+  window.VIEW_MODE = hasAgentParam ? { backTo: 'mop.html' } : null;
   window.DATA = buildData({ user, profile: targetProfile, agent });
 
   document.getElementById('loadingOverlay').classList.add('hidden');
