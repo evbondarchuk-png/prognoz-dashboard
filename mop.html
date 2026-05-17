@@ -201,6 +201,11 @@
     </div>
   </div>
 
+  <!-- Empty-state баннер: если подчинённых нет вообще -->
+  <div id="emptyBanner" style="display:none; background:var(--blue-bg); color:var(--blue-text); padding:14px 18px; border-radius:var(--radius-sm); margin-bottom:16px; font-size:13px; line-height:1.5;">
+    <strong>Нет подчинённых с данными</strong> в архиве. Возможные причины: список subordinates ещё не залит в /users/, либо команда пока пуста.
+  </div>
+
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab active" onclick="showTab('overview',this)">📊 Сводка группы</button>
@@ -285,8 +290,8 @@
               <th>Позиция</th>
               <th>Стаж</th>
               <th>ИР</th>
-              <th>Доход (3м)</th>
-              <th>Произв.</th>
+              <th>Доход за месяц</th>
+              <th>Сделок/мес</th>
               <th>Зона</th>
               <th>Статус</th>
             </tr>
@@ -353,23 +358,130 @@
      ============================================================ -->
 <script type="module">
   import { requireAuth, logout } from './auth-guard.js';
+  import { getSubordinates, getUser } from './firebase-reader.js';
+  import { calculateIR, getNormatives } from './ir.js';
+
   const user = await requireAuth({ allowedRoles: ['mop', 'rop', 'aup', 'admin'] });
   window.currentUser = user;
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  // Подменяем имя/инициалы и бейдж роли в шапке
-  if (user.name) {
-    document.getElementById('mopName').textContent = user.name;
-    const parts = user.name.split(' ');
-    const initials = parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : user.name.slice(0, 2).toUpperCase();
-    document.getElementById('mopAvatar').textContent = initials;
-  }
-  const roleLabels = { mop: 'МОП', rop: 'РОП', aup: 'АУП', admin: 'Админ' };
-  document.getElementById('roleBadge').textContent = roleLabels[user.role] || user.role;
+  // Параллельно: профиль МОПа и подчинённые с архивом
+  const [profile, subs] = await Promise.all([
+    getUser(user.code),
+    getSubordinates(user.code),
+  ]);
 
+  // Для подчинённых без архивных данных — подтянуть имя из /users/{код}
+  // (Rules пускают: они в моих subordinates).
+  const emptyCodes = subs.filter(s => s.data === null).map(s => s.code);
+  const emptyProfiles = await Promise.all(emptyCodes.map(c => getUser(c)));
+  const nameByCode = Object.fromEntries(
+    emptyCodes.map((c, i) => [c, emptyProfiles[i]?.name || c])
+  );
+
+  window.MOP_DATA = buildMopData({ user, profile, subs, nameByCode });
   document.getElementById('loadingOverlay').classList.add('hidden');
+  window.init();
+
+  // ===== helpers =====
+
+  function buildMopData({ user, profile, subs, nameByCode }) {
+    const mopName = profile?.name || user.name || 'Без имени';
+    // РОПа берём из архива любого подчинённого с данными — у него agent.rop = ФИО.
+    // Через /users/{ropCode} ходить нельзя (Rules запрещают читать «вверх»).
+    const anyAgent = subs.find(s => s.data)?.data;
+    const rop = anyAgent?.rop || '';
+
+    const team = subs.map(s => {
+      if (!s.data) {
+        return {
+          code: s.code,
+          name: nameByCode[s.code] || s.code,
+          isEmpty: true,
+          pos: null, stazh: null, ir: null,
+          income: null, deals: null, zone: null, funnel: [],
+        };
+      }
+      const ir = calculateIR(s.data, getNormatives(s.data.division));
+      return {
+        code: s.code,
+        name: s.data.name || s.code,
+        isEmpty: false,
+        pos: s.data.position,
+        stazh: s.data.stazh,
+        ir: Math.round((ir?.irTotal || 0) * 100),
+        income: s.data.income || 0,
+        deals: (s.data.b?.all?.deals ?? 0) + (s.data.s?.all?.deals ?? 0),
+        zone: zoneFromDivision(s.data.division),
+        division: s.data.division,
+        funnel: buildFunnel(s.data),
+      };
+    });
+
+    // Агрегаты — ТОЛЬКО по подчинённым с данными в архиве.
+    // Пустые строки видны в таблице, но в суммы и распределение не входят.
+    const withData = team.filter(t => !t.isEmpty);
+    const sum = (arr, k) => arr.reduce((s, x) => s + (x[k] || 0), 0);
+    const avgIR = withData.length
+      ? Math.round(withData.reduce((s, t) => s + t.ir, 0) / withData.length)
+      : 0;
+
+    // Светофор: единая классификация для donut, плашек и фильтров таблицы.
+    // 5 зон → 3 цвета: red = low+new, amber = avg, green = mid+good+best.
+    const isRed   = z => z === 'low'  || z === 'new';
+    const isAmber = z => z === 'avg';
+    const isGreen = z => z === 'mid'  || z === 'good' || z === 'best';
+
+    return {
+      mopName,
+      mopInitials: initialsFrom(mopName),
+      rop,
+      teamSize: team.length,
+      teamSizeWithData: withData.length,
+      team,
+      aggregates: {
+        avgIR,
+        totalIncome: sum(withData, 'income'),
+        totalDeals:  sum(withData, 'deals'),
+        redCount:   withData.filter(t => isRed(t.zone)).length,
+        greenCount: withData.filter(t => isGreen(t.zone)).length,
+      },
+      distribution: {
+        best: withData.filter(t => t.zone === 'best' || t.zone === 'good').length,
+        mid:  withData.filter(t => t.zone === 'mid').length,
+        avg:  withData.filter(t => t.zone === 'avg').length,
+        low:  withData.filter(t => t.zone === 'low' || t.zone === 'new').length,
+      },
+      classify: { isRed, isAmber, isGreen },
+    };
+  }
+
+  function initialsFrom(name) {
+    if (!name) return '??';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+
+  function zoneFromDivision(div) {
+    if (!div) return 'avg';
+    if (/ТОП|1[-–]5\b|6[-–]15/i.test(div)) return 'best';
+    if (/16[-–]100/.test(div)) return 'good';
+    if (/101[-–]200/.test(div)) return 'mid';
+    if (/201[-–]|301[-–]|401[-–]|^[23]\d\d/.test(div)) return 'avg';
+    if (/500|без/i.test(div)) return 'low';
+    return 'avg';
+  }
+
+  function buildFunnel(agent) {
+    const norms = getNormatives(agent.division);
+    const stages = [['Вх. поток','flow'],['Горячие','hot'],['Задатки','dep'],['Сделки','deals']];
+    return stages.map(([s, m]) => ({
+      s,
+      f: agent.b?.all?.[m] ?? 0,
+      n: norms.buyer.all?.[m] ?? 0,
+    }));
+  }
 </script>
 
 <!-- ============================================================
@@ -377,7 +489,10 @@
      Следующий этап: загружать TEAM из /users/{currentUser.code}/subordinates
      ============================================================ -->
 <script>
-const TEAM = [
+// Хардкод-fallback команды. В норме TEAM переопределяется в init() из
+// window.MOP_DATA.team, собранного в модульном блоке. Сохраняется по
+// CLAUDE.md §8 как safety net на случай аварии чтения архива.
+const TEAM_FALLBACK = [
   { id:1, name:'Веденёва Мария Сергеевна', initials:'ВМ', stazh:12, pos:554, ir:58, irDelta:6, income:148618, prod:1.2, zone:'avg', situationP:'101010', situationS:'101010',
     funnel:[{s:'Вх. поток',f:11,n:14},{s:'Горячие',f:7,n:8},{s:'Задатки',f:2,n:4},{s:'Сделки',f:1.2,n:2}],
     recs:['Конверсия горячие→задаток 22% (норма 50%) — П-ГК-4, П-ГК-5','Активные ОН критически мало — Пр-ВП-1','Доля ипотеки 27% (норма 40%) — П-ГК-7'] },
@@ -403,6 +518,9 @@ const TEAM = [
     funnel:[{s:'Вх. поток',f:1,n:14},{s:'Горячие',f:0.2,n:8},{s:'Задатки',f:0,n:4},{s:'Сделки',f:0,n:2}],
     recs:['Критическое падение ИР −10% за месяц','Риск увольнения','Срочная встреча сегодня — П-ВП-1, аудит CRM'] },
 ];
+
+// Активная команда: переопределяется в init() из window.MOP_DATA.team.
+let TEAM = TEAM_FALLBACK;
 
 const RISKS = [
   { name:'Кудин Егор Андреевич', type:'red', desc:'ИР упал на 10% за месяц. Нет дохода 2 месяца. Высокий риск ухода.', action:'Встреча сегодня' },
@@ -471,68 +589,112 @@ function filterTeam(f, btn) {
 
 function renderTeam() {
   const tbody = document.getElementById('teamBody');
+  // Фильтры по светофору (division-классификация), единая с donut и плашками.
+  // Пустые строки (без архива) проходят только через фильтр 'all'.
   const filtered = TEAM.filter(r => {
     if (currentFilter === 'all') return true;
-    if (currentFilter === 'red') return ['red','new'].includes(r.zone) || r.ir < 35;
-    if (currentFilter === 'amber') return r.ir >= 35 && r.ir < 60 && r.zone === 'avg';
-    if (currentFilter === 'green') return r.ir >= 60;
+    if (r.isEmpty) return false;
+    if (currentFilter === 'red')   return r.zone === 'low'  || r.zone === 'new';
+    if (currentFilter === 'amber') return r.zone === 'avg';
+    if (currentFilter === 'green') return r.zone === 'mid'  || r.zone === 'good' || r.zone === 'best';
     return true;
   });
-  tbody.innerHTML = filtered.map(r => {
-    const zc = zoneColor(r.zone);
-    const dotColor = zc === 'green' ? '#3B6D11' : zc === 'teal' ? '#0F6E56' : zc === 'amber' ? '#854F0B' : zc === 'red' ? '#A32D2D' : '#888780';
-    return `<tr onclick="openDetail(${r.id})">
-      <td>
-        <div class="r-name">${r.name}</div>
-        <div class="r-sub">Стаж: ${r.stazh} мес &nbsp;·&nbsp; Ситуация: ${r.situationP}</div>
-      </td>
-      <td>${r.pos ? '#' + r.pos : '—'}</td>
-      <td>${r.stazh} мес</td>
-      <td>
-        <div class="ir-mini">
-          <div class="ir-mini-bg"><div class="ir-mini-fill" style="width:${r.ir}%;background:${irColor(r.ir)}"></div></div>
-          <span class="ir-mini-val" style="color:${irColor(r.ir)}">${r.ir}%</span>
-          <span style="font-size:10px;${r.irDelta>0?'color:var(--green)':r.irDelta<0?'color:var(--red)':'color:var(--text3)'}">${r.irDelta>0?'▲':'▼'}${Math.abs(r.irDelta)}%</span>
-        </div>
-      </td>
-      <td>${r.income > 0 ? Math.round(r.income/1000) + 'к ₽' : '—'}</td>
-      <td>${r.prod}</td>
-      <td>
-        <span style="display:flex;align-items:center;gap:4px">
-          <span class="sv-dot" style="background:${dotColor}"></span>
-          <span style="font-size:12px">${zoneLabel(r.zone)}</span>
-        </span>
-      </td>
-      <td>
-        <span class="pill pill-${zc}" style="font-size:11px">${r.ir >= 70 ? 'В норме' : r.ir >= 40 ? 'Внимание' : 'Критично'}</span>
-      </td>
-    </tr>`;
-  }).join('');
+  tbody.innerHTML = filtered.map(r => renderRow(r)).join('');
 }
 
-function openDetail(id) {
-  const r = TEAM.find(x => x.id === id);
+function renderRow(r) {
+  if (r.isEmpty) {
+    return `<tr onclick="openDetail('${r.code}')" style="opacity:0.55">
+      <td>
+        <div class="r-name">${r.name}</div>
+        <div class="r-sub" style="color:var(--text3)">Нет данных в архиве на эту дату</div>
+      </td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>
+        <span style="display:flex;align-items:center;gap:4px">
+          <span class="sv-dot" style="background:#888780"></span>
+          <span style="font-size:12px;color:var(--text3)">нет данных</span>
+        </span>
+      </td>
+      <td><span class="pill pill-gray" style="font-size:11px">нет данных</span></td>
+    </tr>`;
+  }
+  const zc = zoneColor(r.zone);
+  const dotColor = zc === 'green' ? '#3B6D11' : zc === 'teal' ? '#0F6E56'
+                 : zc === 'amber' ? '#854F0B' : zc === 'red'  ? '#A32D2D' : '#888780';
+  const dealsStr = Number(r.deals || 0).toFixed(2).replace('.', ',');
+  return `<tr onclick="openDetail('${r.code}')">
+    <td>
+      <div class="r-name">${r.name}</div>
+      <div class="r-sub">Стаж: ${r.stazh != null ? r.stazh + ' мес' : '—'}</div>
+    </td>
+    <td>${r.pos ? '#' + r.pos : '—'}</td>
+    <td>${r.stazh != null ? r.stazh + ' мес' : '—'}</td>
+    <td>
+      <div class="ir-mini">
+        <div class="ir-mini-bg"><div class="ir-mini-fill" style="width:${Math.min(r.ir, 100)}%;background:${irColor(r.ir)}"></div></div>
+        <span class="ir-mini-val" style="color:${irColor(r.ir)}">${r.ir}%</span>
+      </div>
+    </td>
+    <td>${r.income > 0 ? Math.round(r.income/1000) + 'к ₽' : '—'}</td>
+    <td>${dealsStr}</td>
+    <td>
+      <span style="display:flex;align-items:center;gap:4px">
+        <span class="sv-dot" style="background:${dotColor}"></span>
+        <span style="font-size:12px">${zoneLabel(r.zone)}</span>
+      </span>
+    </td>
+    <td>
+      <span class="pill pill-${zc}" style="font-size:11px">${r.ir >= 70 ? 'В норме' : r.ir >= 40 ? 'Внимание' : 'Критично'}</span>
+    </td>
+  </tr>`;
+}
+
+function openDetail(code) {
+  const r = TEAM.find(x => String(x.code) === String(code));
   if (!r) return;
-  document.getElementById('detailAvatar').textContent = r.initials;
+  const initials = (function (name) {
+    if (!name) return '??';
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return String(name).slice(0, 2).toUpperCase();
+  })(r.name);
+  document.getElementById('detailAvatar').textContent = initials;
   document.getElementById('detailName').textContent = r.name;
-  document.getElementById('detailMeta').textContent = `Стаж: ${r.stazh} мес · Позиция: ${r.pos ? '#'+r.pos : 'без светофора'} · ИР: ${r.ir}%`;
+  if (r.isEmpty) {
+    document.getElementById('detailMeta').textContent = 'Нет данных в архиве на эту дату';
+  } else {
+    document.getElementById('detailMeta').textContent =
+      `Стаж: ${r.stazh != null ? r.stazh + ' мес' : '—'} · Позиция: ${r.pos ? '#'+r.pos : 'без светофора'} · ИР: ${r.ir}%`;
+  }
   const body = document.getElementById('detailBody');
-  body.innerHTML = `
-    <div class="section-label">Воронка покупателя</div>
-    ${r.funnel.map(f => {
-      const pct = Math.round((f.f/f.n)*100);
-      return `<div class="funnel-row">
-        <div class="funnel-stage">${f.s}</div>
-        <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${Math.min(pct,100)}%;background:${barColor(pct)}"></div><span class="funnel-val">${f.f}</span></div>
-        <div class="funnel-norm">норма: ${f.n}</div>
-      </div>`;
-    }).join('')}
-    <div class="section-label" style="margin-top:16px">Рекомендации</div>
-    ${r.recs.map(rec => `<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);color:var(--text2)">• ${rec}</div>`).join('')}
-    <div style="margin-top:16px">
-      <button onclick="document.getElementById('detailOverlay').classList.remove('open')" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500">Закрыть</button>
-    </div>
-  `;
+  if (r.isEmpty || !r.funnel || r.funnel.length === 0) {
+    body.innerHTML = `
+      <div style="padding:12px;color:var(--text2);font-size:13px">Воронку построить не из чего — в архиве за выбранную дату нет данных по этому риелтору.</div>
+      <div style="margin-top:16px">
+        <button onclick="document.getElementById('detailOverlay').classList.remove('open')" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500">Закрыть</button>
+      </div>
+    `;
+  } else {
+    body.innerHTML = `
+      <div class="section-label">Воронка покупателя</div>
+      ${r.funnel.map(f => {
+        const pct = f.n > 0 ? Math.round((f.f/f.n)*100) : 0;
+        return `<div class="funnel-row">
+          <div class="funnel-stage">${f.s}</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${Math.min(pct,100)}%;background:${barColor(pct)}"></div><span class="funnel-val">${f.f}</span></div>
+          <div class="funnel-norm">норма: ${f.n}</div>
+        </div>`;
+      }).join('')}
+      <div style="margin-top:16px">
+        <button onclick="document.getElementById('detailOverlay').classList.remove('open')" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500">Закрыть</button>
+      </div>
+    `;
+  }
   document.getElementById('detailOverlay').classList.add('open');
 }
 
@@ -606,35 +768,16 @@ function toggleTask(i, el) {
   document.getElementById('taskTitle' + i).classList.toggle('task-done-text');
 }
 
-function initCharts() {
-  const irMonths = ['Дек','Янв','Фев','Мар','Апр','Май'];
-  const irVals = [38, 42, 46, 49, 50, 54];
-  new Chart(document.getElementById('groupIrChart'), {
-    type: 'line',
-    data: {
-      labels: irMonths,
-      datasets: [{
-        data: irVals, borderColor: '#185FA5', backgroundColor: 'rgba(24,95,165,0.08)',
-        fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#185FA5',
-        pointBorderColor: '#fff', pointBorderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { min: 0, max: 100, ticks: { callback: v => v+'%', font:{size:11}, color:'#9a9890' }, grid: { color:'rgba(0,0,0,0.05)' } },
-        x: { ticks: { font:{size:11}, color:'#9a9890' }, grid: { display: false } }
-      }
-    }
-  });
-
-  new Chart(document.getElementById('svetoforChart'), {
+function renderSvetoforDonut(distribution) {
+  // distribution = { best, mid, avg, low } — count подчинённых по 4 зонам.
+  const canvas = document.getElementById('svetoforChart');
+  if (!canvas) return;
+  new Chart(canvas, {
     type: 'doughnut',
     data: {
-      labels: ['Лучшие', 'Хорошие', 'Средние', 'Слабые/Новички'],
+      labels: ['Лучшие+ТОП', 'Хорошие', 'Средние', 'Слабые/Новички'],
       datasets: [{
-        data: [1, 1, 2, 4],
+        data: [distribution.best, distribution.mid, distribution.avg, distribution.low],
         backgroundColor: ['#1D9E75','#5DCAA5','#EF9F27','#E24B4A'],
         borderWidth: 2, borderColor: '#fff'
       }]
@@ -644,35 +787,97 @@ function initCharts() {
       plugins: { legend: { display: true, position: 'right', labels: { font:{size:12}, padding:12, boxWidth:12 } } }
     }
   });
-
-  const progressData = [
-    { label: 'ВВ группы', fact: 76, color: '#EF9F27' },
-    { label: 'Сделки', fact: 75, color: '#EF9F27' },
-    { label: 'Ср. ИР', fact: 54, color: '#185FA5' },
-    { label: 'Зелёных R', fact: 25, color: '#1D9E75' },
-  ];
-  const gp = document.getElementById('groupProgress');
-  gp.innerHTML = progressData.map(p => `
-    <div class="group-progress">
-      <div class="gp-label">${p.label}</div>
-      <div class="gp-bar-bg"><div class="gp-bar-fill" style="width:${p.fact}%;background:${p.color}"></div></div>
-      <div class="gp-val" style="color:${p.color}">${p.fact}%</div>
-    </div>
-  `).join('');
 }
 
 function init() {
+  // 1. Если реальные данные не пришли — оставляем хардкод-fallback.
+  if (window.MOP_DATA) TEAM = window.MOP_DATA.team;
+  const data = window.MOP_DATA;
+
+  // 2. Дата (на сегодня — снимок может быть и за вчера, но header показывает сейчас).
   const now = new Date();
   const dateStr = now.toLocaleDateString('ru-RU', {day:'numeric',month:'long',year:'numeric'});
   document.getElementById('currentDate').textContent = dateStr;
-  document.getElementById('taskDate').textContent = now.toLocaleDateString('ru-RU', {day:'numeric',month:'long'});
+
+  // 3. Шапка МОПа.
+  if (data) {
+    document.getElementById('mopName').textContent = data.mopName || '—';
+    document.getElementById('mopAvatar').textContent = data.mopInitials || '??';
+    const metaParts = [];
+    if (data.rop) metaParts.push('РОП: ' + data.rop);
+    metaParts.push(`Группа: ${data.teamSize} ${data.teamSize === 1 ? 'риелтор' : 'риелторов'}` +
+      (data.teamSizeWithData < data.teamSize ? ` (с данными: ${data.teamSizeWithData})` : ''));
+    document.getElementById('mopMeta').innerHTML = metaParts.join(' &nbsp;·&nbsp; ');
+    // Бейдж роли — если элемент есть.
+    const rb = document.getElementById('roleBadge');
+    if (rb) {
+      const roleLabels = { mop: 'МОП', rop: 'РОП', aup: 'АУП', admin: 'Админ' };
+      rb.textContent = roleLabels[window.currentUser?.role] || window.currentUser?.role || '—';
+    }
+  }
+
+  // 4. Скрываем табы и экраны, которые в Шаге 4 не делаем.
+  document.querySelectorAll('.tab').forEach(b => {
+    const oc = b.getAttribute('onclick') || '';
+    if (oc.includes("'risks'") || oc.includes("'tasks'")) b.style.display = 'none';
+  });
+  document.getElementById('screen-risks').style.display = 'none';
+  document.getElementById('screen-tasks').style.display = 'none';
+
+  // 5. Пустая команда: показываем баннер и скрываем всё.
+  if (data && data.teamSize === 0) {
+    document.getElementById('emptyBanner').style.display = '';
+    document.querySelector('.tabs').style.display = 'none';
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    return;
+  }
+
+  // 6. Скрываем «Динамика среднего ИР за 6 месяцев» и «Выполнение плана».
+  const groupIrCard = document.getElementById('groupIrChart')?.closest('.card');
+  if (groupIrCard) groupIrCard.style.display = 'none';
+  const progressCard = document.getElementById('groupProgress')?.closest('.card');
+  if (progressCard) progressCard.style.display = 'none';
+
+  // 7. Метрики Сводки группы.
+  const agg = data?.aggregates;
+  if (agg) {
+    const metrics = document.querySelectorAll('#screen-overview .metrics .metric');
+    setGroupMetric(metrics[0], agg.avgIR + '%',                  'Средний ИР группы');
+    setGroupMetric(metrics[1], formatMoneyShort(agg.totalIncome), 'Валовая выручка (мес)');
+    setGroupMetric(metrics[2], Number(agg.totalDeals).toFixed(1).replace('.', ','), 'Сделок за месяц');
+    setGroupMetric(metrics[3], String(agg.redCount),  'В красной зоне',  `из ${data.teamSizeWithData}`);
+    setGroupMetric(metrics[4], String(agg.greenCount), 'В зелёной зоне', `из ${data.teamSizeWithData}`);
+  }
+
+  // 8. Donut по светофору — реальные данные.
+  if (data) renderSvetoforDonut(data.distribution);
+
+  // 9. Таблица команды.
   renderTeam();
-  renderRisks();
-  renderTasks();
-  initCharts();
 }
 
-setTimeout(init, 100);
+function setGroupMetric(el, value, label, delta) {
+  if (!el) return;
+  el.querySelector('.metric-value').textContent = value;
+  if (label !== undefined) el.querySelector('.metric-label').textContent = label;
+  if (delta === undefined) {
+    el.querySelector('.metric-delta')?.remove();
+  } else {
+    const d = el.querySelector('.metric-delta');
+    if (d) { d.textContent = delta; d.className = 'metric-delta flat'; }
+  }
+}
+
+function formatMoneyShort(v) {
+  if (v == null) return '—';
+  const n = Math.round(v);
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.', ',') + 'M ₽';
+  if (n >= 1000) return Math.round(n / 1000) + 'к ₽';
+  return n + ' ₽';
+}
+
+// init вызывается из модульного блока после загрузки данных.
+window.init = init;
 </script>
 </body>
 </html>
