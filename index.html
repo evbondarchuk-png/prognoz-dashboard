@@ -467,24 +467,24 @@
     getLatestSnapshotDate(),
   ]);
 
-  // Резолвим ФИО менеджера/РОПа через /users/ (надёжнее, чем строки из архива)
-  const [mopProfile, ropProfile] = await Promise.all([
-    profile?.mopCode ? getUser(profile.mopCode) : Promise.resolve(null),
-    profile?.ropCode ? getUser(profile.ropCode) : Promise.resolve(null),
-  ]);
+  // ФИО менеджера/РОПа берём из архива (agent.mop / agent.rop).
+  // Через /users/{mopCode|ropCode} ходить нельзя: Rules не разрешают
+  // читать «вверх» по иерархии — только себя/подчинённых/admin/aup.
+  // Строки в архиве могут отличаться написанием (CLAUDE.md §9), но
+  // для шапки риелтора это терпимо.
 
   window.SNAPSHOT_DATE = snapDate;
-  window.DATA = buildData({ user, profile, agent, mopProfile, ropProfile });
+  window.DATA = buildData({ user, profile, agent });
 
   document.getElementById('loadingOverlay').classList.add('hidden');
   window.init();
 
   // ===== helpers =====
 
-  function buildData({ user, profile, agent, mopProfile, ropProfile }) {
+  function buildData({ user, profile, agent }) {
     const name = profile?.name || user.name || 'Без имени';
-    const manager = mopProfile?.name || agent?.mop || '';
-    const rop = ropProfile?.name || agent?.rop || '';
+    const manager = agent?.mop || '';
+    const rop = agent?.rop || '';
 
     // Пустое состояние — данных продаж в архиве нет
     if (!agent) {
