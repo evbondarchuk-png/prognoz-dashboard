@@ -217,6 +217,12 @@
     </div>
   </div>
 
+  <!-- Empty-state баннер: показывается, когда у пользователя нет данных в архиве -->
+  <div id="emptyBanner" style="display:none; background:var(--blue-bg); color:var(--blue-text); padding:14px 18px; border-radius:var(--radius-sm); margin-bottom:16px; font-size:13px; line-height:1.5;">
+    <strong>Нет данных продаж в архиве</strong> на <span id="emptyBannerDate">—</span>.
+    Возможные причины: вы менеджер без личных продаж, новичок, или архиватор ещё не обработал этот период.
+  </div>
+
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab active" onclick="showTab('ir',this)">📊 Индекс развития</button>
@@ -447,12 +453,122 @@
      ============================================================ -->
 <script type="module">
   import { requireAuth, logout } from './auth-guard.js';
+  import { getAgent, getUser, getLatestSnapshotDate } from './firebase-reader.js';
+  import { calculateIR, getNormatives } from './ir.js';
+
   const user = await requireAuth();
-  // Прокидываем в global, чтобы остальной (не-module) скрипт ниже мог использовать
   window.currentUser = user;
   document.getElementById('logoutBtn').addEventListener('click', logout);
-  // Скрываем оверлей загрузки
+
+  // Параллельно тянем профиль, агента и дату последнего снимка
+  const [profile, agent, snapDate] = await Promise.all([
+    getUser(user.code),
+    getAgent(user.code),
+    getLatestSnapshotDate(),
+  ]);
+
+  // Резолвим ФИО менеджера/РОПа через /users/ (надёжнее, чем строки из архива)
+  const [mopProfile, ropProfile] = await Promise.all([
+    profile?.mopCode ? getUser(profile.mopCode) : Promise.resolve(null),
+    profile?.ropCode ? getUser(profile.ropCode) : Promise.resolve(null),
+  ]);
+
+  window.SNAPSHOT_DATE = snapDate;
+  window.DATA = buildData({ user, profile, agent, mopProfile, ropProfile });
+
   document.getElementById('loadingOverlay').classList.add('hidden');
+  window.init();
+
+  // ===== helpers =====
+
+  function buildData({ user, profile, agent, mopProfile, ropProfile }) {
+    const name = profile?.name || user.name || 'Без имени';
+    const manager = mopProfile?.name || agent?.mop || '';
+    const rop = ropProfile?.name || agent?.rop || '';
+
+    // Пустое состояние — данных продаж в архиве нет
+    if (!agent) {
+      return { isEmpty: true, name, initials: initialsFrom(name), manager, rop };
+    }
+
+    const norms = getNormatives(agent.division);
+    const ir = calculateIR(agent, norms);
+
+    return {
+      isEmpty: false,
+      name,
+      initials: initialsFrom(name),
+      manager,
+      rop,
+      stazh: agent.stazh,
+      position: agent.position,
+      division: agent.division,
+      zone: zoneFromDivision(agent.division),
+      income: agent.income,
+      productivity: agent.prod,
+      deals: agent.prod,
+      ir:       Math.round((ir?.irTotal  || 0) * 100),
+      irBuyer:  Math.round((ir?.irBuyer  || 0) * 100),
+      irSeller: Math.round((ir?.irSeller || 0) * 100),
+      irComponents: buildIrComponents(ir),
+      funnels: buildFunnels(agent, norms),
+    };
+  }
+
+  function initialsFrom(name) {
+    if (!name) return '??';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+
+  function zoneFromDivision(div) {
+    // Маппинг agent.division → ключ зоны для подсветки в шкале светофора
+    if (!div) return 'avg';
+    if (/ТОП|1[-–]5\b|6[-–]15/i.test(div)) return 'best';
+    if (/16[-–]100/.test(div)) return 'good';
+    if (/101[-–]200/.test(div)) return 'mid';
+    if (/201[-–]|301[-–]|401[-–]|^[23]\d\d/.test(div)) return 'avg';
+    if (/500|без/i.test(div)) return 'low';
+    return 'avg';
+  }
+
+  function buildIrComponents(ir) {
+    if (!ir) return [];
+    const pct = v => Math.round((v || 0) * 100);
+    const status = v => v >= 0.9 ? 'ok' : v >= 0.6 ? 'low' : 'crit';
+    return [
+      { name: 'Покупатель (50%)',     val: pct(ir.irBuyer),  color: '#378ADD', type: 'parent' },
+      { name: '— Вх. поток',          val: pct(ir.stages.buyer.flow),  color: '#85B7EB', status: status(ir.stages.buyer.flow) },
+      { name: '— Горячие клиенты',    val: pct(ir.stages.buyer.hot),   color: '#85B7EB', status: status(ir.stages.buyer.hot) },
+      { name: '— Сделки',             val: pct(ir.stages.buyer.deals), color: '#85B7EB', status: status(ir.stages.buyer.deals) },
+      { name: 'Продавец (50%)',       val: pct(ir.irSeller), color: '#1D9E75', type: 'parent' },
+      { name: '— Активные ОН',        val: pct(ir.stages.seller.actON),  color: '#5DCAA5', status: status(ir.stages.seller.actON) },
+      { name: '— Горячие ОН',         val: pct(ir.stages.seller.hotPer), color: '#5DCAA5', status: status(ir.stages.seller.hotPer) },
+      { name: '— Сделки с продавцов', val: pct(ir.stages.seller.deals),  color: '#5DCAA5', status: status(ir.stages.seller.deals) },
+    ];
+  }
+
+  function buildFunnels(agent, norms) {
+    const STAGES_BUYER  = [['Вх. поток','flow'],['Горячие','hot'],['Задатки','dep'],['Сделки','deals']];
+    const STAGES_SELLER = [['Активные ОН','actON'],['Горячие ОН','hotPer'],['Задатки','dep'],['Сделки','deals']];
+    const buildSide = (sideKey, stages, segs) => {
+      const out = {};
+      const dataKey = sideKey === 'buyer' ? 'b' : 's';
+      for (const seg of segs) {
+        out[seg] = stages.map(([s, metric]) => ({
+          s,
+          f: agent[dataKey]?.[seg]?.[metric] ?? 0,
+          n: norms[sideKey][seg]?.[metric] ?? 0,
+        }));
+      }
+      return out;
+    };
+    return {
+      buyer:  buildSide('buyer',  STAGES_BUYER,  ['all','new','sec','out']),
+      seller: buildSide('seller', STAGES_SELLER, ['all','sec','out']),
+    };
+  }
 </script>
 
 <!-- ============================================================
@@ -461,7 +577,11 @@
      с использованием window.currentUser.code.
      ============================================================ -->
 <script>
-const DATA = {
+// Хардкод-fallback на случай, если модуль не успел собрать реальные данные.
+// В норме DATA переопределяется в init() из window.DATA, собранного в
+// модульном блоке выше. Сохраняется по CLAUDE.md §8: «держать хардкод
+// как fallback, чтобы дашборд не падал в пустоту».
+const DATA_FALLBACK = {
   name: 'Веденёва Мария Сергеевна',
   initials: 'ВМ',
   manager: 'Бондарчук Е.В.',
@@ -521,6 +641,10 @@ const DATA = {
   ]
 };
 
+// Активные данные. Переопределяются в init() из window.DATA
+// (модульный блок сверху подгружает их из Firebase). До init() = fallback.
+let DATA = DATA_FALLBACK;
+
 function showTab(id, btn) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
@@ -579,92 +703,125 @@ function showZone(key, el) {
 }
 
 function init() {
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('ru-RU', {day:'numeric',month:'long',year:'numeric'});
+  // 1. Берём реальные данные (от модуля сверху); если их нет — фоллбек.
+  //    Слияние нужно, чтобы статические поля (svZones) подтянулись из fallback,
+  //    даже если в реальных данных их нет.
+  DATA = window.DATA ? { ...DATA_FALLBACK, ...window.DATA } : DATA_FALLBACK;
+
+  // 2. Дата снимка (а не "сегодня") в шапке и подвале.
+  const snapDate = window.SNAPSHOT_DATE
+    ? new Date(window.SNAPSHOT_DATE)
+    : new Date();
+  const dateStr = snapDate.toLocaleDateString('ru-RU', {day:'numeric',month:'long',year:'numeric'});
   document.getElementById('currentDate').textContent = dateStr;
   document.getElementById('footerDate').textContent = dateStr;
 
-  // Если есть данные из auth — покажем имя в шапке (имя только, остальное — пока DATA)
-  if (window.currentUser && window.currentUser.name) {
-    document.getElementById('profileName').textContent = window.currentUser.name;
-    // Инициалы
-    const parts = window.currentUser.name.split(' ');
-    const initials = parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : window.currentUser.name.slice(0, 2).toUpperCase();
-    document.getElementById('avatarEl').textContent = initials;
+  // 3. Шапка пользователя.
+  document.getElementById('profileName').textContent = DATA.name || '—';
+  document.getElementById('avatarEl').textContent = DATA.initials || '??';
+  const metaParts = [];
+  if (DATA.manager) metaParts.push('Менеджер: ' + DATA.manager);
+  if (DATA.rop)     metaParts.push('РОП: ' + DATA.rop);
+  if (DATA.stazh != null) metaParts.push('Стаж: ' + DATA.stazh + ' мес');
+  document.getElementById('profileMeta').innerHTML = metaParts.join(' &nbsp;·&nbsp; ');
+
+  const badges = document.querySelector('.profile-badges');
+  if (DATA.position != null) {
+    badges.innerHTML =
+      '<span class="pill pill-amber">Позиция #' + DATA.position + '</span>' +
+      (DATA.division ? '<span style="font-size:11px;color:var(--text2);margin-top:2px">Зона: ' + DATA.division + '</span>' : '');
+  } else {
+    badges.style.display = 'none';
   }
 
-  // Month grid
-  const mg = document.getElementById('monthGrid');
-  mg.innerHTML = DATA.irHistory.map((m, i) => {
-    const delta = i > 0 ? m.val - DATA.irHistory[i-1].val : 0;
-    const c = m.val >= 55 ? '#3B6D11' : m.val >= 45 ? '#854F0B' : '#A32D2D';
-    const isActive = i === DATA.irHistory.length - 1;
-    return `<div class="month-card${isActive?' active':''}" onclick="this.parentNode.querySelectorAll('.month-card').forEach(c=>c.classList.remove('active'));this.classList.add('active')">
-      <div class="month-num">${m.month}</div>
-      <div class="month-ir" style="color:${c}">${m.val}%</div>
-      <div class="month-delta-text ${delta>0?'up':delta<0?'down':'flat'}">${i>0?(delta>0?'▲':'▼')+Math.abs(delta)+'%':'—'}</div>
-    </div>`;
-  }).join('');
+  // 4. Пустое состояние: показываем баннер, скрываем табы и экраны, выходим.
+  if (DATA.isEmpty) {
+    document.getElementById('emptyBannerDate').textContent = dateStr;
+    document.getElementById('emptyBanner').style.display = '';
+    document.querySelector('.tabs').style.display = 'none';
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    return;
+  }
 
-  // IR Chart
-  new Chart(document.getElementById('irChart'), {
-    type: 'line',
-    data: {
-      labels: DATA.irHistory.map(m => m.month),
-      datasets: [{
-        data: DATA.irHistory.map(m => m.val),
-        borderColor: '#185FA5',
-        backgroundColor: 'rgba(24,95,165,0.08)',
-        fill: true, tension: 0.4,
-        pointRadius: 5, pointBackgroundColor: '#185FA5',
-        pointBorderColor: '#fff', pointBorderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { min: 0, max: 100, ticks: { callback: v => v + '%', font: { size: 11 }, color: '#9a9890' }, grid: { color: 'rgba(0,0,0,0.05)' } },
-        x: { ticks: { font: { size: 11 }, color: '#9a9890' }, grid: { display: false } }
-      }
-    }
+  // 5. Нормальный рендер.
+
+  // 5.1. Метрики на экране ИР (4 карточки). Delta-подписи удаляем —
+  //      исторических сравнений и пользовательских целей пока нет.
+  const irMetrics = document.querySelectorAll('#screen-ir .metrics .metric');
+  setMetric(irMetrics[0], (DATA.ir ?? 0) + '%', 'ИР текущий месяц', null);
+  setMetric(irMetrics[1], formatMoney(DATA.income), 'Доход за месяц', null);
+  setMetric(irMetrics[2], formatNum(DATA.productivity), 'Производительность', null);
+  setMetric(irMetrics[3], formatNum(DATA.deals), 'Сделок в месяц', null);
+
+  // 5.2. Скрываем «Динамика ИР за 6 месяцев» — нужны исторические снимки.
+  const chartCard = document.getElementById('irChart')?.closest('.card');
+  if (chartCard) chartCard.style.display = 'none';
+
+  // 5.3. Скрываем таб и экран «Рекомендации» — нет источника данных.
+  document.querySelectorAll('.tab').forEach(b => {
+    if (b.getAttribute('onclick')?.includes("'recs'")) b.style.display = 'none';
   });
+  document.getElementById('screen-recs').style.display = 'none';
 
-  // IR Components
+  // 5.4. Светофор: оставляем только «Текущая позиция»; цель/норм. доход — позже.
+  const svMetrics = document.querySelectorAll('#screen-svetofor .metrics .metric');
+  if (svMetrics[0]) {
+    setMetric(svMetrics[0],
+      DATA.position != null ? '#' + DATA.position : '—',
+      'Текущая позиция',
+      DATA.division ? 'зона: ' + DATA.division : ''
+    );
+  }
+  for (let i = 1; i < svMetrics.length; i++) svMetrics[i].style.display = 'none';
+
+  // 5.5. Компоненты ИР.
   const ic = document.getElementById('irComponents');
-  ic.innerHTML = DATA.irComponents.map(c => `
+  ic.innerHTML = (DATA.irComponents || []).map(c => `
     <div class="ir-row" style="${c.type==='parent'?'background:rgba(0,0,0,0.02);margin:0 -4px;padding:8px 4px;border-radius:4px':''}">
       <div class="ir-name" style="${c.type==='parent'?'font-weight:500;color:var(--text)':''}">${c.name}</div>
-      <div class="ir-bar-bg"><div class="ir-bar-fill" style="width:${c.val}%;background:${c.color}"></div></div>
+      <div class="ir-bar-bg"><div class="ir-bar-fill" style="width:${Math.min(c.val,100)}%;background:${c.color}"></div></div>
       <div class="ir-pct">${c.val}%</div>
       <div class="ir-pill">${c.status ? pillForStatus(c.status) : ''}</div>
     </div>
   `).join('');
 
-  // Funnels
+  // 5.6. Воронки (используют DATA.funnels, собранные в модуле).
   renderFunnel('buyer', 'all');
   renderFunnel('seller', 'all');
 
-  // Svetofor
-  showZone('avg', document.getElementById('currentZone'));
-
-  // Plan
-  const pb = document.getElementById('planBody');
-  pb.innerHTML = DATA.plan.map(([m,f,w,r]) => `
-    <tr>
-      <td class="plan-month">${m}</td>
-      <td style="font-weight:500">${f}</td>
-      <td style="color:var(--text2)">${w}</td>
-      <td class="plan-result">${r}</td>
-    </tr>
-  `).join('');
+  // 5.7. Светофор: подсветить зону агента.
+  const zoneKey = DATA.zone || 'avg';
+  const zoneEl = document.querySelector('.sv-zone.sz-' + zoneKey);
+  if (zoneEl) {
+    document.querySelectorAll('.sv-zone').forEach(z => z.classList.remove('sz-active'));
+    zoneEl.classList.add('sz-active');
+    showZone(zoneKey, zoneEl);
+  }
 }
 
-// Запускаем после короткой задержки, чтобы auth-guard успел сработать
-// (он асинхронный, поэтому ждём чуть-чуть. На след. шаге заменим на await.)
-setTimeout(init, 100);
+function setMetric(el, value, label, delta) {
+  if (!el) return;
+  el.querySelector('.metric-value').textContent = value;
+  if (label !== undefined) el.querySelector('.metric-label').textContent = label;
+  if (delta === null) {
+    el.querySelector('.metric-delta')?.remove();
+  } else if (delta !== undefined) {
+    const d = el.querySelector('.metric-delta');
+    if (d) { d.textContent = delta; d.className = 'metric-delta flat'; }
+  }
+}
+
+function formatMoney(v) {
+  if (v == null) return '—';
+  return new Intl.NumberFormat('ru-RU').format(Math.round(v)) + ' ₽';
+}
+function formatNum(v) {
+  if (v == null) return '—';
+  return Number(v).toFixed(1).replace('.', ',');
+}
+
+// init вызывается из модульного блока после загрузки данных.
+window.init = init;
 </script>
 
 </body>

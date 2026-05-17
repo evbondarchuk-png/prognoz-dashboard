@@ -25,19 +25,24 @@
  * calculateIR() от источника нормативов не зависит.
  */
 
+// ИР-расчёт использует flow/hot/deals (покупатель) и actON/hotPer/deals (продавец).
+// Поля 'dep' (задатки) и сегмент 'all' — нужны для отображения воронок в UI,
+// в calculateIR они не участвуют (итерация явно по [new,sec,out,com,gar]).
 const STUB_NORMATIVES = {
   buyer: {
-    new: { flow: 3, hot: 2, deals: 1 },
-    sec: { flow: 7, hot: 4, deals: 1 },
-    out: { flow: 4, hot: 2, deals: 1 },
-    com: { flow: 4, hot: 2, deals: 1 },
-    gar: { flow: 4, hot: 2, deals: 1 },
+    all: { flow: 14, hot: 8, dep: 4, deals: 2 },
+    new: { flow: 3,  hot: 2, dep: 1, deals: 1 },
+    sec: { flow: 7,  hot: 4, dep: 2, deals: 1 },
+    out: { flow: 4,  hot: 2, dep: 1, deals: 1 },
+    com: { flow: 4,  hot: 2, dep: 1, deals: 1 },
+    gar: { flow: 4,  hot: 2, dep: 1, deals: 1 },
   },
   seller: {
-    sec: { actON: 5, hotPer: 2, deals: 0.8 },
-    out: { actON: 4, hotPer: 1, deals: 0.5 },
-    com: { actON: 5, hotPer: 2, deals: 0.8 },
-    gar: { actON: 5, hotPer: 2, deals: 0.8 },
+    all: { actON: 9, hotPer: 3, dep: 1.5, deals: 1 },
+    sec: { actON: 5, hotPer: 2, dep: 1,   deals: 0.8 },
+    out: { actON: 4, hotPer: 1, dep: 0.5, deals: 0.5 },
+    com: { actON: 5, hotPer: 2, dep: 1,   deals: 0.8 },
+    gar: { actON: 5, hotPer: 2, dep: 1,   deals: 0.8 },
   },
 };
 
