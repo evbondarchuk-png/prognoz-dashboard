@@ -22,7 +22,7 @@ import { initializeApp, getApps }
   from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getAuth }
   from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
-import { getDatabase, ref, get }
+import { getDatabase, ref, get, query, orderByChild, equalTo }
   from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 
 const firebaseConfig = {
@@ -124,6 +124,38 @@ export async function getUser(code) {
     console.warn(`[firebase-reader] пользователь ${code} не найден в /users/`);
   }
   return data;
+}
+
+/**
+ * Прочитать всех пользователей из /users/ с заданной ролью.
+ * Используется в aup.html для списка всех РОПов.
+ *
+ * Требует:
+ *   - `.indexOn: ["role"]` на /users/ — иначе Firebase выдаст warning
+ *     и потащит весь индекс в память;
+ *   - `.read: auth != null && role in ['aup','admin']` на /users/ — иначе
+ *     query вернёт Permission denied (read разрешён только на $code,
+ *     а query идёт по родителю).
+ *
+ * @param {string} role — 'realtor' | 'mop' | 'rop' | 'aup' | 'admin'
+ * @returns {Promise<Array<{code: string, name?: string, role?: string, subordinates?: object, lastLoginAt?: number, [k:string]: any}>>}
+ */
+export async function getUsersByRole(role) {
+  if (!role) {
+    console.warn('[firebase-reader] getUsersByRole: role не указана');
+    return [];
+  }
+  try {
+    const q = query(ref(db, 'users'), orderByChild('role'), equalTo(role));
+    const snap = await get(q);
+    if (!snap.exists()) return [];
+    const out = [];
+    snap.forEach(child => { out.push({ code: child.key, ...child.val() }); });
+    return out;
+  } catch (e) {
+    console.warn(`[firebase-reader] getUsersByRole(${role}): ${e.message}`);
+    return [];
+  }
 }
 
 /**

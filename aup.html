@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Прогноз — Дашборд АУПа</title>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #5f5e5a;
+    --text3: #9a9890;
+    --blue: #185FA5;
+    --blue-bg: #E6F1FB;
+    --blue-text: #0C447C;
+    --green: #3B6D11;
+    --green-bg: #EAF3DE;
+    --amber: #854F0B;
+    --amber-bg: #FAEEDA;
+    --red: #A32D2D;
+    --red-bg: #FCEBEB;
+    --teal: #0F6E56;
+    --teal-bg: #E1F5EE;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 12px; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 16px; font-weight: 600; color: var(--blue); }
+  .logo span { color: var(--text); font-weight: 400; }
+  .role-badge { background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .date-badge { font-size: 12px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+  .logout-btn { font-size: 12px; color: var(--text2); background: transparent; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-family: inherit; transition: all .15s; }
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+  .city-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .city-bar label { font-size: 12px; color: var(--text2); }
+  .city-bar select { font-size: 13px; padding: 4px 8px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text3); cursor: not-allowed; font-family: inherit; }
+  .city-bar .city-hint { font-size: 11px; color: var(--text3); margin-left: auto; font-style: italic; }
+
+  .aup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
+  .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; flex-shrink: 0; }
+  .av-blue { background: var(--blue-bg); color: var(--blue-text); }
+  .aup-info { flex: 1; }
+  .aup-name { font-size: 16px; font-weight: 600; }
+  .aup-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px; }
+  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; line-height: 1.3; }
+  .metric-value { font-size: 22px; font-weight: 600; line-height: 1; }
+  .metric-delta { font-size: 11px; margin-top: 5px; color: var(--text3); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .card-title-left { display: flex; align-items: center; gap: 6px; }
+
+  .r-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .r-table th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text2); padding: 6px 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
+  .r-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .r-table tr:last-child td { border-bottom: none; }
+  .r-table tr:hover td { background: var(--surface2); cursor: pointer; }
+  .r-name { font-weight: 500; }
+  .r-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .placeholder { padding: 18px; text-align: center; color: var(--text3); font-size: 12px; font-style: italic; }
+
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 14px; color: var(--text2); }
+  .loading-overlay.hidden { display: none; }
+
+  @media (max-width: 600px) {
+    .aup-card { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">Загрузка...</div>
+
+<header class="header">
+  <div class="logo">Прогноз <span>/ система управления продажами</span></div>
+  <span class="role-badge" id="roleBadge">АУП</span>
+  <div class="header-right">
+    <div class="date-badge" id="currentDate"></div>
+    <button class="logout-btn" id="logoutBtn">Выйти</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Селектор «Город» — placeholder, неактивный. Место под мультигород зарезервировано. -->
+  <div class="city-bar">
+    <label for="citySelect">Город:</label>
+    <select id="citySelect" disabled>
+      <option>Все города</option>
+    </select>
+    <span class="city-hint">мультигород появится позже</span>
+  </div>
+
+  <!-- Empty banner -->
+  <div id="emptyBanner" style="display:none; background:var(--blue-bg); color:var(--blue-text); padding:14px 18px; border-radius:var(--radius-sm); margin-bottom:16px; font-size:13px; line-height:1.5;">
+    <strong>В системе нет РОПов</strong> (или не удалось их прочитать). Проверь, что в /users/ есть записи с role: "rop" и что Rules дают AUP читать /users.
+  </div>
+
+  <!-- AUP profile -->
+  <div class="aup-card">
+    <div class="avatar av-blue" id="aupAvatar">??</div>
+    <div class="aup-info">
+      <div class="aup-name" id="aupName">—</div>
+      <div class="aup-meta" id="aupMeta">—</div>
+    </div>
+  </div>
+
+  <!-- Метрики верхнего уровня -->
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">РОПов в системе</div><div class="metric-value" id="metricRops">—</div></div>
+    <div class="metric"><div class="metric-label">МОПов всего</div><div class="metric-value" id="metricMops">—</div></div>
+    <div class="metric"><div class="metric-label">Городов</div><div class="metric-value">1</div><div class="metric-delta">мультигород позже</div></div>
+  </div>
+
+  <!-- Таблица РОПов -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;color:var(--text2)">
+      👥 Все РОПы — кликни на строку, чтобы перейти в его кабинет
+    </div>
+    <div style="overflow-x:auto">
+      <table class="r-table" id="ropsTable">
+        <thead>
+          <tr>
+            <th>РОП</th>
+            <th>Отдел</th>
+            <th>Выручка</th>
+            <th>Выполнение плана</th>
+            <th>Средний ИР</th>
+            <th>Активность</th>
+          </tr>
+        </thead>
+        <tbody id="ropsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Placeholder cards -->
+  <div class="card">
+    <div class="card-title"><div class="card-title-left">💡 Системные проблемы по городу</div></div>
+    <div class="placeholder">данных пока нет</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="card-title-left">🏆 Рейтинг РОПов по выручке</div></div>
+    <div class="placeholder">данных пока нет — будет добавлено вместе с агрегатами по отделам</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="card-title-left">📈 Потенциал роста</div></div>
+    <div class="placeholder">данных пока нет</div>
+  </div>
+
+</div>
+
+<div style="text-align:center;padding:28px 16px 16px;font-size:12px;color:var(--text3)">Система «Прогноз» · АУП-дашборд</div>
+
+<!-- ============================================================
+     AUTH GUARD — только aup / admin.
+     ============================================================ -->
+<script type="module">
+  import { requireAuth, logout } from './auth-guard.js';
+  import { getUser, getUsersByRole } from './firebase-reader.js';
+
+  const user = await requireAuth({ allowedRoles: ['aup', 'admin'] });
+  window.currentUser = user;
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+
+  // Параллельно: профиль АУПа и все РОПы по role-индексу.
+  // ВАЖНО: getUsersByRole требует расширения Rules — `.read` на /users для aup/admin
+  // и `.indexOn: ["email","role"]` для быстрого поиска. Без этого вернёт пустой
+  // массив с warn в console.
+  const [aupProfile, rops] = await Promise.all([
+    getUser(user.code),
+    getUsersByRole('rop'),
+  ]);
+
+  // Lite-агрегаты: только размер subordinates каждого РОПа (= число МОПов).
+  // Выручка/средний ИР отдела требуют рекурсивного обхода (по каждому МОПу
+  // каждого РОПа — getSubordinates). Это сотни запросов на страницу.
+  // Отложено на full-итерацию — пока показываем «—».
+  const ropRows = rops.map(rop => ({
+    code: rop.code,
+    name: rop.name || rop.code,
+    mopsCount: rop.subordinates ? Object.keys(rop.subordinates).length : 0,
+    lastLoginAt: rop.lastLoginAt || null,
+  })).sort((a, b) => b.mopsCount - a.mopsCount);
+
+  const totalMops = ropRows.reduce((s, r) => s + r.mopsCount, 0);
+
+  window.AUP_DATA = {
+    aupName: aupProfile?.name || user.name || 'Без имени',
+    aupInitials: initialsFrom(aupProfile?.name || user.name || '?'),
+    rops: ropRows,
+    stats: {
+      ropsCount: ropRows.length,
+      mopsCount: totalMops,
+    },
+  };
+
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  window.init();
+
+  // ===== helpers =====
+
+  function initialsFrom(name) {
+    if (!name) return '??';
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return String(name).slice(0, 2).toUpperCase();
+  }
+</script>
+
+<!-- ============================================================
+     РЕНДЕРЫ
+     ============================================================ -->
+<script>
+function goToRop(code) {
+  location.href = 'rop.html?rop=' + encodeURIComponent(code);
+}
+
+function activityLabel(lastLoginAt) {
+  if (!lastLoginAt) return '—';
+  const ts = Number(lastLoginAt);
+  if (!ts) return '—';
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  if (days <= 0) return 'сегодня';
+  if (days === 1) return 'вчера';
+  if (days < 7) return days + ' дн. назад';
+  if (days < 30) return Math.floor(days / 7) + ' нед. назад';
+  return Math.floor(days / 30) + ' мес. назад';
+}
+
+function renderRops(rops) {
+  const tbody = document.getElementById('ropsBody');
+  if (!rops.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Нет РОПов</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rops.map(r => `
+    <tr onclick="goToRop('${r.code}')">
+      <td>
+        <div class="r-name">${r.name}</div>
+        <div class="r-sub">Код: ${r.code}</div>
+      </td>
+      <td>${r.mopsCount} ${r.mopsCount === 1 ? 'МОП' : r.mopsCount >= 2 && r.mopsCount <= 4 ? 'МОПа' : 'МОПов'}</td>
+      <td><span style="color:var(--text3)">—</span></td>
+      <td><span style="color:var(--text3)">—</span></td>
+      <td><span style="color:var(--text3)">—</span></td>
+      <td><span style="color:var(--text2);font-size:12px">${activityLabel(r.lastLoginAt)}</span></td>
+    </tr>
+  `).join('');
+}
+
+function init() {
+  const data = window.AUP_DATA;
+  const now = new Date();
+  document.getElementById('currentDate').textContent =
+    now.toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'});
+
+  if (!data) {
+    document.getElementById('emptyBanner').style.display = '';
+    return;
+  }
+
+  // Шапка
+  document.getElementById('aupName').textContent = data.aupName || '—';
+  document.getElementById('aupAvatar').textContent = data.aupInitials || '??';
+  document.getElementById('aupMeta').textContent = `Видит весь отдел продаж · РОПов: ${data.stats.ropsCount}`;
+
+  // Бейдж роли
+  const rb = document.getElementById('roleBadge');
+  if (rb) {
+    const roleLabels = { aup: 'АУП', admin: 'Админ' };
+    rb.textContent = roleLabels[window.currentUser?.role] || window.currentUser?.role || '—';
+  }
+
+  // Пусто
+  if (data.stats.ropsCount === 0) {
+    document.getElementById('emptyBanner').style.display = '';
+    document.querySelector('.metrics').style.display = 'none';
+    return;
+  }
+
+  // Метрики
+  document.getElementById('metricRops').textContent = String(data.stats.ropsCount);
+  document.getElementById('metricMops').textContent = String(data.stats.mopsCount);
+
+  // Таблица
+  renderRops(data.rops || []);
+}
+
+window.init = init;
+</script>
+</body>
+</html>
