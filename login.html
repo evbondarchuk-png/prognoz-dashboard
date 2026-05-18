@@ -219,11 +219,15 @@
         const params = new URLSearchParams(location.search);
         const back = params.get('back');
         const role = res.data.role;
+        // Маршрутизация по ролям: каждая роль идёт на свой кабинет.
+        // ?back= имеет приоритет — если пользователь пришёл с конкретной
+        // страницы, возвращаем туда же.
         const dest = back ? decodeURIComponent(back)
-                   : role === 'mop' ? 'mop.html'
-                   : role === 'rop' ? 'mop.html'
-                   : role === 'aup' ? 'mop.html'
-                   : role === 'admin' ? 'mop.html'
+                   : role === 'realtor' ? 'index.html'
+                   : role === 'mop'     ? 'mop.html'
+                   : role === 'rop'     ? 'rop.html'
+                   : role === 'aup'     ? 'aup.html'
+                   : role === 'admin'   ? 'aup.html'
                    : 'index.html';
         location.href = dest;
       } catch (e) {
