@@ -188,6 +188,16 @@
 
 <div class="container">
 
+  <!-- Кнопка возврата: видна только в режиме просмотра (?mop=КОД) -->
+  <a id="backFromMop" href="#" onclick="history.back(); return false;" style="display:none; align-items:center; gap:6px; padding:8px 12px; margin-bottom:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text2); text-decoration:none; font-size:13px; width:max-content;">
+    ← Назад
+  </a>
+
+  <!-- Индикатор «просмотр чужого кабинета»: видим только в режиме просмотра -->
+  <div id="viewingIndicator" style="display:none; background:var(--amber-bg); color:var(--amber); padding:8px 14px; border-radius:var(--radius-sm); margin-bottom:12px; font-size:13px;">
+    👁 Просмотр кабинета менеджера: <strong id="viewingMopName">—</strong>
+  </div>
+
   <!-- MOP profile -->
   <div class="mop-card">
     <div class="avatar av-blue" id="mopAvatar">БЕ</div>
@@ -339,7 +349,7 @@
      Если рядовой риелтор попадёт сюда — увидит alert и редирект.
      ============================================================ -->
 <script type="module">
-  import { requireAuth, logout } from './auth-guard.js';
+  import { requireAuth, logout, canRead } from './auth-guard.js';
   import { getSubordinates, getUser, getAgent } from './firebase-reader.js';
   import { calculateIR, getNormatives } from './ir.js';
 
@@ -347,12 +357,31 @@
   window.currentUser = user;
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  // Параллельно: профиль МОПа, подчинённые с архивом, и СВОИ архивные данные
-  // (МОП показывается в списке команды как риелтор — клик ведёт на его дашборд).
+  // Режим просмотра: ?mop=КОД открывает кабинет другого МОПа (РОП/АУП пришёл
+  // из rop.html). hasMopParam — управляет кнопкой «Назад» и индикатором.
+  // isViewingOther — управляет canRead-проверкой.
+  const params = new URLSearchParams(location.search);
+  const viewMopCode = params.get('mop');
+  const hasMopParam = !!viewMopCode;
+  const isViewingOther = hasMopParam && viewMopCode !== user.code;
+  const targetCode = viewMopCode || user.code;
+
+  // Если смотрим чужого МОПа — нужна canRead-проверка по СВОЕМУ профилю.
+  if (isViewingOther) {
+    const ownUserData = await getUser(user.code);
+    if (!canRead(user, viewMopCode, ownUserData)) {
+      alert('У вас нет прав смотреть кабинет этого менеджера.');
+      location.href = 'mop.html';
+      throw new Error('canRead denied');
+    }
+  }
+
+  // Параллельно: профиль выбранного МОПа, его подчинённые с архивом,
+  // и его собственные архивные данные (он первой строкой в своей команде).
   const [profile, subs, myAgent] = await Promise.all([
-    getUser(user.code),
-    getSubordinates(user.code),
-    getAgent(user.code),
+    getUser(targetCode),
+    getSubordinates(targetCode),
+    getAgent(targetCode),
   ]);
 
   // Для подчинённых без архивных данных — подтянуть имя из /users/{код}
@@ -363,14 +392,15 @@
     emptyCodes.map((c, i) => [c, emptyProfiles[i]?.name || c])
   );
 
-  window.MOP_DATA = buildMopData({ user, profile, subs, myAgent, nameByCode });
+  window.MOP_VIEW_MODE = hasMopParam ? { viewedCode: targetCode } : null;
+  window.MOP_DATA = buildMopData({ user, targetCode, profile, subs, myAgent, nameByCode });
   document.getElementById('loadingOverlay').classList.add('hidden');
   window.init();
 
   // ===== helpers =====
 
-  function buildMopData({ user, profile, subs, myAgent, nameByCode }) {
-    const mopName = profile?.name || user.name || 'Без имени';
+  function buildMopData({ user, targetCode, profile, subs, myAgent, nameByCode }) {
+    const mopName = profile?.name || (targetCode === user.code ? user.name : '') || 'Без имени';
     // РОПа берём из архива (свой или любого подчинённого) — agent.rop = ФИО.
     // Через /users/{ropCode} ходить нельзя (Rules запрещают читать «вверх»).
     const rop = myAgent?.rop || subs.find(s => s.data)?.data?.rop || '';
@@ -399,9 +429,13 @@
       };
     };
 
-    // МОП — первой строкой команды, с пометкой isSelf. Решено: входит в
-    // агрегаты наравне с подчинёнными («один код, одно представление»).
-    const selfRow = { ...toRow(user.code, myAgent, mopName), isSelf: true };
+    // МОП — первой строкой команды. isSelf только когда смотрим свой
+    // кабинет: в режиме просмотра (?mop=КОД чужого) пометки «вы» быть
+    // не должно — мы смотрим на чужого МОПа, а не на себя.
+    const selfRow = {
+      ...toRow(targetCode, myAgent, mopName),
+      isSelf: targetCode === user.code,
+    };
 
     const subRows = subs.map(s => toRow(s.code, s.data, nameByCode[s.code]));
 
@@ -740,6 +774,15 @@ function renderSvetoforDonut(distribution) {
 }
 
 function init() {
+  // 0. Режим просмотра чужого кабинета (?mop=КОД): кнопка «Назад» + индикатор.
+  //    Имя из MOP_DATA подставится ниже в шапке.
+  if (window.MOP_VIEW_MODE) {
+    const back = document.getElementById('backFromMop');
+    if (back) back.style.display = 'inline-flex';
+    const ind = document.getElementById('viewingIndicator');
+    if (ind) ind.style.display = '';
+  }
+
   // 1. Если реальные данные не пришли — оставляем хардкод-fallback.
   if (window.MOP_DATA) TEAM = window.MOP_DATA.team;
   const data = window.MOP_DATA;
@@ -749,10 +792,13 @@ function init() {
   const dateStr = now.toLocaleDateString('ru-RU', {day:'numeric',month:'long',year:'numeric'});
   document.getElementById('currentDate').textContent = dateStr;
 
-  // 3. Шапка МОПа.
+  // 3. Шапка МОПа. В режиме просмотра также подставляем имя в индикатор.
   if (data) {
     document.getElementById('mopName').textContent = data.mopName || '—';
     document.getElementById('mopAvatar').textContent = data.mopInitials || '??';
+    if (window.MOP_VIEW_MODE) {
+      document.getElementById('viewingMopName').textContent = data.mopName || '—';
+    }
     const metaParts = [];
     if (data.rop) metaParts.push('РОП: ' + data.rop);
     metaParts.push(`Группа: ${data.teamSize} ${data.teamSize === 1 ? 'риелтор' : 'риелторов'}` +
