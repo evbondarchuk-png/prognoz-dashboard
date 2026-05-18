@@ -205,8 +205,8 @@
 <div class="container">
 
   <!-- Кнопка возврата в команду: видна, только когда index.html?agent=КОД -->
-  <a id="backToTeam" href="mop.html" style="display:none; align-items:center; gap:6px; padding:8px 12px; margin-bottom:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text2); text-decoration:none; font-size:13px; width:max-content;">
-    ← Назад к команде
+  <a id="backToTeam" href="#" onclick="history.back(); return false;" style="display:none; align-items:center; gap:6px; padding:8px 12px; margin-bottom:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text2); text-decoration:none; font-size:13px; width:max-content;">
+    ← Назад
   </a>
 
   <!-- Profile -->
@@ -735,14 +735,12 @@ function showZone(key, el) {
 }
 
 function init() {
-  // 0. Режим просмотра другого риелтора (мы пришли из mop.html?agent=КОД).
-  //    Показываем кнопку «Назад к команде».
+  // 0. Режим просмотра другого риелтора (?agent= в URL): показываем
+  //    кнопку «Назад» (history.back). Куда именно вернёт — решает браузер
+  //    по цепочке посещений: aup → rop → mop → index → mop → rop → aup.
   if (window.VIEW_MODE) {
     const back = document.getElementById('backToTeam');
-    if (back) {
-      back.href = window.VIEW_MODE.backTo || 'mop.html';
-      back.style.display = 'inline-flex';
-    }
+    if (back) back.style.display = 'inline-flex';
   }
 
   // 1. Берём реальные данные (от модуля сверху); если их нет — фоллбек.
