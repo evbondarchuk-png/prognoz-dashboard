@@ -4,7 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Прогноз — Дашборд риэлтора</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<!-- Локальные библиотеки (корп-сети блокируют gstatic/Cloudflare). import map
+     перенаправляет gstatic-импорты firebase на /libs/, код модулей не меняется. -->
+<script type="importmap">
+{
+  "imports": {
+    "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/"
+  }
+}
+</script>
+<script src="/libs/chart/4.4.1/chart.umd.js"></script>
 <style>
   :root {
     --bg: #f7f6f3;

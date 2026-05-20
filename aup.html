@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Прогноз — Дашборд АУПа</title>
+<!-- Локальные библиотеки (корп-сети блокируют gstatic). import map
+     перенаправляет gstatic-импорты firebase на /libs/, код не меняется. -->
+<script type="importmap">
+{
+  "imports": {
+    "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/"
+  }
+}
+</script>
 <style>
   :root {
     --bg: #f7f6f3;
