@@ -366,6 +366,14 @@
   const isViewingOther = hasMopParam && viewMopCode !== user.code;
   const targetCode = viewMopCode || user.code;
 
+  // Роутинг-guard: mop.html — кабинет МОПа. Не-МОП без ?mop= (прямой заход)
+  // отправляется в свой кабинет. Просмотр (?mop=) не трогаем. Риелтор сюда
+  // не доходит — его отсекает requireAuth(allowedRoles) выше.
+  if (user.role !== 'mop' && !hasMopParam) {
+    const home = { rop: 'rop.html', aup: 'aup.html', admin: 'aup.html' }[user.role];
+    if (home) { location.href = home; throw new Error('routing guard'); }
+  }
+
   // Если смотрим чужого МОПа — нужна canRead-проверка по СВОЕМУ профилю.
   if (isViewingOther) {
     const ownUserData = await getUser(user.code);

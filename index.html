@@ -473,6 +473,14 @@
   const hasAgentParam = !!requestedAgent;
   const isViewingOther = hasAgentParam && requestedAgent !== user.code;
 
+  // Роутинг-guard: index.html — кабинет риелтора. Если сюда попал НЕ риелтор
+  // без ?agent= (прямой заход по закладке/ссылке) — отправляем в его кабинет.
+  // Режим просмотра (?agent=) не трогаем: руководитель смотрит риелтора.
+  if (user.role !== 'realtor' && !hasAgentParam) {
+    const home = { mop: 'mop.html', rop: 'rop.html', aup: 'aup.html', admin: 'aup.html' }[user.role];
+    if (home) { location.href = home; throw new Error('routing guard'); }
+  }
+
   // Сначала: свой профиль (нужен для canRead) и дата снимка — параллельно.
   const [myProfile, snapDate] = await Promise.all([
     getUser(user.code),

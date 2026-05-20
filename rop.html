@@ -230,6 +230,14 @@
   const isViewingOther = hasRopParam && viewRopCode !== user.code;
   const targetCode = viewRopCode || user.code;
 
+  // Роутинг-guard: rop.html — кабинет РОПа. Не-РОП без ?rop= (прямой заход)
+  // отправляется в свой кабинет. Просмотр (?rop=) не трогаем. Риелтор/МОП
+  // сюда не доходят — их отсекает requireAuth(allowedRoles) выше.
+  if (user.role !== 'rop' && !hasRopParam) {
+    const home = { aup: 'aup.html', admin: 'aup.html' }[user.role];
+    if (home) { location.href = home; throw new Error('routing guard'); }
+  }
+
   if (isViewingOther) {
     const ownUserData = await getUser(user.code);
     if (!canRead(user, viewRopCode, ownUserData)) {
