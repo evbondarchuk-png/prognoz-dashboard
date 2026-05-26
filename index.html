@@ -4,20 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Прогноз — Кабинет партнёра</title>
-<!-- import map: gstatic-импорты Firebase → локальные /libs/ (корп-сеть режет gstatic) -->
 <script type="importmap">
 { "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
 </script>
 <style>
   :root{
-    --bg:#f7f6f3; --surface:#fff; --surface2:#f0efe9; --border:rgba(0,0,0,.1); --border2:rgba(0,0,0,.18);
+    --bg:#f7f6f3; --surface:#fff; --surface2:#f0efe9; --border:rgba(0,0,0,.1);
     --text:#1a1a18; --text2:#5f5e5a; --text3:#9a9890;
     --blue:#185FA5; --blue-bg:#E6F1FB; --green:#3B6D11; --green-bg:#EAF3DE; --gold:#BA7517;
-    --radius:10px;
-    --st-green:#639922; --st-yellow:#EF9F27; --st-red:#A32D2D;
+    --radius:10px; --st-green:#639922; --st-yellow:#EF9F27; --st-red:#A32D2D;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;padding-bottom:64px}
   .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
   .logo{font-size:16px;font-weight:600;color:var(--blue)} .logo span{color:var(--text);font-weight:400}
   .header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
@@ -27,8 +25,17 @@
   .container{max-width:640px;margin:0 auto;padding:16px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
   .muted{color:var(--text2);font-size:12px}
+  .section-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
+  .banner{background:#FFF8E6;border:1px solid #F0D98A;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px}
+  .soon{background:var(--surface2);border:1px dashed var(--border2,rgba(0,0,0,.18));border-radius:var(--radius);padding:18px;text-align:center;color:var(--text2);font-size:13px;margin-bottom:14px}
 
-  /* профиль */
+  /* нижние табы */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:100}
+  .tabbar button{flex:1;border:none;background:none;padding:8px 4px;font-family:inherit;font-size:11px;color:var(--text3);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .tabbar button .ti{font-size:18px}
+  .tabbar button.on{color:var(--blue)}
+  .screen{display:none} .screen.on{display:block}
+
   .profile{display:flex;align-items:center;gap:14px}
   .avatar{width:48px;height:48px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--blue);flex-shrink:0}
   .pname{font-size:16px;font-weight:600}
@@ -36,7 +43,6 @@
   .pill{font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid var(--border);white-space:nowrap}
   .zone-badge{color:#fff;border:none}
 
-  /* ИР шапка */
   .ir-top{display:flex;align-items:center;gap:18px}
   .ir-big{font-size:40px;font-weight:700;line-height:1}
   .ir-sides{flex:1;display:flex;flex-direction:column;gap:8px}
@@ -44,37 +50,26 @@
   .bar-bg{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
   .bar-fill{height:100%;border-radius:3px;transition:width .4s}
 
-  /* статус-бейдж */
   .status-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
   .sb-green{background:var(--green-bg);color:#173404} .sb-yellow{background:#FAEEDA;color:#412402}
   .sb-red{background:#FCEBEB;color:#501313} .sb-no_data{background:#F1EFE8;color:#2C2C2A}
 
-  /* воронка §13.1 */
   .funnel-side{margin-bottom:8px}
   .fs-head{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px}
   .fs-title{display:flex;align-items:center;gap:8px}
   .fs-dot{width:10px;height:10px;border-radius:3px}
   .stage-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--sc,#185FA5);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
   .stage-head{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;margin-bottom:6px}
-  .chev{color:var(--text3);font-size:12px;transition:transform .2s}
-  .chev.open{transform:rotate(90deg)}
+  .chev{color:var(--text3);font-size:12px;transition:transform .2s} .chev.open{transform:rotate(90deg)}
   .stage-label{font-size:13px;font-weight:500}
-  .stage-numbers{font-size:12px;color:var(--text2);white-space:nowrap}
-  .stage-numbers b{font-weight:600;margin-left:5px}
+  .stage-numbers{font-size:12px;color:var(--text2);white-space:nowrap} .stage-numbers b{font-weight:600;margin-left:5px}
   .stage-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
   .stage-bar-fill{height:100%;border-radius:2px;transition:width .4s}
   .stage-seg{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);display:flex;flex-direction:column;gap:7px}
   .stage-seg.hidden{display:none}
-  .seg-row{display:grid;grid-template-columns:1fr auto 38px;gap:8px;font-size:11px;align-items:center;color:var(--text2)}
-  .seg-row .sv{color:var(--text);font-weight:500}
+  .seg-row{display:grid;grid-template-columns:1fr auto 38px;gap:8px;font-size:11px;align-items:center;color:var(--text2)} .seg-row .sv{color:var(--text);font-weight:500}
 
-  /* план */
-  .plan-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-  .plan-month{flex:0 0 auto;text-align:center;border:1px solid var(--border);border-radius:8px;padding:8px 10px;min-width:78px}
-  .plan-month.cur{border-color:var(--blue);background:var(--blue-bg)}
-  .plan-m-label{font-size:11px;color:var(--text2)} .plan-m-val{font-size:14px;font-weight:600;margin-top:2px}
-
-  .coach-side{padding:4px 0 8px 12px;margin-bottom:8px}
+  .coach-side{padding:4px 0 8px 12px;margin-bottom:8px;border-left:3px solid #185FA5}
   .weak-list{margin-top:6px;display:flex;flex-direction:column;gap:4px}
   .weak{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--st-red)}
 
@@ -88,8 +83,16 @@
   .task-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--st-green);background:transparent;color:var(--st-green);cursor:pointer;font-size:15px;flex-shrink:0}
   .task-btn:hover{background:var(--green-bg)} .task-done{color:var(--st-green)}
 
-  .section-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
-  .banner{background:#FFF8E6;border:1px solid #F0D98A;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px}
+  /* светофор */
+  .svet-hero{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .svet-now{flex:1;min-width:140px;background:var(--blue-bg);border-radius:8px;padding:14px;text-align:center}
+  .svet-pos{font-size:34px;font-weight:700;color:var(--blue)}
+  .svet-zone{flex:1;min-width:160px;background:var(--surface2);border-radius:8px;padding:14px}
+  .sv-league{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .sv-league:last-child{border-bottom:none} .sv-league.you{font-weight:600}
+  .sv-l-tag{color:#fff;border-radius:20px;padding:2px 8px;font-size:11px;white-space:nowrap}
+  .sv-l-name{flex:1} .sv-l-inc{color:var(--text2)}
+
   #overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;color:var(--text2)}
   #overlay.hidden{display:none}
 </style>
@@ -106,186 +109,175 @@
   </div>
 </div>
 
-<div class="container" id="root"></div>
+<div class="container">
+  <div class="screen on" id="screen-main"></div>
+  <div class="screen" id="screen-prognoz"></div>
+  <div class="screen" id="screen-tasks"></div>
+  <div class="screen" id="screen-svetofor"></div>
+</div>
+
+<div class="tabbar" id="tabbar">
+  <button class="on" data-tab="main" onclick="showTab('main',this)"><span class="ti">📊</span>Главная</button>
+  <button data-tab="prognoz" onclick="showTab('prognoz',this)"><span class="ti">📈</span>Прогноз</button>
+  <button data-tab="tasks" onclick="showTab('tasks',this)"><span class="ti">📋</span>Задачи<span id="taskDot"></span></button>
+  <button data-tab="svetofor" onclick="showTab('svetofor',this)"><span class="ti">🚦</span>Светофор</button>
+</div>
 
 <script type="module">
-import { requireAuth, logout, getCurrentUser } from './auth-guard.js';
+import { requireAuth, logout } from './auth-guard.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
-const SB = { green:'sb-green', yellow:'sb-yellow', red:'sb-red', no_data:'sb-no_data' };
-const SIDE_COLOR = { buyer:'#185FA5', seller:'#3B6D11' };
-const esc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
+const SIDE_COLOR={buyer:'#185FA5',seller:'#3B6D11'};
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
 
-window.toggleStage = (head)=>{
-  const card=head.closest('.stage-card'); const seg=card.querySelector('.stage-seg'); const ch=card.querySelector('.chev');
-  if(!seg) return; seg.classList.toggle('hidden'); ch.classList.toggle('open');
+window.showTab=(id,btn)=>{
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.remove('on'));
+  document.getElementById('screen-'+id).classList.add('on'); btn.classList.add('on');
+  window.scrollTo(0,0);
 };
-function taskItem(t){
-  const due = t.due_label || t.due_date || '';
-  const meta = [t.priority!=='normal'?t.priority_label:'', due, t.progress_label].filter(Boolean).join(' · ');
-  return `<div class="task">
-    <div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}</div>
-    ${t.can_complete?`<button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`:(t.status==='done'?'<span class="task-done">✓</span>':'')}
-  </div>`;
-}
-window.completeTask = async (id, ev)=>{
-  if(ev) ev.stopPropagation();
-  const btn = ev && ev.target; if(btn){ btn.disabled=true; btn.textContent='…'; }
-  try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }
-  catch(e){ alert('Не удалось закрыть задачу: '+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent='✓'; } }
-};
+window.toggleStage=(head)=>{ const c=head.closest('.stage-card'),s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); ch.classList.toggle('open'); };
+window.completeTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); const b=ev&&ev.target; if(b){b.disabled=true;b.textContent='…';}
+  try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); if(b){b.disabled=false;b.textContent='✓';} } };
 
-function stageCard(side, st){
-  const color = SIDE_COLOR[side];
-  const segs = (st.segments||[]).map(sg=>`
-    <div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
-  const hasSegs = (st.segments||[]).length>0;
-  return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':color}">
-    <div class="stage-head" onclick="toggleStage(this)">
-      <span class="chev">${hasSegs?'›':''}</span>
-      <span class="stage-label">${esc(st.label)}</span>
-      <span class="stage-numbers">${esc(st.fact_label)} / ${esc(st.plan_label)}<b style="color:${barColor(st.progress_pct,st.is_revenue)}">${st.progress_pct}%</b></span>
-    </div>
+const LEAGUES=[
+  {tag:'🥇 ТОП 1–5',name:'Элита компании',inc:'от 700к',color:'#22c55e',from:1,to:5},
+  {tag:'🥈 ТОП 6–100',name:'Лучшие',inc:'300–700к',color:'#22c55e',from:6,to:100},
+  {tag:'🟢 101–300',name:'Сильные',inc:'230–300к',color:'#86efac',from:101,to:300},
+  {tag:'🟡 301–400',name:'Хорошие',inc:'160–230к',color:'#fde68a',from:301,to:400},
+  {tag:'🟡 401–500',name:'Средние',inc:'140–160к',color:'#fbbf24',from:401,to:500},
+  {tag:'🟠 501–800',name:'Слабые',inc:'90–140к',color:'#fb923c',from:501,to:800},
+  {tag:'🔴 801–1300',name:'Низкоэффективные',inc:'до 90к',color:'#f87171',from:801,to:1300},
+];
+
+function stageCard(side,st){
+  const segs=(st.segments||[]).map(sg=>`<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
+  const has=(st.segments||[]).length>0;
+  return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
+    <div class="stage-head" onclick="toggleStage(this)"><span class="chev">${has?'›':''}</span><span class="stage-label">${esc(st.label)}</span>
+      <span class="stage-numbers">${esc(st.fact_label)} / ${esc(st.plan_label)}<b style="color:${barColor(st.progress_pct,st.is_revenue)}">${st.progress_pct}%</b></span></div>
     <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
-    ${hasSegs?`<div class="stage-seg hidden">${segs}</div>`:''}
-  </div>`;
+    ${has?`<div class="stage-seg hidden">${segs}</div>`:''}</div>`;
+}
+function funnelSide(side,fs,pl){ if(!fs)return'';
+  return `<div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
+    <div><div style="font-weight:600">${esc(fs.label)}</div><div class="muted">ИР: ${fs.ir}% · ${esc(pl)}</div></div></div>
+    <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">${esc(fs.ir_status_label||'')}</span></div>
+    ${(fs.stages||[]).map(st=>stageCard(side,st)).join('')}</div>`;
+}
+function coachSide(side,c,title){ if(!c)return'';
+  const rec=c.recommendation_for_realtor||c.recommendation_rop||'';
+  const weak=(c.weak_points||[]).map(w=>`<div class="weak"><span>⚠ ${esc(w.bit_label)}</span><span class="muted">${esc(w.actual)} / порог ${esc(w.threshold)}</span></div>`).join('');
+  return `<div class="coach-side" style="border-left-color:${SIDE_COLOR[side]}"><div style="font-weight:600;font-size:13px">${esc(title)}</div>
+    ${c.description?`<div class="muted" style="margin:4px 0">${esc(c.description)}</div>`:''}
+    ${rec?`<div style="margin:6px 0;font-size:13px">💡 ${esc(rec)}</div>`:''}${weak?`<div class="weak-list">${weak}</div>`:''}</div>`;
+}
+function taskItem(t){
+  const meta=[t.priority!=='normal'?t.priority_label:'',t.due_label||t.due_date||'',t.progress_label].filter(Boolean).join(' · ');
+  return `<div class="task"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}</div>
+    ${t.can_complete?`<button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`:(t.status==='done'?'<span class="task-done">✓</span>':'')}</div>`;
 }
 
-function funnelSide(side, fs, periodLabel){
-  if(!fs) return '';
-  return `<div class="funnel-side">
-    <div class="fs-head">
-      <div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
-        <div><div style="font-weight:600">${esc(fs.label)}</div><div class="muted">ИР: ${fs.ir}% · ${esc(periodLabel)}</div></div>
-      </div>
-      <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">${esc(fs.ir_status_label||'')}</span>
-    </div>
-    ${(fs.stages||[]).map(st=>stageCard(side,st)).join('')}
-  </div>`;
-}
+function renderMain(d){
+  const u=d.user,g=d.goal,f=d.funnel;
+  const out=[];
+  const zoneBadge=u.svetofor_zone_label?`<span class="pill zone-badge" style="background:${u.svetofor_zone_color||'#888'}">${esc(u.svetofor_zone_label)}</span>`:'';
+  const posBadge=u.position_in_company!=null?`<span class="pill">Позиция #${u.position_in_company}</span>`:'';
+  const meta=[]; if(u.mop_name)meta.push('Старший: '+esc(u.mop_name)); if(u.stazh_label)meta.push('Стаж: '+esc(u.stazh_label));
+  out.push(`<div class="card profile"><div class="avatar">${esc(initials(u.name))}</div><div style="flex:1">
+    <div class="pname">${esc(u.name)}</div><div class="muted">${esc(u.role_label)}${meta.length?' · '+meta.join(' · '):''}</div>
+    <div class="badges">${posBadge}${zoneBadge}</div></div></div>`);
 
-function render(d){
-  const u=d.user, g=d.goal, p=d.plan, f=d.funnel;
-  const parts=[];
-
-  // профиль
-  const zoneBadge = u.svetofor_zone_label ? `<span class="pill zone-badge" style="background:${u.svetofor_zone_color||'#888'}">${esc(u.svetofor_zone_label)}</span>` : '';
-  const posBadge = u.position_in_company!=null ? `<span class="pill">Позиция #${u.position_in_company}</span>` : '';
-  const meta=[]; if(u.mop_name) meta.push('Старший: '+esc(u.mop_name)); if(u.rop_name) meta.push('РОП: '+esc(u.rop_name)); if(u.stazh_label) meta.push('Стаж: '+esc(u.stazh_label));
-  parts.push(`<div class="card profile">
-    <div class="avatar">${esc(initials(u.name))}</div>
-    <div style="flex:1">
-      <div class="pname">${esc(u.name)}</div>
-      <div class="muted">${esc(u.role_label)}${meta.length?' · '+meta.join(' · '):''}</div>
-      <div class="badges">${posBadge}${zoneBadge}</div>
-    </div>
-  </div>`);
-
-  // цель
   if(g){
-    const lock = g.can_change ? '' : `<div class="muted" style="margin-top:6px">🔒 ${esc(g.next_change_block_reason||'')}</div>`;
-    parts.push(`<div class="card">
-      <div class="section-title">Цель</div>
+    out.push(`<div class="card"><div class="section-title">Моя цель</div>
       <div style="font-size:22px;font-weight:700">${esc(g.target_revenue_month_short)} ₽/мес</div>
       <div class="muted" style="margin-top:4px">Целевая зона: ${esc(g.target_zone_label||'—')}${g.is_auto?' · автоцель':''}</div>
-      ${lock}
-    </div>`);
-  } else {
-    parts.push(`<div class="banner">Цель пока не поставлена.</div>`);
+      ${g.can_change?'':`<div class="muted" style="margin-top:6px">🔒 ${esc(g.next_change_block_reason||'')}</div>`}</div>`);
+  } else out.push(`<div class="banner">Цель пока не поставлена.</div>`);
+
+  if(f&&f.buyer){
+    out.push(`<div class="card"><div class="ir-top"><div class="ir-big" style="color:${barColor(f.ir_total)}">${f.ir_total}<span style="font-size:18px">%</span></div>
+      <div class="ir-sides"><div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${f.ir_buyer}%</b></div>
+      <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${f.ir_seller}%</b></div></div></div>
+      <div class="muted" style="margin-top:6px">Индекс развития · ${esc(f.period_label)} · нормативы под твою цель растут к 6-му месяцу</div></div>`);
+    out.push(`<div class="card"><div class="section-title">Воронки</div>${funnelSide('buyer',f.buyer,f.period_label)}${funnelSide('seller',f.seller,f.period_label)}</div>`);
+  } else out.push(`<div class="banner">Нет данных воронки — поставь цель, чтобы увидеть план и факт.</div>`);
+
+  if(d.coach&&(d.coach.buyer||d.coach.seller)){
+    out.push(`<div class="card"><div class="section-title">Диагностика · что подтянуть</div>
+      ${coachSide('buyer',d.coach.buyer,'Покупатель')}${coachSide('seller',d.coach.seller,'Продавец')}
+      <div class="muted" style="margin-top:8px">Относительно твоей зоны${d.coach.zone_label?': '+esc(d.coach.zone_label):''}</div></div>`);
   }
 
-  // воронка + ИР
-  if(f && f.buyer){
-    parts.push(`<div class="card">
-      <div class="ir-top">
-        <div class="ir-big" style="color:${barColor(f.ir_total)}">${f.ir_total}<span style="font-size:18px">%</span></div>
-        <div class="ir-sides">
-          <div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${f.ir_buyer}%</b></div>
-          <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${f.ir_seller}%</b></div>
-        </div>
-      </div>
-      <div class="muted" style="margin-top:6px">Индекс развития · ${esc(f.period_label)}</div>
-    </div>`);
-    parts.push(`<div class="card">
-      <div class="section-title">Воронки</div>
-      ${funnelSide('buyer', f.buyer, f.period_label)}
-      ${funnelSide('seller', f.seller, f.period_label)}
-    </div>`);
-  } else {
-    parts.push(`<div class="banner">Нет данных воронки — поставьте цель, чтобы увидеть план и факт.</div>`);
-  }
+  // место под ИИ-ассистента (интеграция позже)
+  out.push(`<div class="card"><div class="section-title">✨ ИИ-ассистент</div>
+    <div class="soon">Персональный разбор и мотивация от ИИ-наставника — скоро.<br><span class="muted">Подключаем YandexGPT</span></div></div>`);
 
-  // диагностика (coach)
-  const cs = (side, c, title) => {
-    if(!c) return '';
-    const rec = c.recommendation_for_realtor || c.recommendation_rop || '';
-    const weak = (c.weak_points||[]).map(w=>`<div class="weak"><span>⚠ ${esc(w.bit_label)}</span><span class="muted">${esc(w.actual)} / порог ${esc(w.threshold)}</span></div>`).join('');
-    return `<div class="coach-side" style="border-left:3px solid ${SIDE_COLOR[side]}">
-      <div style="font-weight:600;font-size:13px">${esc(title)}</div>
-      ${c.description?`<div class="muted" style="margin:4px 0">${esc(c.description)}</div>`:''}
-      ${rec?`<div style="margin:6px 0;font-size:13px">💡 ${esc(rec)}</div>`:''}
-      ${weak?`<div class="weak-list">${weak}</div>`:''}
-    </div>`;
-  };
-  if(d.coach && (d.coach.buyer || d.coach.seller)){
-    parts.push(`<div class="card">
-      <div class="section-title">Диагностика · что подтянуть</div>
-      ${cs('buyer', d.coach.buyer, 'Покупатель')}
-      ${cs('seller', d.coach.seller, 'Продавец')}
-      <div class="muted" style="margin-top:8px">Относительно твоей зоны${d.coach.zone_label?': '+esc(d.coach.zone_label):''}</div>
-    </div>`);
-  }
-
-  // задачи и уведомления
-  const tb=d.tasks;
-  if(tb){
-    const grp=(arr,title,cls)=> (arr&&arr.length)?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
-    const g=tb.groups;
-    const body = grp(g.expired,'Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Выполнено','tg-green');
-    if(body) parts.push(`<div class="card"><div class="section-title">Мои задачи</div>${body}</div>`);
-  }
-  const nb=d.notifications;
-  if(nb && nb.recent && nb.recent.length){
-    const items=nb.recent.slice(0,5).map(n=>`<div class="notif ${n.is_read?'':'unread'}"><span class="ni-icon">${esc(n.icon||'🔔')}</span>
-      <div><div class="ni-title">${esc(n.title)}</div><div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('');
-    parts.push(`<div class="card"><div class="section-title">Уведомления${nb.unread_count?` · ${nb.unread_count} новых`:''}</div>${items}</div>`);
-  }
-
-  // план по месяцам
-  if(p && p.months && p.months.length){
-    parts.push(`<div class="card">
-      <div class="section-title">План на ${p.horizon_months} мес · цель ${esc(p.total_target_revenue_short)} ₽</div>
-      <div class="plan-strip">${p.months.map(m=>`
-        <div class="plan-month ${m.is_current?'cur':''}"><div class="plan-m-label">${esc(m.label)}</div><div class="plan-m-val">${esc(m.target_revenue_short)}</div></div>`).join('')}
-      </div>
-    </div>`);
-  }
-
-  document.getElementById('root').innerHTML = parts.join('');
+  document.getElementById('screen-main').innerHTML=out.join('');
 }
 
-(async ()=>{
-  const me = await requireAuth();
-  document.getElementById('logoutBtn').onclick = logout;
-  const params = new URLSearchParams(location.search);
-  const targetCode = params.get('agent') || me.code;
-  if(params.get('agent')) document.getElementById('backBtn').style.display='inline-flex';
+function renderPrognoz(d){
+  document.getElementById('screen-prognoz').innerHTML=`<div class="card"><div class="section-title">📈 Прогноз дохода</div>
+    <div class="soon">Сколько закроешь в этом и следующем месяце — по горячим клиентам и задаткам.<br><span class="muted">Скоро</span></div></div>`;
+}
 
-  const fns = getFunctions(getApp(), 'europe-west1');
-  window.__call = (name, data)=> httpsCallable(fns,name)(data).then(r=>r.data);
-  try{
-    const res = await httpsCallable(fns,'getDashboard')({ user_code: targetCode, view:'partner' });
-    const d = res.data;
-    document.getElementById('dateBadge').textContent =
-      new Date(d.meta?.generated_at||Date.now()).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
-    render(d);
-  }catch(e){
-    document.getElementById('root').innerHTML = `<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`;
-    console.error(e);
+function renderTasks(d){
+  const out=[]; const tb=d.tasks, nb=d.notifications;
+  if(tb){
+    const grp=(arr,title,cls)=>(arr&&arr.length)?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
+    const g=tb.groups;
+    const body=grp(g.expired,'Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Выполнено','tg-green');
+    out.push(`<div class="card"><div class="section-title">Мои задачи</div>${body||'<div class="muted">Нет активных задач.</div>'}</div>`);
   }
+  if(nb&&nb.recent&&nb.recent.length){
+    const items=nb.recent.slice(0,10).map(n=>`<div class="notif ${n.is_read?'':'unread'}"><span class="ni-icon">${esc(n.icon||'🔔')}</span>
+      <div><div class="ni-title">${esc(n.title)}</div><div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('');
+    out.push(`<div class="card"><div class="section-title">Уведомления${nb.unread_count?` · ${nb.unread_count} новых`:''}</div>${items}</div>`);
+  }
+  if(!out.length) out.push(`<div class="banner">Задач и уведомлений пока нет.</div>`);
+  document.getElementById('screen-tasks').innerHTML=out.join('');
+  // точка на табе
+  const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
+  document.getElementById('taskDot').textContent = cnt?' '+cnt:'';
+}
+
+function renderSvetofor(d){
+  const u=d.user; const pos=u.position_in_company;
+  const cur=LEAGUES.find(l=>pos!=null&&pos>=l.from&&pos<=l.to);
+  const leagues=LEAGUES.map(l=>`<div class="sv-league ${l===cur?'you':''}"><span class="sv-l-tag" style="background:${l.color};color:${['#86efac','#fde68a','#fbbf24'].includes(l.color)?'#0f172a':'#fff'}">${esc(l.tag)}${l===cur?' ← ты':''}</span>
+    <span class="sv-l-name">${esc(l.name)}</span><span class="sv-l-inc">${esc(l.inc)}</span></div>`).join('');
+  let nextNote='';
+  if(cur){ const idx=LEAGUES.indexOf(cur); if(idx>0){ const next=LEAGUES[idx-1]; nextNote=`До зоны «${esc(next.name)}» (${next.from}–${next.to}) — ещё ${pos-next.to} мест`; } }
+  document.getElementById('screen-svetofor').innerHTML=`<div class="card"><div class="section-title">🚦 Светофор — моё место</div>
+    <div class="svet-hero">
+      <div class="svet-now"><div class="svet-pos">${pos!=null?'#'+pos:'—'}</div><div class="muted">место из 1300</div></div>
+      <div class="svet-zone"><div class="muted">Твоя зона</div><div style="font-size:16px;font-weight:600;margin:4px 0">${esc(u.svetofor_zone_label||'—')}</div>
+        ${nextNote?`<div class="muted">${nextNote}</div>`:''}</div>
+    </div>
+    <div class="section-title" style="margin-top:6px">Все лиги</div>${leagues}
+    <div class="muted" style="margin-top:10px">📈 История движения по месяцам — появится по мере накопления данных.</div></div>`;
+}
+
+function render(d){ renderMain(d); renderPrognoz(d); renderTasks(d); renderSvetofor(d); }
+
+(async ()=>{
+  const me=await requireAuth();
+  document.getElementById('logoutBtn').onclick=logout;
+  const params=new URLSearchParams(location.search);
+  const targetCode=params.get('agent')||me.code;
+  if(params.get('agent')) document.getElementById('backBtn').style.display='inline-flex';
+  const fns=getFunctions(getApp(),'europe-west1');
+  window.__call=(name,data)=>httpsCallable(fns,name)(data).then(r=>r.data);
+  try{
+    const res=await httpsCallable(fns,'getDashboard')({ user_code:targetCode, view:'partner' });
+    const d=res.data;
+    document.getElementById('dateBadge').textContent=new Date(d.meta?.generated_at||Date.now()).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+    render(d);
+  }catch(e){ document.getElementById('screen-main').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e); }
   document.getElementById('overlay').classList.add('hidden');
 })();
 </script>
