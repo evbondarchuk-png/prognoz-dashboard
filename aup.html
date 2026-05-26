@@ -3,317 +3,184 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Прогноз — Дашборд АУПа</title>
-<!-- Локальные библиотеки (корп-сети блокируют gstatic). import map
-     перенаправляет gstatic-импорты firebase на /libs/, код не меняется. -->
+<title>Прогноз — Кабинет управляющего</title>
 <script type="importmap">
-{
-  "imports": {
-    "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/"
-  }
-}
+{ "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
 </script>
 <style>
-  :root {
-    --bg: #f7f6f3;
-    --surface: #ffffff;
-    --surface2: #f0efe9;
-    --border: rgba(0,0,0,0.1);
-    --border2: rgba(0,0,0,0.18);
-    --text: #1a1a18;
-    --text2: #5f5e5a;
-    --text3: #9a9890;
-    --blue: #185FA5;
-    --blue-bg: #E6F1FB;
-    --blue-text: #0C447C;
-    --green: #3B6D11;
-    --green-bg: #EAF3DE;
-    --amber: #854F0B;
-    --amber-bg: #FAEEDA;
-    --red: #A32D2D;
-    --red-bg: #FCEBEB;
-    --teal: #0F6E56;
-    --teal-bg: #E1F5EE;
-    --radius: 10px;
-    --radius-sm: 6px;
+  :root{
+    --bg:#f7f6f3; --surface:#fff; --surface2:#f0efe9; --border:rgba(0,0,0,.1);
+    --text:#1a1a18; --text2:#5f5e5a; --text3:#9a9890;
+    --blue:#185FA5; --blue-bg:#E6F1FB; --green:#3B6D11; --green-bg:#EAF3DE; --gold:#BA7517;
+    --radius:10px; --st-green:#639922; --st-yellow:#EF9F27; --st-red:#A32D2D;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
+  .logo{font-size:16px;font-weight:600;color:var(--blue)} .logo span{color:var(--text);font-weight:400}
+  .header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .date-badge{font-size:12px;color:var(--text2);background:var(--surface2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
+  .btn{font-size:12px;color:var(--text2);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit}
+  .btn:hover{border-color:var(--blue);color:var(--blue)}
+  .container{max-width:640px;margin:0 auto;padding:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+  .muted{color:var(--text2);font-size:12px}
+  .section-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
+  .banner{background:#FFF8E6;border:1px solid #F0D98A;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px}
 
-  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 12px; height: 56px; position: sticky; top: 0; z-index: 100; }
-  .logo { font-size: 16px; font-weight: 600; color: var(--blue); }
-  .logo span { color: var(--text); font-weight: 400; }
-  .role-badge { background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
-  .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-  .date-badge { font-size: 12px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
-  .logout-btn { font-size: 12px; color: var(--text2); background: transparent; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-family: inherit; transition: all .15s; }
-  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+  .profile{display:flex;align-items:center;gap:14px}
+  .avatar{width:48px;height:48px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--blue);flex-shrink:0}
+  .pname{font-size:16px;font-weight:600}
 
-  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+  .ir-top{display:flex;align-items:center;gap:18px}
+  .ir-big{font-size:40px;font-weight:700;line-height:1}
+  .ir-sides{flex:1;display:flex;flex-direction:column;gap:8px}
+  .ir-side{display:grid;grid-template-columns:90px 1fr 40px;gap:8px;align-items:center;font-size:12px}
+  .bar-bg{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:3px;transition:width .4s}
+  .perf{display:flex;gap:16px;margin-top:10px;font-size:12px;flex-wrap:wrap}
+  .perf b{font-size:18px;display:block}
 
-  .city-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
-  .city-bar label { font-size: 12px; color: var(--text2); }
-  .city-bar select { font-size: 13px; padding: 4px 8px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text3); cursor: not-allowed; font-family: inherit; }
-  .city-bar .city-hint { font-size: 11px; color: var(--text3); margin-left: auto; font-style: italic; }
+  .status-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+  .sb-green{background:var(--green-bg);color:#173404} .sb-yellow{background:#FAEEDA;color:#412402}
+  .sb-red{background:#FCEBEB;color:#501313} .sb-no_data{background:#F1EFE8;color:#2C2C2A}
 
-  .aup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
-  .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; flex-shrink: 0; }
-  .av-blue { background: var(--blue-bg); color: var(--blue-text); }
-  .aup-info { flex: 1; }
-  .aup-name { font-size: 16px; font-weight: 600; }
-  .aup-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .fs-head{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px}
+  .fs-title{display:flex;align-items:center;gap:8px}
+  .fs-dot{width:10px;height:10px;border-radius:3px}
+  .stage-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--sc,#185FA5);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+  .stage-head{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-bottom:6px}
+  .stage-label{font-size:13px;font-weight:500}
+  .stage-numbers b{font-weight:600}
+  .stage-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+  .stage-bar-fill{height:100%;border-radius:2px;transition:width .4s}
 
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
-  .metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px; }
-  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; line-height: 1.3; }
-  .metric-value { font-size: 22px; font-weight: 600; line-height: 1; }
-  .metric-delta { font-size: 11px; margin-top: 5px; color: var(--text3); }
+  .member-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px}
+  .member-card:hover{border-color:var(--blue)}
+  .member-card.at-risk{border-left:3px solid var(--st-red)}
+  .member-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+  .member-info{flex:1;min-width:0}
+  .member-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px}
+  .member-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .member-sub{font-size:11px;color:var(--text3)}
+  .member-ir{font-size:13px;font-weight:600;flex-shrink:0}
+  .mini-funnel{display:flex;gap:2px;height:4px;margin-top:4px}
+  .mini-stage{flex:1;border-radius:1px}
+  .member-arrow{color:var(--text3);flex-shrink:0}
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; }
-  .card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
-  .card-title-left { display: flex; align-items: center; gap: 6px; }
-
-  .r-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .r-table th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text2); padding: 6px 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
-  .r-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  .r-table tr:last-child td { border-bottom: none; }
-  .r-table tr:hover td { background: var(--surface2); cursor: pointer; }
-  .r-name { font-weight: 500; }
-  .r-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
-
-  .placeholder { padding: 18px; text-align: center; color: var(--text3); font-size: 12px; font-style: italic; }
-
-  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 14px; color: var(--text2); }
-  .loading-overlay.hidden { display: none; }
-
-  @media (max-width: 600px) {
-    .aup-card { flex-wrap: wrap; }
-  }
+  #overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;color:var(--text2)}
+  #overlay.hidden{display:none}
 </style>
 </head>
 <body>
+<div id="overlay">Загрузка кабинета…</div>
 
-<div class="loading-overlay" id="loadingOverlay">Загрузка...</div>
-
-<header class="header">
-  <div class="logo">Прогноз <span>/ система управления продажами</span></div>
-  <span class="role-badge" id="roleBadge">АУП</span>
+<div class="header">
+  <div class="logo">Прогноз<span> · компания</span></div>
   <div class="header-right">
-    <div class="date-badge" id="currentDate"></div>
-    <button class="logout-btn" id="logoutBtn">Выйти</button>
+    <span class="date-badge" id="dateBadge"></span>
+    <button class="btn" id="logoutBtn">Выход</button>
   </div>
-</header>
-
-<div class="container">
-
-  <!-- Селектор «Город» — placeholder, неактивный. Место под мультигород зарезервировано. -->
-  <div class="city-bar">
-    <label for="citySelect">Город:</label>
-    <select id="citySelect" disabled>
-      <option>Все города</option>
-    </select>
-    <span class="city-hint">мультигород появится позже</span>
-  </div>
-
-  <!-- Empty banner -->
-  <div id="emptyBanner" style="display:none; background:var(--blue-bg); color:var(--blue-text); padding:14px 18px; border-radius:var(--radius-sm); margin-bottom:16px; font-size:13px; line-height:1.5;">
-    <strong>В системе нет РОПов</strong> (или не удалось их прочитать). Проверь, что в /users/ есть записи с role: "rop" и что Rules дают AUP читать /users.
-  </div>
-
-  <!-- AUP profile -->
-  <div class="aup-card">
-    <div class="avatar av-blue" id="aupAvatar">??</div>
-    <div class="aup-info">
-      <div class="aup-name" id="aupName">—</div>
-      <div class="aup-meta" id="aupMeta">—</div>
-    </div>
-  </div>
-
-  <!-- Метрики верхнего уровня -->
-  <div class="metrics">
-    <div class="metric"><div class="metric-label">РОПов в системе</div><div class="metric-value" id="metricRops">—</div></div>
-    <div class="metric"><div class="metric-label">МОПов всего</div><div class="metric-value" id="metricMops">—</div></div>
-    <div class="metric"><div class="metric-label">Городов</div><div class="metric-value">1</div><div class="metric-delta">мультигород позже</div></div>
-  </div>
-
-  <!-- Таблица РОПов -->
-  <div class="card" style="padding:0;overflow:hidden">
-    <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;color:var(--text2)">
-      👥 Все РОПы — кликни на строку, чтобы перейти в его кабинет
-    </div>
-    <div style="overflow-x:auto">
-      <table class="r-table" id="ropsTable">
-        <thead>
-          <tr>
-            <th>РОП</th>
-            <th>Отдел</th>
-            <th>Выручка</th>
-            <th>Выполнение плана</th>
-            <th>Средний ИР</th>
-            <th>Активность</th>
-          </tr>
-        </thead>
-        <tbody id="ropsBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Placeholder cards -->
-  <div class="card">
-    <div class="card-title"><div class="card-title-left">💡 Системные проблемы по городу</div></div>
-    <div class="placeholder">данных пока нет</div>
-  </div>
-
-  <div class="card">
-    <div class="card-title"><div class="card-title-left">🏆 Рейтинг РОПов по выручке</div></div>
-    <div class="placeholder">данных пока нет — будет добавлено вместе с агрегатами по отделам</div>
-  </div>
-
-  <div class="card">
-    <div class="card-title"><div class="card-title-left">📈 Потенциал роста</div></div>
-    <div class="placeholder">данных пока нет</div>
-  </div>
-
 </div>
+<div class="container" id="root"></div>
 
-<div style="text-align:center;padding:28px 16px 16px;font-size:12px;color:var(--text3)">Система «Прогноз» · АУП-дашборд</div>
-
-<!-- ============================================================
-     AUTH GUARD — только aup / admin.
-     ============================================================ -->
 <script type="module">
-  import { requireAuth, logout } from './auth-guard.js';
-  import { getUser, getUsersByRole } from './firebase-reader.js';
+import { requireAuth, logout } from './auth-guard.js';
+import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
-  const user = await requireAuth({ allowedRoles: ['aup', 'admin'] });
-  window.currentUser = user;
-  document.getElementById('logoutBtn').addEventListener('click', logout);
+const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
+const STC={green:'#639922',yellow:'#EF9F27',red:'#A32D2D',no_data:'#cfcdc6'};
+const SIDE_COLOR={buyer:'#185FA5',seller:'#3B6D11'};
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
+window.openDept=(code)=>{ location.href='rop.html?rop='+encodeURIComponent(code); };
 
-  // Параллельно: профиль АУПа и все РОПы по role-индексу.
-  // ВАЖНО: getUsersByRole требует расширения Rules — `.read` на /users для aup/admin
-  // и `.indexOn: ["email","role"]` для быстрого поиска. Без этого вернёт пустой
-  // массив с warn в console.
-  const [aupProfile, rops] = await Promise.all([
-    getUser(user.code),
-    getUsersByRole('rop'),
-  ]);
-
-  // Lite-агрегаты: только размер subordinates каждого РОПа (= число МОПов).
-  // Выручка/средний ИР отдела требуют рекурсивного обхода (по каждому МОПу
-  // каждого РОПа — getSubordinates). Это сотни запросов на страницу.
-  // Отложено на full-итерацию — пока показываем «—».
-  const ropRows = rops.map(rop => ({
-    code: rop.code,
-    name: rop.name || rop.code,
-    mopsCount: rop.subordinates ? Object.keys(rop.subordinates).length : 0,
-    lastLoginAt: rop.lastLoginAt || null,
-  })).sort((a, b) => b.mopsCount - a.mopsCount);
-
-  const totalMops = ropRows.reduce((s, r) => s + r.mopsCount, 0);
-
-  window.AUP_DATA = {
-    aupName: aupProfile?.name || user.name || 'Без имени',
-    aupInitials: initialsFrom(aupProfile?.name || user.name || '?'),
-    rops: ropRows,
-    stats: {
-      ropsCount: ropRows.length,
-      mopsCount: totalMops,
-    },
-  };
-
-  document.getElementById('loadingOverlay').classList.add('hidden');
-  window.init();
-
-  // ===== helpers =====
-
-  function initialsFrom(name) {
-    if (!name) return '??';
-    const parts = String(name).trim().split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return String(name).slice(0, 2).toUpperCase();
-  }
-</script>
-
-<!-- ============================================================
-     РЕНДЕРЫ
-     ============================================================ -->
-<script>
-function goToRop(code) {
-  location.href = 'rop.html?rop=' + encodeURIComponent(code);
+function aggStageCard(side, st){
+  return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
+    <div class="stage-head"><span class="stage-label">${esc(st.label)}</span>
+      <span class="stage-numbers"><b style="color:${barColor(st.progress_pct,st.is_revenue)}">${st.progress_pct}%</b></span></div>
+    <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
+  </div>`;
+}
+function aggSide(side, fs, periodLabel){
+  if(!fs) return '';
+  return `<div style="margin-bottom:8px">
+    <div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
+      <div><div style="font-weight:600">${esc(fs.label)}</div><div class="muted">ИР: ${fs.ir}% · ${esc(periodLabel)}</div></div></div>
+      <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">${esc(fs.ir_status_label||'')}</span></div>
+    ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}
+  </div>`;
+}
+function deptCard(m){
+  const mini=(m.mini_funnel||[]).map(s=>`<div class="mini-stage" style="background:${STC[s.status]||STC.no_data}"></div>`).join('');
+  return `<div class="member-card ${m.is_at_risk?'at-risk':''}" onclick="openDept('${esc(m.code)}')">
+    <div class="member-avatar" style="background:${m.avatar_color_bg};color:${m.avatar_color_text}">${esc(m.avatar_initials||'?')}</div>
+    <div class="member-info">
+      <div class="member-row-top"><span class="member-name">Отдел ${esc(m.short_name||m.name)}</span>
+        <span class="member-ir" style="color:${STC[m.ir_status]||STC.no_data}">${m.ir_status==='no_data'?'—':m.ir_total+'%'}</span></div>
+      <div class="member-sub">${m.department_size!=null?m.department_size+' партнёров':''}</div>
+      <div class="mini-funnel">${mini}</div>
+    </div>
+    <span class="member-arrow">›</span>
+  </div>`;
 }
 
-function activityLabel(lastLoginAt) {
-  if (!lastLoginAt) return '—';
-  const ts = Number(lastLoginAt);
-  if (!ts) return '—';
-  const days = Math.floor((Date.now() - ts) / 86400000);
-  if (days <= 0) return 'сегодня';
-  if (days === 1) return 'вчера';
-  if (days < 7) return days + ' дн. назад';
-  if (days < 30) return Math.floor(days / 7) + ' нед. назад';
-  return Math.floor(days / 30) + ' мес. назад';
+function render(d){
+  const u=d.user, a=d.aggregates, t=d.team;
+  const parts=[];
+  parts.push(`<div class="card profile">
+    <div class="avatar">${esc((u.short_name||u.name||'?').slice(0,2))}</div>
+    <div style="flex:1"><div class="pname">${esc(u.name)}</div>
+      <div class="muted">${esc(u.role_label)} · Компания «Этажи» · Тюмень</div></div>
+  </div>`);
+
+  if(a){
+    parts.push(`<div class="card">
+      <div class="ir-top">
+        <div class="ir-big" style="color:${barColor(a.ir_total)}">${a.ir_total}<span style="font-size:18px">%</span></div>
+        <div class="ir-sides">
+          <div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${a.ir_buyer}%</b></div>
+          <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${a.ir_seller}%</b></div>
+        </div>
+      </div>
+      <div class="perf">
+        <div><b>${a.departments_count!=null?a.departments_count:(t?t.total_count:0)}</b>отделов</div>
+        <div><b>${a.scope.members_count}</b>партнёров</div>
+        <div><b style="color:var(--st-green)">${a.scope.performance_pct}%</b>выполнение</div>
+      </div>
+      <div class="muted" style="margin-top:8px">Средний ИР компании · ${esc(a.period_label)}</div>
+    </div>`);
+    parts.push(`<div class="card"><div class="section-title">Сводная воронка компании</div>
+      ${aggSide('buyer',a.buyer,a.period_label)}${aggSide('seller',a.seller,a.period_label)}</div>`);
+  } else {
+    parts.push(`<div class="banner">Нет агрегатов — возможно, ночной пересчёт ещё не прошёл.</div>`);
+  }
+
+  if(t && t.members && t.members.length){
+    parts.push(`<div class="card"><div class="section-title">Отделы · ${t.total_count}</div>
+      ${t.members.map(deptCard).join('')}</div>`);
+  } else {
+    parts.push(`<div class="banner">Нет активных отделов.</div>`);
+  }
+  document.getElementById('root').innerHTML = parts.join('');
 }
 
-function renderRops(rops) {
-  const tbody = document.getElementById('ropsBody');
-  if (!rops.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Нет РОПов</td></tr>';
-    return;
+(async ()=>{
+  await requireAuth({ allowedRoles: ['aup','admin'] });
+  document.getElementById('logoutBtn').onclick = logout;
+  const fns = getFunctions(getApp(), 'europe-west1');
+  try{
+    const res = await httpsCallable(fns,'getDashboard')({ view:'company' });
+    const d = res.data;
+    document.getElementById('dateBadge').textContent = new Date(d.meta?.generated_at||Date.now()).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+    render(d);
+  }catch(e){
+    document.getElementById('root').innerHTML = `<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`;
+    console.error(e);
   }
-  tbody.innerHTML = rops.map(r => `
-    <tr onclick="goToRop('${r.code}')">
-      <td>
-        <div class="r-name">${r.name}</div>
-        <div class="r-sub">Код: ${r.code}</div>
-      </td>
-      <td>${r.mopsCount} ${r.mopsCount === 1 ? 'МОП' : r.mopsCount >= 2 && r.mopsCount <= 4 ? 'МОПа' : 'МОПов'}</td>
-      <td><span style="color:var(--text3)">—</span></td>
-      <td><span style="color:var(--text3)">—</span></td>
-      <td><span style="color:var(--text3)">—</span></td>
-      <td><span style="color:var(--text2);font-size:12px">${activityLabel(r.lastLoginAt)}</span></td>
-    </tr>
-  `).join('');
-}
-
-function init() {
-  const data = window.AUP_DATA;
-  const now = new Date();
-  document.getElementById('currentDate').textContent =
-    now.toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'});
-
-  if (!data) {
-    document.getElementById('emptyBanner').style.display = '';
-    return;
-  }
-
-  // Шапка
-  document.getElementById('aupName').textContent = data.aupName || '—';
-  document.getElementById('aupAvatar').textContent = data.aupInitials || '??';
-  document.getElementById('aupMeta').textContent = `Видит весь отдел продаж · РОПов: ${data.stats.ropsCount}`;
-
-  // Бейдж роли
-  const rb = document.getElementById('roleBadge');
-  if (rb) {
-    const roleLabels = { aup: 'АУП', admin: 'Админ' };
-    rb.textContent = roleLabels[window.currentUser?.role] || window.currentUser?.role || '—';
-  }
-
-  // Пусто
-  if (data.stats.ropsCount === 0) {
-    document.getElementById('emptyBanner').style.display = '';
-    document.querySelector('.metrics').style.display = 'none';
-    return;
-  }
-
-  // Метрики
-  document.getElementById('metricRops').textContent = String(data.stats.ropsCount);
-  document.getElementById('metricMops').textContent = String(data.stats.mopsCount);
-
-  // Таблица
-  renderRops(data.rops || []);
-}
-
-window.init = init;
+  document.getElementById('overlay').classList.add('hidden');
+})();
 </script>
 </body>
 </html>

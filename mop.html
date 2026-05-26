@@ -3,894 +3,231 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Прогноз — Дашборд менеджера</title>
-<!-- Локальные библиотеки (корп-сети блокируют gstatic/Cloudflare). import map
-     перенаправляет gstatic-импорты firebase на /libs/, код модулей не меняется. -->
+<title>Прогноз — Кабинет старшего</title>
 <script type="importmap">
-{
-  "imports": {
-    "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/"
-  }
-}
+{ "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
 </script>
-<script src="/libs/chart/4.4.1/chart.umd.js"></script>
 <style>
-  :root {
-    --bg: #f7f6f3;
-    --surface: #ffffff;
-    --surface2: #f0efe9;
-    --border: rgba(0,0,0,0.1);
-    --border2: rgba(0,0,0,0.18);
-    --text: #1a1a18;
-    --text2: #5f5e5a;
-    --text3: #9a9890;
-    --blue: #185FA5;
-    --blue-bg: #E6F1FB;
-    --blue-text: #0C447C;
-    --green: #3B6D11;
-    --green-bg: #EAF3DE;
-    --amber: #854F0B;
-    --amber-bg: #FAEEDA;
-    --red: #A32D2D;
-    --red-bg: #FCEBEB;
-    --teal: #0F6E56;
-    --teal-bg: #E1F5EE;
-    --radius: 10px;
-    --radius-sm: 6px;
+  :root{
+    --bg:#f7f6f3; --surface:#fff; --surface2:#f0efe9; --border:rgba(0,0,0,.1);
+    --text:#1a1a18; --text2:#5f5e5a; --text3:#9a9890;
+    --blue:#185FA5; --blue-bg:#E6F1FB; --green:#3B6D11; --green-bg:#EAF3DE; --gold:#BA7517;
+    --radius:10px; --st-green:#639922; --st-yellow:#EF9F27; --st-red:#A32D2D;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
+  .logo{font-size:16px;font-weight:600;color:var(--blue)} .logo span{color:var(--text);font-weight:400}
+  .header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .date-badge{font-size:12px;color:var(--text2);background:var(--surface2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
+  .btn{font-size:12px;color:var(--text2);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .btn:hover{border-color:var(--blue);color:var(--blue)}
+  .container{max-width:640px;margin:0 auto;padding:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+  .muted{color:var(--text2);font-size:12px}
+  .section-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
+  .banner{background:#FFF8E6;border:1px solid #F0D98A;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px}
 
-  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 12px; height: 56px; position: sticky; top: 0; z-index: 100; }
-  .logo { font-size: 16px; font-weight: 600; color: var(--blue); }
-  .logo span { color: var(--text); font-weight: 400; }
-  .role-badge { background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
-  .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-  .date-badge { font-size: 12px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
-  .logout-btn { font-size: 12px; color: var(--text2); background: transparent; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-family: inherit; transition: all .15s; }
-  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+  .profile{display:flex;align-items:center;gap:14px}
+  .avatar{width:48px;height:48px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--green);flex-shrink:0}
+  .pname{font-size:16px;font-weight:600}
 
-  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+  .ir-top{display:flex;align-items:center;gap:18px}
+  .ir-big{font-size:40px;font-weight:700;line-height:1}
+  .ir-sides{flex:1;display:flex;flex-direction:column;gap:8px}
+  .ir-side{display:grid;grid-template-columns:90px 1fr 40px;gap:8px;align-items:center;font-size:12px}
+  .bar-bg{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:3px;transition:width .4s}
+  .perf{display:flex;gap:16px;margin-top:10px;font-size:12px;flex-wrap:wrap}
+  .perf b{font-size:18px;display:block}
 
-  /* Manager profile */
-  .mop-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
-  .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; flex-shrink: 0; }
-  .av-blue { background: var(--blue-bg); color: var(--blue-text); }
-  .mop-info { flex: 1; }
-  .mop-name { font-size: 16px; font-weight: 600; }
-  .mop-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
-  .nav-links { margin-left: auto; display: flex; gap: 8px; }
-  .nav-link { font-size: 12px; padding: 5px 12px; border: 1px solid var(--border2); border-radius: 20px; cursor: pointer; background: transparent; color: var(--text2); transition: all .15s; text-decoration: none; }
-  .nav-link:hover { background: var(--surface2); color: var(--text); }
-  .nav-link.active-link { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .status-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+  .sb-green{background:var(--green-bg);color:#173404} .sb-yellow{background:#FAEEDA;color:#412402}
+  .sb-red{background:#FCEBEB;color:#501313} .sb-no_data{background:#F1EFE8;color:#2C2C2A}
 
-  /* Tabs */
-  .tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius); padding: 4px; margin-bottom: 20px; border: 1px solid var(--border); }
-  .tab { flex: 1; padding: 9px 8px; border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; color: var(--text2); transition: all .15s; text-align: center; font-family: inherit; }
-  .tab.active { background: var(--surface); color: var(--text); font-weight: 500; border: 1px solid var(--border); }
-  .tab:hover:not(.active) { color: var(--text); background: rgba(0,0,0,0.04); }
+  .fs-head{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px}
+  .fs-title{display:flex;align-items:center;gap:8px}
+  .fs-dot{width:10px;height:10px;border-radius:3px}
+  .stage-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--sc,#185FA5);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+  .stage-head{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-bottom:6px}
+  .stage-label{font-size:13px;font-weight:500}
+  .stage-numbers b{font-weight:600}
+  .stage-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+  .stage-bar-fill{height:100%;border-radius:2px;transition:width .4s}
 
-  .screen { display: none; }
-  .screen.active { display: block; }
+  .member-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px}
+  .member-card:hover{border-color:var(--blue)}
+  .member-card.at-risk{border-left:3px solid var(--st-red)}
+  .member-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+  .member-info{flex:1;min-width:0}
+  .member-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px}
+  .member-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .member-ir{font-size:13px;font-weight:600;flex-shrink:0}
+  .mini-funnel{display:flex;gap:2px;height:4px}
+  .mini-stage{flex:1;border-radius:1px}
+  .member-arrow{color:var(--text3);flex-shrink:0}
+  .newbie-tag{font-size:10px;color:var(--text3);border:1px solid var(--border);border-radius:10px;padding:1px 6px;margin-left:6px}
 
-  /* Metrics */
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
-  .metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px; }
-  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; line-height: 1.3; }
-  .metric-value { font-size: 22px; font-weight: 600; line-height: 1; }
-  .metric-delta { font-size: 11px; margin-top: 5px; }
-  .up { color: var(--green); }
-  .down { color: var(--red); }
-  .flat { color: var(--text3); }
+  .notif{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .notif:last-child{border-bottom:none} .notif.unread .ni-title{font-weight:600}
+  .ni-icon{font-size:18px} .ni-title{font-size:13px}
+  .tg-title{font-size:12px;font-weight:600;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.3px}
+  .tg-red{color:var(--st-red)} .tg-amber{color:#854F0B} .tg-gray{color:var(--text3)} .tg-green{color:var(--green)}
+  .task{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .task:last-child{border-bottom:none} .task-main{flex:1;min-width:0} .task-title{font-size:13px;font-weight:500}
+  .task-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--st-green);background:transparent;color:var(--st-green);cursor:pointer;font-size:15px;flex-shrink:0}
+  .task-btn:hover{background:var(--green-bg)} .task-done{color:var(--st-green)}
 
-  /* Card */
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; }
-  .card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
-  .card-title-left { display: flex; align-items: center; gap: 6px; }
-
-  /* Pill */
-  .pill { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-  .pill-green { background: var(--green-bg); color: var(--green); }
-  .pill-amber { background: var(--amber-bg); color: var(--amber); }
-  .pill-red { background: var(--red-bg); color: var(--red); }
-  .pill-blue { background: var(--blue-bg); color: var(--blue-text); }
-  .pill-gray { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
-
-  /* Realtor table */
-  .r-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .r-table th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text2); padding: 6px 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
-  .r-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  .r-table tr:last-child td { border-bottom: none; }
-  .r-table tr:hover td { background: var(--surface2); cursor: pointer; }
-  .r-name { font-weight: 500; }
-  .r-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
-
-  /* IR mini bar */
-  .ir-mini { display: flex; align-items: center; gap: 6px; }
-  .ir-mini-bg { width: 80px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
-  .ir-mini-fill { height: 100%; border-radius: 3px; }
-  .ir-mini-val { font-size: 12px; font-weight: 500; min-width: 28px; }
-
-  /* Svetofor dot */
-  .sv-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-
-  /* Risk panel */
-  .risk-list { display: flex; flex-direction: column; gap: 8px; }
-  .risk-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid transparent; }
-  .risk-red { background: var(--red-bg); border-color: rgba(226,75,74,0.2); }
-  .risk-amber { background: var(--amber-bg); border-color: rgba(239,159,39,0.2); }
-  .risk-info { flex: 1; }
-  .risk-name { font-size: 13px; font-weight: 500; }
-  .risk-red .risk-name { color: #791F1F; }
-  .risk-amber .risk-name { color: #633806; }
-  .risk-desc { font-size: 12px; margin-top: 2px; }
-  .risk-red .risk-desc { color: var(--red); }
-  .risk-amber .risk-desc { color: var(--amber); }
-  .risk-action { font-size: 12px; padding: 5px 12px; border-radius: 20px; cursor: pointer; border: none; font-family: inherit; font-weight: 500; }
-  .risk-red .risk-action { background: #fff; color: var(--red); }
-  .risk-amber .risk-action { background: #fff; color: var(--amber); }
-
-  /* Tasks */
-  .task-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
-  .task-item:last-child { border-bottom: none; }
-  .task-check { width: 18px; height: 18px; border: 1.5px solid var(--border2); border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-top: 1px; transition: all .15s; display: flex; align-items: center; justify-content: center; }
-  .task-check.done { background: var(--green); border-color: var(--green); }
-  .task-check.done::after { content: '✓'; color: #fff; font-size: 11px; }
-  .task-body { flex: 1; }
-  .task-title { font-size: 13px; font-weight: 500; }
-  .task-done-text { text-decoration: line-through; color: var(--text3); }
-  .task-meta { font-size: 11px; color: var(--text2); margin-top: 3px; }
-  .task-priority { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
-
-  /* Realtor detail modal */
-  .detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
-  .detail-overlay.open { display: flex; }
-  .detail-modal { background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
-  .detail-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
-  .detail-body { padding: 18px 20px; }
-  .detail-close { margin-left: auto; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text2); line-height: 1; }
-  .detail-close:hover { color: var(--text); }
-  .funnel-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .funnel-row:last-child { border-bottom: none; }
-  .funnel-stage { width: 110px; font-size: 12px; color: var(--text2); }
-  .funnel-bar-wrap { flex: 1; height: 22px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
-  .funnel-bar { height: 100%; border-radius: 4px; }
-  .funnel-val { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 500; }
-  .funnel-norm { width: 60px; text-align: right; font-size: 11px; color: var(--text3); }
-
-  /* Section label */
-  .section-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 10px; }
-
-  /* Chart wrap */
-  .chart-wrap { position: relative; }
-
-  /* Группа прогресс */
-  .group-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-  .gp-label { font-size: 12px; color: var(--text2); width: 100px; }
-  .gp-bar-bg { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
-  .gp-bar-fill { height: 100%; border-radius: 4px; transition: width .5s; }
-  .gp-val { font-size: 12px; font-weight: 500; min-width: 36px; text-align: right; }
-
-  /* Loading overlay */
-  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 14px; color: var(--text2); }
-  .loading-overlay.hidden { display: none; }
-
-  @media (max-width: 600px) {
-    .mop-card { flex-wrap: wrap; }
-    .nav-links { margin-left: 0; width: 100%; }
-    .tabs { flex-wrap: wrap; }
-  }
+  #overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;color:var(--text2)}
+  #overlay.hidden{display:none}
 </style>
 </head>
 <body>
+<div id="overlay">Загрузка кабинета…</div>
 
-<div class="loading-overlay" id="loadingOverlay">Загрузка...</div>
-
-<header class="header">
-  <div class="logo">Прогноз <span>/ система управления продажами</span></div>
-  <span class="role-badge" id="roleBadge">МОП</span>
+<div class="header">
+  <div class="logo">Прогноз<span> · группа</span></div>
   <div class="header-right">
-    <div class="date-badge" id="currentDate"></div>
-    <button class="logout-btn" id="logoutBtn">Выйти</button>
+    <a id="backBtn" class="btn" href="#" style="display:none" onclick="history.back();return false">← Назад</a>
+    <span class="date-badge" id="dateBadge"></span>
+    <button class="btn" id="logoutBtn">Выход</button>
   </div>
-</header>
+</div>
+<div class="container" id="root"></div>
 
-<div class="container">
+<script type="module">
+import { requireAuth, logout } from './auth-guard.js';
+import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
-  <!-- Кнопка возврата: видна только в режиме просмотра (?mop=КОД) -->
-  <a id="backFromMop" href="#" onclick="history.back(); return false;" style="display:none; align-items:center; gap:6px; padding:8px 12px; margin-bottom:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text2); text-decoration:none; font-size:13px; width:max-content;">
-    ← Назад
-  </a>
+const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
+const STC={green:'#639922',yellow:'#EF9F27',red:'#A32D2D',no_data:'#cfcdc6'};
+const SIDE_COLOR={buyer:'#185FA5',seller:'#3B6D11'};
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
+window.openMember=(code)=>{ location.href='index.html?agent='+encodeURIComponent(code); };
 
-  <!-- Индикатор «просмотр чужого кабинета»: видим только в режиме просмотра -->
-  <div id="viewingIndicator" style="display:none; background:var(--amber-bg); color:var(--amber); padding:8px 14px; border-radius:var(--radius-sm); margin-bottom:12px; font-size:13px;">
-    👁 Просмотр кабинета менеджера: <strong id="viewingMopName">—</strong>
-  </div>
-
-  <!-- MOP profile -->
-  <div class="mop-card">
-    <div class="avatar av-blue" id="mopAvatar">БЕ</div>
-    <div class="mop-info">
-      <div class="mop-name" id="mopName">Бондарчук Егор Валерьевич</div>
-      <div class="mop-meta" id="mopMeta">РОП: Колмогорова Е.Ю. &nbsp;·&nbsp; Группа: 8 риэлторов &nbsp;·&nbsp; Обновлено сегодня</div>
+function aggStageCard(side, st){
+  return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
+    <div class="stage-head"><span class="stage-label">${esc(st.label)}</span>
+      <span class="stage-numbers"><b style="color:${barColor(st.progress_pct,st.is_revenue)}">${st.progress_pct}%</b></span></div>
+    <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
+  </div>`;
+}
+function aggSide(side, fs, periodLabel){
+  if(!fs) return '';
+  return `<div style="margin-bottom:8px">
+    <div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
+      <div><div style="font-weight:600">${esc(fs.label)}</div><div class="muted">ИР: ${fs.ir}% · ${esc(periodLabel)}</div></div></div>
+      <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">${esc(fs.ir_status_label||'')}</span></div>
+    ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}
+  </div>`;
+}
+function memberCard(m){
+  const mini=(m.mini_funnel||[]).map(s=>`<div class="mini-stage" style="background:${STC[s.status]||STC.no_data}"></div>`).join('');
+  return `<div class="member-card ${m.is_at_risk?'at-risk':''}" onclick="openMember('${esc(m.code)}')">
+    <div class="member-avatar" style="background:${m.avatar_color_bg};color:${m.avatar_color_text}">${esc(m.avatar_initials||'?')}</div>
+    <div class="member-info">
+      <div class="member-row-top"><span class="member-name">${esc(m.short_name||m.name)}${m.is_newbie?'<span class="newbie-tag">новичок</span>':''}</span>
+        <span class="member-ir" style="color:${STC[m.ir_status]||STC.no_data}">${m.ir_status==='no_data'?'—':m.ir_total+'%'}</span></div>
+      <div class="mini-funnel">${mini}</div>
     </div>
-  </div>
+    <span class="member-arrow">›</span>
+  </div>`;
+}
 
-  <!-- Empty-state баннер: если подчинённых нет вообще -->
-  <div id="emptyBanner" style="display:none; background:var(--blue-bg); color:var(--blue-text); padding:14px 18px; border-radius:var(--radius-sm); margin-bottom:16px; font-size:13px; line-height:1.5;">
-    <strong>Нет подчинённых с данными</strong> в архиве. Возможные причины: список subordinates ещё не залит в /users/, либо команда пока пуста.
-  </div>
+function taskItem(t){
+  const due = t.due_label || t.due_date || '';
+  const meta = [t.priority!=='normal'?t.priority_label:'', due, t.progress_label].filter(Boolean).join(' · ');
+  return `<div class="task">
+    <div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}</div>
+    ${t.can_complete?`<button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`:(t.status==='done'?'<span class="task-done">✓</span>':'')}
+  </div>`;
+}
+window.completeTask = async (id, ev)=>{
+  if(ev) ev.stopPropagation();
+  const btn = ev && ev.target; if(btn){ btn.disabled=true; btn.textContent='…'; }
+  try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }
+  catch(e){ alert('Не удалось закрыть задачу: '+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent='✓'; } }
+};
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab active" onclick="showTab('overview',this)">📊 Сводка группы</button>
-    <button class="tab" onclick="showTab('team',this)">👥 Команда</button>
-    <button class="tab" onclick="showTab('risks',this)">⚠️ Риски</button>
-    <button class="tab" onclick="showTab('tasks',this)">✅ Задачи на сегодня</button>
-  </div>
+function render(d){
+  const u=d.user, a=d.aggregates, t=d.team;
+  const parts=[];
+  parts.push(`<div class="card profile">
+    <div class="avatar">${esc((u.short_name||u.name||'?').slice(0,2))}</div>
+    <div style="flex:1"><div class="pname">${esc(u.name)}</div>
+      <div class="muted">${esc(u.role_label)}${a?' · '+esc(a.scope.label):''}</div></div>
+  </div>`);
 
-  <!-- SCREEN: Сводка -->
-  <div id="screen-overview" class="screen active">
-    <div class="metrics">
-      <div class="metric">
-        <div class="metric-label">Средний ИР группы</div>
-        <div class="metric-value" style="color:var(--blue)">54%</div>
-        <div class="metric-delta up">▲ +4% к прошлому месяцу</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Валовая выручка (мес)</div>
-        <div class="metric-value">487к ₽</div>
-        <div class="metric-delta down">▼ план: 640к ₽ (76%)</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Сделок за месяц</div>
-        <div class="metric-value">6,8</div>
-        <div class="metric-delta flat">план: 9,0</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">В красной зоне</div>
-        <div class="metric-value" style="color:var(--red)">3</div>
-        <div class="metric-delta down">из 8 риэлторов</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">В зелёной зоне</div>
-        <div class="metric-value" style="color:var(--green)">2</div>
-        <div class="metric-delta up">ИР выше 70%</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">
-        <div class="card-title-left">📈 Динамика среднего ИР группы за 6 месяцев</div>
-      </div>
-      <div class="chart-wrap" style="height:160px">
-        <canvas id="groupIrChart" role="img" aria-label="Динамика среднего ИР группы за 6 месяцев">Рост с 38% до 54%</canvas>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">
-        <div class="card-title-left">🎯 Выполнение плана по группе</div>
-      </div>
-      <div id="groupProgress"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">
-        <div class="card-title-left">🚦 Распределение группы по светофору</div>
-      </div>
-      <div class="chart-wrap" style="height:200px">
-        <canvas id="svetoforChart" role="img" aria-label="Распределение риэлторов по зонам светофора">2 лучших, 1 хороший, 2 средних, 3 слабых</canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- SCREEN: Команда -->
-  <div id="screen-team" class="screen">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:13px;font-weight:500;color:var(--text2)">👥 Все риэлторы группы — кликни на строку для деталей</div>
-        <div style="display:flex;gap:6px">
-          <button class="pill pill-gray" onclick="filterTeam('all',this)" style="cursor:pointer;border:none;font-family:inherit">Все</button>
-          <button class="pill pill-red" onclick="filterTeam('red',this)" style="cursor:pointer;border:none;font-family:inherit">Красные</button>
-          <button class="pill pill-amber" onclick="filterTeam('amber',this)" style="cursor:pointer;border:none;font-family:inherit">Жёлтые</button>
-          <button class="pill pill-green" onclick="filterTeam('green',this)" style="cursor:pointer;border:none;font-family:inherit">Зелёные</button>
+  if(a){
+    parts.push(`<div class="card">
+      <div class="ir-top">
+        <div class="ir-big" style="color:${barColor(a.ir_total)}">${a.ir_total}<span style="font-size:18px">%</span></div>
+        <div class="ir-sides">
+          <div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${a.ir_buyer}%</b></div>
+          <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${a.ir_seller}%</b></div>
         </div>
       </div>
-      <div style="overflow-x:auto">
-        <table class="r-table" id="teamTable">
-          <thead>
-            <tr>
-              <th>Риэлтор</th>
-              <th>Позиция</th>
-              <th>Стаж</th>
-              <th>ИР</th>
-              <th>Доход за месяц</th>
-              <th>Сделок/мес</th>
-              <th>Зона</th>
-              <th>Статус</th>
-            </tr>
-          </thead>
-          <tbody id="teamBody"></tbody>
-        </table>
+      <div class="perf">
+        <div><b style="color:var(--st-green)">${a.scope.performers_count}</b>выполняют ≥70%</div>
+        <div><b style="color:var(--st-red)">${a.scope.underperformers_count}</b>отстают</div>
+        <div><b>${a.scope.members_count}</b>всего</div>
       </div>
-    </div>
-  </div>
-
-  <!-- SCREEN: Риски -->
-  <div id="screen-risks" class="screen">
-    <div class="card">
-      <div class="card-title"><div class="card-title-left">🔴 Критические ситуации — требуют действий сегодня</div></div>
-      <div class="risk-list" id="riskList"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="card-title-left">📉 Риски «комиссионной ямы» — следующие 2 месяца</div></div>
-      <div id="pitRisks"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="card-title-left">💡 Системные проблемы по группе</div></div>
-      <div id="systemicIssues"></div>
-    </div>
-  </div>
-
-  <!-- SCREEN: Задачи -->
-  <div id="screen-tasks" class="screen">
-    <div class="card">
-      <div class="card-title"><div class="card-title-left">✅ Задачи МОПа на сегодня — <span id="taskDate"></span></div></div>
-      <div id="taskList"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="card-title-left">📞 Кому позвонить сегодня</div></div>
-      <div id="callList"></div>
-    </div>
-  </div>
-
-</div>
-
-
-<div style="text-align:center;padding:28px 16px 16px;font-size:12px;color:var(--text3)">Система «Прогноз» · Агентство Космос · МОП-дашборд</div>
-
-<!-- ============================================================
-     AUTH GUARD — допускаются только роли mop/rop/aup/admin.
-     Если рядовой риелтор попадёт сюда — увидит alert и редирект.
-     ============================================================ -->
-<script type="module">
-  import { requireAuth, logout, canRead } from './auth-guard.js';
-  import { getSubordinates, getUser, getAgent } from './firebase-reader.js';
-  import { calculateIR, getNormatives } from './ir.js';
-
-  const user = await requireAuth({ allowedRoles: ['mop', 'rop', 'aup', 'admin'] });
-  window.currentUser = user;
-  document.getElementById('logoutBtn').addEventListener('click', logout);
-
-  // Режим просмотра: ?mop=КОД открывает кабинет другого МОПа (РОП/АУП пришёл
-  // из rop.html). hasMopParam — управляет кнопкой «Назад» и индикатором.
-  // isViewingOther — управляет canRead-проверкой.
-  const params = new URLSearchParams(location.search);
-  const viewMopCode = params.get('mop');
-  const hasMopParam = !!viewMopCode;
-  const isViewingOther = hasMopParam && viewMopCode !== user.code;
-  const targetCode = viewMopCode || user.code;
-
-  // Роутинг-guard: mop.html — кабинет МОПа. Не-МОП без ?mop= (прямой заход)
-  // отправляется в свой кабинет. Просмотр (?mop=) не трогаем. Риелтор сюда
-  // не доходит — его отсекает requireAuth(allowedRoles) выше.
-  if (user.role !== 'mop' && !hasMopParam) {
-    const home = { rop: 'rop.html', aup: 'aup.html', admin: 'aup.html' }[user.role];
-    if (home) { location.href = home; throw new Error('routing guard'); }
-  }
-
-  // Если смотрим чужого МОПа — нужна canRead-проверка по СВОЕМУ профилю.
-  if (isViewingOther) {
-    const ownUserData = await getUser(user.code);
-    if (!canRead(user, viewMopCode, ownUserData)) {
-      alert('У вас нет прав смотреть кабинет этого менеджера.');
-      location.href = 'mop.html';
-      throw new Error('canRead denied');
-    }
-  }
-
-  // Параллельно: профиль выбранного МОПа, его подчинённые с архивом,
-  // и его собственные архивные данные (он первой строкой в своей команде).
-  const [profile, subs, myAgent] = await Promise.all([
-    getUser(targetCode),
-    getSubordinates(targetCode),
-    getAgent(targetCode),
-  ]);
-
-  // Для подчинённых без архивных данных — подтянуть имя из /users/{код}
-  // (Rules пускают: они в моих subordinates).
-  const emptyCodes = subs.filter(s => s.data === null).map(s => s.code);
-  const emptyProfiles = await Promise.all(emptyCodes.map(c => getUser(c)));
-  const nameByCode = Object.fromEntries(
-    emptyCodes.map((c, i) => [c, emptyProfiles[i]?.name || c])
-  );
-
-  window.MOP_VIEW_MODE = hasMopParam ? { viewedCode: targetCode } : null;
-  window.MOP_DATA = buildMopData({ user, targetCode, profile, subs, myAgent, nameByCode });
-  document.getElementById('loadingOverlay').classList.add('hidden');
-  window.init();
-
-  // ===== helpers =====
-
-  function buildMopData({ user, targetCode, profile, subs, myAgent, nameByCode }) {
-    const mopName = profile?.name || (targetCode === user.code ? user.name : '') || 'Без имени';
-    // РОПа берём из архива (свой или любого подчинённого) — agent.rop = ФИО.
-    // Через /users/{ropCode} ходить нельзя (Rules запрещают читать «вверх»).
-    const rop = myAgent?.rop || subs.find(s => s.data)?.data?.rop || '';
-
-    const toRow = (code, data, fallbackName) => {
-      if (!data) {
-        return {
-          code, name: fallbackName || code, isEmpty: true,
-          pos: null, stazh: null, ir: null,
-          income: null, deals: null, zone: null, funnel: [],
-        };
-      }
-      const ir = calculateIR(data, getNormatives(data.division));
-      return {
-        code,
-        name: data.name || fallbackName || code,
-        isEmpty: false,
-        pos: data.position,
-        stazh: data.stazh,
-        ir: Math.round((ir?.irTotal || 0) * 100),
-        income: data.income || 0,
-        deals: (data.b?.all?.deals ?? 0) + (data.s?.all?.deals ?? 0),
-        zone: zoneFromDivision(data.division),
-        division: data.division,
-        funnel: buildFunnel(data),
-      };
-    };
-
-    // МОП — первой строкой команды. isSelf только когда смотрим свой
-    // кабинет: в режиме просмотра (?mop=КОД чужого) пометки «вы» быть
-    // не должно — мы смотрим на чужого МОПа, а не на себя.
-    const selfRow = {
-      ...toRow(targetCode, myAgent, mopName),
-      isSelf: targetCode === user.code,
-    };
-
-    const subRows = subs.map(s => toRow(s.code, s.data, nameByCode[s.code]));
-
-    const team = [selfRow, ...subRows];
-
-    // Агрегаты — по всем строкам с данными в архиве (включая самого МОПа).
-    // Пустые строки видны в таблице, но в суммы и распределение не входят.
-    const withData = team.filter(t => !t.isEmpty);
-    const sum = (arr, k) => arr.reduce((s, x) => s + (x[k] || 0), 0);
-    const avgIR = withData.length
-      ? Math.round(withData.reduce((s, t) => s + t.ir, 0) / withData.length)
-      : 0;
-
-    // Светофор: единая классификация для donut, плашек и фильтров таблицы.
-    // 5 зон → 3 цвета: red = low+new, amber = avg, green = mid+good+best.
-    const isRed   = z => z === 'low'  || z === 'new';
-    const isAmber = z => z === 'avg';
-    const isGreen = z => z === 'mid'  || z === 'good' || z === 'best';
-
-    return {
-      mopName,
-      mopInitials: initialsFrom(mopName),
-      rop,
-      teamSize: team.length,
-      teamSizeWithData: withData.length,
-      team,
-      aggregates: {
-        avgIR,
-        totalIncome: sum(withData, 'income'),
-        totalDeals:  sum(withData, 'deals'),
-        redCount:   withData.filter(t => isRed(t.zone)).length,
-        greenCount: withData.filter(t => isGreen(t.zone)).length,
-      },
-      distribution: {
-        best: withData.filter(t => t.zone === 'best' || t.zone === 'good').length,
-        mid:  withData.filter(t => t.zone === 'mid').length,
-        avg:  withData.filter(t => t.zone === 'avg').length,
-        low:  withData.filter(t => t.zone === 'low' || t.zone === 'new').length,
-      },
-      classify: { isRed, isAmber, isGreen },
-    };
-  }
-
-  function initialsFrom(name) {
-    if (!name) return '??';
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
-  }
-
-  function zoneFromDivision(div) {
-    if (!div) return 'avg';
-    if (/ТОП|1[-–]5\b|6[-–]15/i.test(div)) return 'best';
-    if (/16[-–]100/.test(div)) return 'good';
-    if (/101[-–]200/.test(div)) return 'mid';
-    if (/201[-–]|301[-–]|401[-–]|^[23]\d\d/.test(div)) return 'avg';
-    if (/500|без/i.test(div)) return 'low';
-    return 'avg';
-  }
-
-  function buildFunnel(agent) {
-    const norms = getNormatives(agent.division);
-    const stages = [['Вх. поток','flow'],['Горячие','hot'],['Задатки','dep'],['Сделки','deals']];
-    return stages.map(([s, m]) => ({
-      s,
-      f: agent.b?.all?.[m] ?? 0,
-      n: norms.buyer.all?.[m] ?? 0,
-    }));
-  }
-</script>
-
-<!-- ============================================================
-     ОСНОВНОЙ КОД ДАШБОРДА (пока на тестовых данных).
-     Следующий этап: загружать TEAM из /users/{currentUser.code}/subordinates
-     ============================================================ -->
-<script>
-// Хардкод-fallback команды. В норме TEAM переопределяется в init() из
-// window.MOP_DATA.team, собранного в модульном блоке. Сохраняется по
-// CLAUDE.md §8 как safety net на случай аварии чтения архива.
-const TEAM_FALLBACK = [
-  { id:1, name:'Веденёва Мария Сергеевна', initials:'ВМ', stazh:12, pos:554, ir:58, irDelta:6, income:148618, prod:1.2, zone:'avg', situationP:'101010', situationS:'101010',
-    funnel:[{s:'Вх. поток',f:11,n:14},{s:'Горячие',f:7,n:8},{s:'Задатки',f:2,n:4},{s:'Сделки',f:1.2,n:2}],
-    recs:['Конверсия горячие→задаток 22% (норма 50%) — П-ГК-4, П-ГК-5','Активные ОН критически мало — Пр-ВП-1','Доля ипотеки 27% (норма 40%) — П-ГК-7'] },
-  { id:2, name:'Алипченков Сергей Сергеевич', initials:'АС', stazh:85, pos:null, ir:74, irDelta:2, income:213763, prod:1.1, zone:'good', situationP:'111011', situationS:'111011',
-    funnel:[{s:'Вх. поток',f:18,n:16},{s:'Горячие',f:12,n:10},{s:'Задатки',f:5,n:4},{s:'Сделки',f:2.8,n:2.5}],
-    recs:['Все показатели в норме','Фокус: загородная недвижимость — потенциал роста'] },
-  { id:3, name:'Емельянова Любовь Владимировна', initials:'ЕЛ', stazh:97, pos:null, ir:41, irDelta:-3, income:46367, prod:0.4, zone:'red', situationP:'010010', situationS:'010010',
-    funnel:[{s:'Вх. поток',f:8,n:14},{s:'Горячие',f:2,n:8},{s:'Задатки',f:0.5,n:4},{s:'Сделки',f:0.4,n:2}],
-    recs:['Поток достаточно, конверсия в горячие хорошая, но горячих и сделок нет','Научить заполнять статусы — П-ГК-1','Обучить закрытию — П-СД-1'] },
-  { id:4, name:'Капустин Артём Николаевич', initials:'КА', stazh:28, pos:null, ir:22, irDelta:-8, income:23082, prod:0.1, zone:'red', situationP:'000000', situationS:'000000',
-    funnel:[{s:'Вх. поток',f:3,n:14},{s:'Горячие',f:0.5,n:8},{s:'Задатки',f:0.1,n:4},{s:'Сделки',f:0.1,n:2}],
-    recs:['Полный провал по всем показателям','Срочная встреча с МОПом','Если нет изменений за месяц — ротация'] },
-  { id:5, name:'Карандей Григорий Александрович', initials:'КГ', stazh:0, pos:null, ir:0, irDelta:0, income:0, prod:0.0, zone:'new', situationP:'000000', situationS:'000000',
-    funnel:[{s:'Вх. поток',f:0,n:5},{s:'Горячие',f:0,n:3},{s:'Задатки',f:0,n:1},{s:'Сделки',f:0,n:1}],
-    recs:['Новичок — стаж 0 месяцев','Обучение базовым скриптам','Прикрепить наставника'] },
-  { id:6, name:'Кобяков Кирилл Олегович', initials:'КК', stazh:25, pos:null, ir:18, irDelta:-5, income:0, prod:0.0, zone:'red', situationP:'000000', situationS:'000000',
-    funnel:[{s:'Вх. поток',f:2,n:14},{s:'Горячие',f:0.3,n:8},{s:'Задатки',f:0,n:4},{s:'Сделки',f:0,n:2}],
-    recs:['Нет дохода 2 месяца подряд — риск ухода','Срочная встреча — выяснить причины','Пр-ВП-1, П-ВП-1'] },
-  { id:7, name:'Кобякова Татьяна Сергеевна', initials:'КТ', stazh:66, pos:null, ir:49, irDelta:1, income:57485, prod:0.4, zone:'avg', situationP:'101010', situationS:'101010',
-    funnel:[{s:'Вх. поток',f:9,n:14},{s:'Горячие',f:4,n:8},{s:'Задатки',f:1.2,n:4},{s:'Сделки',f:0.8,n:2}],
-    recs:['Показы есть, продаж нет — этап показ→задаток','Обучить скриптам дожима — П-ГК-4','Пр-ГО-2'] },
-  { id:8, name:'Кудин Егор Андреевич', initials:'КЕ', stazh:27, pos:null, ir:15, irDelta:-10, income:0, prod:0.0, zone:'red', situationP:'000000', situationS:'000000',
-    funnel:[{s:'Вх. поток',f:1,n:14},{s:'Горячие',f:0.2,n:8},{s:'Задатки',f:0,n:4},{s:'Сделки',f:0,n:2}],
-    recs:['Критическое падение ИР −10% за месяц','Риск увольнения','Срочная встреча сегодня — П-ВП-1, аудит CRM'] },
-];
-
-// Активная команда: переопределяется в init() из window.MOP_DATA.team.
-let TEAM = TEAM_FALLBACK;
-
-const RISKS = [
-  { name:'Кудин Егор Андреевич', type:'red', desc:'ИР упал на 10% за месяц. Нет дохода 2 месяца. Высокий риск ухода.', action:'Встреча сегодня' },
-  { name:'Капустин Артём Николаевич', type:'red', desc:'Полный провал. Нет потока, горячих, сделок. Код 000000.', action:'Встреча сегодня' },
-  { name:'Кобяков Кирилл Олегович', type:'red', desc:'Нет дохода 2 месяца. Стаж 25 мес — знает как работать, но не работает.', action:'Звонок сегодня' },
-  { name:'Емельянова Любовь Владимировна', type:'amber', desc:'ИР падает третий месяц подряд (−3%). Конверсия в сделки упала до 5%.', action:'Разбор воронки' },
-  { name:'Кобякова Татьяна Сергеевна', type:'amber', desc:'ИР стагнирует 2 месяца. Застряла на этапе горячие→задаток.', action:'Скрипты' },
-];
-
-const SYSTEMIC = [
-  { issue:'Конверсия горячие→задаток', desc:'У 5 из 8 риэлторов ниже нормы. Средняя по группе: 28% (норма 45%).', action:'Групповой тренинг по закрытию' },
-  { issue:'База продавцов (ОН)', desc:'Активные объекты в среднем 4,2 (норма 8–10). Системная нехватка объектов.', action:'Общий план по привлечению продавцов' },
-  { issue:'Заполнение CRM', desc:'3 риэлтора не обновляют статусы горячих. Данные неполные.', action:'Контроль CRM раз в неделю' },
-];
-
-const TASKS = [
-  { done:false, priority:'red', title:'Встреча с Кудиным Е.А. — разобрать причины падения ИР', meta:'Сегодня до 14:00 · Критично', r:'Кудин Е.А.' },
-  { done:false, priority:'red', title:'Встреча с Капустиным А.Н. — полный разбор воронки', meta:'Сегодня · Риск ухода', r:'Капустин А.Н.' },
-  { done:false, priority:'amber', title:'Отправить скрипты по ипотеке Веденёвой и Кобяковой', meta:'До конца дня · Задача П-ГК-7', r:'Веденёва М.С., Кобякова Т.С.' },
-  { done:true, priority:'green', title:'Проверить заполнение CRM у всех риэлторов', meta:'Выполнено утром', r:'Вся группа' },
-  { done:false, priority:'amber', title:'Запланировать групповой тренинг по закрытию сделок', meta:'На этой неделе · Системная проблема', r:'Вся группа' },
-];
-
-const CALLS = [
-  { name:'Кудин Егор Андреевич', reason:'ИР −10%, нет дохода — риск ухода', priority:'red', time:'До 12:00' },
-  { name:'Кобяков Кирилл Олегович', reason:'Нет активности 3 недели', priority:'red', time:'До 14:00' },
-  { name:'Емельянова Любовь Владимировна', reason:'Обсудить падение конверсии', priority:'amber', time:'До 17:00' },
-];
-
-function zoneLabel(z) {
-  const map = { best:'Самые лучшие', good:'Лучшие', mid:'Хорошие', avg:'Средние', red:'Слабые', new:'Новичок' };
-  return map[z] || z;
-}
-function zoneColor(z) {
-  const map = { best:'green', good:'teal', mid:'amber', avg:'amber', red:'red', new:'gray' };
-  return map[z] || 'gray';
-}
-function irColor(v) {
-  if (v >= 70) return '#3B6D11';
-  if (v >= 50) return '#185FA5';
-  if (v >= 35) return '#854F0B';
-  return '#A32D2D';
-}
-function barColor(pct) {
-  if (pct >= 90) return '#1D9E75';
-  if (pct >= 60) return '#EF9F27';
-  return '#E24B4A';
-}
-
-function showTab(id, btn) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-  btn.classList.add('active');
-}
-
-let currentFilter = 'all';
-function filterTeam(f, btn) {
-  currentFilter = f;
-  document.querySelectorAll('.pill-gray,.pill-red,.pill-amber,.pill-green').forEach(b => {
-    if (b.onclick && b.onclick.toString().includes('filterTeam')) b.style.outline = 'none';
-  });
-  btn.style.outline = '2px solid currentColor';
-  renderTeam();
-}
-
-function renderTeam() {
-  const tbody = document.getElementById('teamBody');
-  // Фильтры по светофору (division-классификация), единая с donut и плашками.
-  // Пустые строки (без архива) проходят только через фильтр 'all'.
-  const filtered = TEAM.filter(r => {
-    if (currentFilter === 'all') return true;
-    if (r.isEmpty) return false;
-    if (currentFilter === 'red')   return r.zone === 'low'  || r.zone === 'new';
-    if (currentFilter === 'amber') return r.zone === 'avg';
-    if (currentFilter === 'green') return r.zone === 'mid'  || r.zone === 'good' || r.zone === 'best';
-    return true;
-  });
-  tbody.innerHTML = filtered.map(r => renderRow(r)).join('');
-}
-
-function renderRow(r) {
-  const selfBadge = r.isSelf
-    ? '<span class="pill pill-blue" style="font-size:10px;padding:2px 6px;margin-left:6px">вы</span>'
-    : '';
-  const rowStyle = r.isSelf ? 'background:rgba(24,95,165,0.04)' : '';
-
-  if (r.isEmpty) {
-    return `<tr onclick="goToAgent('${r.code}')" style="${rowStyle};opacity:0.7">
-      <td>
-        <div class="r-name">${r.name}${selfBadge}</div>
-        <div class="r-sub" style="color:var(--text3)">Нет данных в архиве на эту дату</div>
-      </td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>
-        <span style="display:flex;align-items:center;gap:4px">
-          <span class="sv-dot" style="background:#888780"></span>
-          <span style="font-size:12px;color:var(--text3)">нет данных</span>
-        </span>
-      </td>
-      <td><span class="pill pill-gray" style="font-size:11px">нет данных</span></td>
-    </tr>`;
-  }
-  const zc = zoneColor(r.zone);
-  const dotColor = zc === 'green' ? '#3B6D11' : zc === 'teal' ? '#0F6E56'
-                 : zc === 'amber' ? '#854F0B' : zc === 'red'  ? '#A32D2D' : '#888780';
-  const dealsStr = Number(r.deals || 0).toFixed(2).replace('.', ',');
-  return `<tr onclick="goToAgent('${r.code}')" style="${rowStyle}">
-    <td>
-      <div class="r-name">${r.name}${selfBadge}</div>
-      <div class="r-sub">Стаж: ${r.stazh != null ? r.stazh + ' мес' : '—'}</div>
-    </td>
-    <td>${r.pos ? '#' + r.pos : '—'}</td>
-    <td>${r.stazh != null ? r.stazh + ' мес' : '—'}</td>
-    <td>
-      <div class="ir-mini">
-        <div class="ir-mini-bg"><div class="ir-mini-fill" style="width:${Math.min(r.ir, 100)}%;background:${irColor(r.ir)}"></div></div>
-        <span class="ir-mini-val" style="color:${irColor(r.ir)}">${r.ir}%</span>
-      </div>
-    </td>
-    <td>${r.income > 0 ? Math.round(r.income/1000) + 'к ₽' : '—'}</td>
-    <td>${dealsStr}</td>
-    <td>
-      <span style="display:flex;align-items:center;gap:4px">
-        <span class="sv-dot" style="background:${dotColor}"></span>
-        <span style="font-size:12px">${zoneLabel(r.zone)}</span>
-      </span>
-    </td>
-    <td>
-      <span class="pill pill-${zc}" style="font-size:11px">${r.ir >= 70 ? 'В норме' : r.ir >= 40 ? 'Внимание' : 'Критично'}</span>
-    </td>
-  </tr>`;
-}
-
-// Навигация: клик по строке команды → дашборд риелтора с этим кодом.
-// index.html?agent=КОД покажет данные этого агента + кнопку «Назад к команде».
-function goToAgent(code) {
-  location.href = 'index.html?agent=' + encodeURIComponent(code);
-}
-
-function renderRisks() {
-  const el = document.getElementById('riskList');
-  el.innerHTML = RISKS.map(r => `
-    <div class="risk-item risk-${r.type}">
-      <div style="width:8px;height:8px;border-radius:50%;background:${r.type==='red'?'#E24B4A':'#EF9F27'};flex-shrink:0;margin-top:4px"></div>
-      <div class="risk-info">
-        <div class="risk-name">${r.name}</div>
-        <div class="risk-desc">${r.desc}</div>
-      </div>
-      <button class="risk-action" onclick="alert('Задача: ${r.action} с ${r.name}')">${r.action} →</button>
-    </div>
-  `).join('');
-
-  document.getElementById('pitRisks').innerHTML = `
-    <div style="font-size:13px;color:var(--text2);line-height:1.7">
-      <div style="padding:8px 0;border-bottom:1px solid var(--border)">🔴 <b>Кобяков К.О.</b> — при текущей динамике через 6 недель выйдет в «ноль». Нужны 2 сделки в ближайшие 3 недели.</div>
-      <div style="padding:8px 0;border-bottom:1px solid var(--border)">🔴 <b>Кудин Е.А.</b> — нет дохода 2 месяца. Потенциальная яма через 1 месяц.</div>
-      <div style="padding:8px 0">🟡 <b>Кобякова Т.С.</b> — стагнация ИР. Если не вырастет в следующем месяце — риск ямы.</div>
-    </div>
-  `;
-
-  document.getElementById('systemicIssues').innerHTML = SYSTEMIC.map(s => `
-    <div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:500">${s.issue}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:3px">${s.desc}</div>
-      </div>
-      <div style="font-size:12px;color:var(--blue);font-weight:500;white-space:nowrap">${s.action}</div>
-    </div>
-  `).join('');
-}
-
-function renderTasks() {
-  const el = document.getElementById('taskList');
-  el.innerHTML = TASKS.map((t, i) => `
-    <div class="task-item">
-      <div class="task-priority" style="background:${t.priority==='red'?'#E24B4A':t.priority==='amber'?'#EF9F27':'#639922'}"></div>
-      <div class="task-check${t.done?' done':''}" onclick="toggleTask(${i},this)" id="check${i}"></div>
-      <div class="task-body">
-        <div class="task-title${t.done?' task-done-text':''}" id="taskTitle${i}">${t.title}</div>
-        <div class="task-meta">${t.meta} &nbsp;·&nbsp; ${t.r}</div>
-      </div>
-    </div>
-  `).join('');
-
-  document.getElementById('callList').innerHTML = CALLS.map(c => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <span style="width:8px;height:8px;border-radius:50%;background:${c.priority==='red'?'#E24B4A':'#EF9F27'};flex-shrink:0"></span>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:500">${c.name}</div>
-        <div style="font-size:12px;color:var(--text2)">${c.reason}</div>
-      </div>
-      <div style="font-size:11px;color:var(--text3)">${c.time}</div>
-      <button onclick="alert('Звонок: ${c.name}')" style="padding:5px 12px;background:var(--blue);color:#fff;border:none;border-radius:20px;cursor:pointer;font-size:12px;font-family:inherit">📞 Позвонить</button>
-    </div>
-  `).join('');
-}
-
-function toggleTask(i, el) {
-  TASKS[i].done = !TASKS[i].done;
-  el.classList.toggle('done');
-  document.getElementById('taskTitle' + i).classList.toggle('task-done-text');
-}
-
-function renderSvetoforDonut(distribution) {
-  // distribution = { best, mid, avg, low } — count подчинённых по 4 зонам.
-  const canvas = document.getElementById('svetoforChart');
-  if (!canvas) return;
-  new Chart(canvas, {
-    type: 'doughnut',
-    data: {
-      labels: ['Лучшие+ТОП', 'Хорошие', 'Средние', 'Слабые/Новички'],
-      datasets: [{
-        data: [distribution.best, distribution.mid, distribution.avg, distribution.low],
-        backgroundColor: ['#1D9E75','#5DCAA5','#EF9F27','#E24B4A'],
-        borderWidth: 2, borderColor: '#fff'
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '55%',
-      plugins: { legend: { display: true, position: 'right', labels: { font:{size:12}, padding:12, boxWidth:12 } } }
-    }
-  });
-}
-
-function init() {
-  // 0. Режим просмотра чужого кабинета (?mop=КОД): кнопка «Назад» + индикатор.
-  //    Имя из MOP_DATA подставится ниже в шапке.
-  if (window.MOP_VIEW_MODE) {
-    const back = document.getElementById('backFromMop');
-    if (back) back.style.display = 'inline-flex';
-    const ind = document.getElementById('viewingIndicator');
-    if (ind) ind.style.display = '';
-  }
-
-  // 1. Если реальные данные не пришли — оставляем хардкод-fallback.
-  if (window.MOP_DATA) TEAM = window.MOP_DATA.team;
-  const data = window.MOP_DATA;
-
-  // 2. Дата (на сегодня — снимок может быть и за вчера, но header показывает сейчас).
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('ru-RU', {day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('currentDate').textContent = dateStr;
-
-  // 3. Шапка МОПа. В режиме просмотра также подставляем имя в индикатор.
-  if (data) {
-    document.getElementById('mopName').textContent = data.mopName || '—';
-    document.getElementById('mopAvatar').textContent = data.mopInitials || '??';
-    if (window.MOP_VIEW_MODE) {
-      document.getElementById('viewingMopName').textContent = data.mopName || '—';
-    }
-    const metaParts = [];
-    if (data.rop) metaParts.push('РОП: ' + data.rop);
-    metaParts.push(`Группа: ${data.teamSize} ${data.teamSize === 1 ? 'риелтор' : 'риелторов'}` +
-      (data.teamSizeWithData < data.teamSize ? ` (с данными: ${data.teamSizeWithData})` : ''));
-    document.getElementById('mopMeta').innerHTML = metaParts.join(' &nbsp;·&nbsp; ');
-    // Бейдж роли — если элемент есть.
-    const rb = document.getElementById('roleBadge');
-    if (rb) {
-      const roleLabels = { mop: 'МОП', rop: 'РОП', aup: 'АУП', admin: 'Админ' };
-      rb.textContent = roleLabels[window.currentUser?.role] || window.currentUser?.role || '—';
-    }
-  }
-
-  // 4. Скрываем табы и экраны, которые в Шаге 4 не делаем.
-  document.querySelectorAll('.tab').forEach(b => {
-    const oc = b.getAttribute('onclick') || '';
-    if (oc.includes("'risks'") || oc.includes("'tasks'")) b.style.display = 'none';
-  });
-  document.getElementById('screen-risks').style.display = 'none';
-  document.getElementById('screen-tasks').style.display = 'none';
-
-  // 5. Пустая команда: показываем баннер и скрываем всё.
-  if (data && data.teamSize === 0) {
-    document.getElementById('emptyBanner').style.display = '';
-    document.querySelector('.tabs').style.display = 'none';
-    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-    return;
-  }
-
-  // 6. Скрываем «Динамика среднего ИР за 6 месяцев» и «Выполнение плана».
-  const groupIrCard = document.getElementById('groupIrChart')?.closest('.card');
-  if (groupIrCard) groupIrCard.style.display = 'none';
-  const progressCard = document.getElementById('groupProgress')?.closest('.card');
-  if (progressCard) progressCard.style.display = 'none';
-
-  // 7. Метрики Сводки группы.
-  const agg = data?.aggregates;
-  if (agg) {
-    const metrics = document.querySelectorAll('#screen-overview .metrics .metric');
-    setGroupMetric(metrics[0], agg.avgIR + '%',                  'Средний ИР группы');
-    setGroupMetric(metrics[1], formatMoneyShort(agg.totalIncome), 'Валовая выручка (мес)');
-    setGroupMetric(metrics[2], Number(agg.totalDeals).toFixed(1).replace('.', ','), 'Сделок за месяц');
-    setGroupMetric(metrics[3], String(agg.redCount),  'В красной зоне',  `из ${data.teamSizeWithData}`);
-    setGroupMetric(metrics[4], String(agg.greenCount), 'В зелёной зоне', `из ${data.teamSizeWithData}`);
-  }
-
-  // 8. Donut по светофору — реальные данные.
-  if (data) renderSvetoforDonut(data.distribution);
-
-  // 9. Таблица команды.
-  renderTeam();
-}
-
-function setGroupMetric(el, value, label, delta) {
-  if (!el) return;
-  el.querySelector('.metric-value').textContent = value;
-  if (label !== undefined) el.querySelector('.metric-label').textContent = label;
-  if (delta === undefined) {
-    el.querySelector('.metric-delta')?.remove();
+      <div class="muted" style="margin-top:6px">Средний ИР группы · ${esc(a.period_label)} · выполнение ${a.scope.performance_pct}%</div>
+    </div>`);
+    parts.push(`<div class="card"><div class="section-title">Сводная воронка группы</div>
+      ${aggSide('buyer',a.buyer,a.period_label)}${aggSide('seller',a.seller,a.period_label)}</div>`);
   } else {
-    const d = el.querySelector('.metric-delta');
-    if (d) { d.textContent = delta; d.className = 'metric-delta flat'; }
+    parts.push(`<div class="banner">Нет агрегатов группы — возможно, ночной пересчёт ещё не прошёл.</div>`);
   }
+
+  // уведомления
+  const nb=d.notifications;
+  if(nb && nb.recent && nb.recent.length){
+    const items=nb.recent.slice(0,5).map(n=>`<div class="notif ${n.is_read?'':'unread'}">
+      <span class="ni-icon">${esc(n.icon||'🔔')}</span>
+      <div class="ni-body"><div class="ni-title">${esc(n.title)}</div><div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('');
+    parts.push(`<div class="card"><div class="section-title">Уведомления${nb.unread_count?` · ${nb.unread_count} новых`:''}</div>${items}</div>`);
+  }
+
+  // задачи
+  const tb=d.tasks;
+  if(tb){
+    const grp=(arr,title,cls)=> (arr&&arr.length)?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
+    const g=tb.groups;
+    const body = grp(g.expired,'Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Выполнено','tg-green');
+    parts.push(`<div class="card"><div class="section-title">Задачи</div>${body||'<div class="muted">Нет активных задач.</div>'}</div>`);
+  }
+
+  if(t && t.members && t.members.length){
+    parts.push(`<div class="card"><div class="section-title">Партнёры группы · ${t.total_count}</div>
+      ${t.members.map(memberCard).join('')}</div>`);
+  } else {
+    parts.push(`<div class="banner">В группе нет активных партнёров.</div>`);
+  }
+  document.getElementById('root').innerHTML = parts.join('');
 }
 
-function formatMoneyShort(v) {
-  if (v == null) return '—';
-  const n = Math.round(v);
-  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.', ',') + 'M ₽';
-  if (n >= 1000) return Math.round(n / 1000) + 'к ₽';
-  return n + ' ₽';
-}
-
-// init вызывается из модульного блока после загрузки данных.
-window.init = init;
+(async ()=>{
+  const me = await requireAuth();
+  document.getElementById('logoutBtn').onclick = logout;
+  const params = new URLSearchParams(location.search);
+  const targetCode = params.get('mop') || me.code;
+  if(params.get('mop')) document.getElementById('backBtn').style.display='inline-flex';
+  const fns = getFunctions(getApp(), 'europe-west1');
+  window.__call = (name, data)=> httpsCallable(fns,name)(data).then(r=>r.data);
+  try{
+    const res = await httpsCallable(fns,'getDashboard')({ user_code: targetCode, view:'group' });
+    const d = res.data;
+    document.getElementById('dateBadge').textContent = new Date(d.meta?.generated_at||Date.now()).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+    render(d);
+  }catch(e){
+    document.getElementById('root').innerHTML = `<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`;
+    console.error(e);
+  }
+  document.getElementById('overlay').classList.add('hidden');
+})();
 </script>
 </body>
 </html>
