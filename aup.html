@@ -102,6 +102,23 @@
   .task:last-child{border-bottom:none} .task-main{flex:1;min-width:0} .task-title{font-size:13px;font-weight:600}
   .task-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--st-green);background:transparent;color:var(--st-green);cursor:pointer;font-size:15px;flex-shrink:0}
   .task-btn:hover{background:var(--green-bg)} .task-done{color:var(--st-green)}
+  .add-task-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px dashed #c9cedb;background:var(--surface2);color:var(--brand);border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:12px}
+  .add-task-btn:hover{border-color:var(--brand)}
+  .task-skip{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:inherit;padding:2px 6px}
+  .task-skip:hover{color:var(--st-red)}
+  .nt-markall{font-size:12px;color:var(--brand);font-weight:700;cursor:pointer}
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:flex-end;justify-content:center;z-index:1000}
+  .modal-overlay.on{display:flex}
+  .modal{background:var(--surface);border-radius:18px 18px 0 0;width:100%;max-width:640px;padding:20px 18px 28px;max-height:90vh;overflow-y:auto}
+  @media(min-width:641px){.modal-overlay{align-items:center}.modal{border-radius:18px}}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .modal-title{font-size:17px;font-weight:800}
+  .modal-x{font-size:22px;color:var(--muted);cursor:pointer;line-height:1;background:none;border:none}
+  .f-label{font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.03em}
+  .f-input,.f-area,.f-select{width:100%;font-size:14px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-family:inherit;background:var(--surface)}
+  .f-area{min-height:70px;resize:vertical}
+  .modal-save{width:100%;padding:14px;border:none;border-radius:10px;background:var(--brand);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+  .modal-save:disabled{opacity:.6}
 
   #overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1100;color:var(--muted)}
   #overlay.hidden{display:none}
@@ -132,6 +149,8 @@
   <div class="screen" id="screen-tasks"></div>
 </div>
 
+<div class="modal-overlay" id="modalTask"><div class="modal" id="modalTaskBody"></div></div>
+
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
@@ -157,10 +176,55 @@ window.showTab=(id,btn)=>{
   document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));
   document.getElementById('screen-'+id).classList.add('on'); btn.classList.add('on');
   window.scrollTo(0,0);
+  if(window.__markT){clearTimeout(window.__markT);window.__markT=null;}
+  if(id==='tasks'){ window.__markT=setTimeout(()=>{ const u=CTX.data&&CTX.data.notifications&&CTX.data.notifications.unread_count; if(u>0) window.markAllRead(true); },2000); }
 };
 window.openDept=(code)=>{ location.href='rop.html?rop='+encodeURIComponent(code); };
+window.closeModal=(id)=>document.getElementById(id).classList.remove('on');
 window.completeTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); const b=ev&&ev.target; if(b){b.disabled=true;b.textContent='…';}
   try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); if(b){b.disabled=false;b.textContent='✓';} } };
+window.skipTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); if(!confirm('Отказаться от задачи?'))return;
+  try{ await window.__call('updateTaskStatus',{task_id:id,status:'skipped'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); } };
+window.markAllRead=async(silent)=>{
+  try{ const r=await window.__call('markNotificationsRead',{mark_all:true});
+    document.querySelectorAll('.notif.unread').forEach(n=>n.classList.remove('unread'));
+    const nm=document.getElementById('notifMeta'); if(nm) nm.textContent='';
+    const ma=document.getElementById('notifMarkAll'); if(ma) ma.style.display='none';
+    if(CTX.data&&CTX.data.notifications) CTX.data.notifications.unread_count=r.remaining_unread;
+  }catch(e){ if(!silent) alert('Не удалось: '+(e.message||e)); } };
+window.openCreateTask=()=>{
+  const me=CTX.data.user; const team=((CTX.data.team&&CTX.data.team.members)||[]).filter(m=>!m.is_self);
+  const opts=[`<option value="${esc(me.code)}">${esc(me.short_name||me.name)} (вы)</option>`].concat(team.map(m=>`<option value="${esc(m.code)}">${esc(m.short_name||m.name)}</option>`)).join('');
+  document.getElementById('modalTaskBody').innerHTML=`
+    <div class="modal-head"><div class="modal-title">➕ Создать задачу</div><button class="modal-x" onclick="closeModal('modalTask')">✕</button></div>
+    <div class="f-label">Кому *</div>
+    <select class="f-select" id="tkWho">${opts}</select>
+    <div class="f-label">Заголовок *</div>
+    <input class="f-input" id="tkTitle" maxlength="200" placeholder="Что нужно сделать" />
+    <div class="f-label">Описание</div>
+    <textarea class="f-area" id="tkDesc" maxlength="1000" placeholder="Детали (необязательно)"></textarea>
+    <div class="f-label">Срок</div>
+    <select class="f-select" id="tkDue"><option value="today">Сегодня</option><option value="tomorrow">Завтра</option><option value="week" selected>На этой неделе</option><option value="none">Без срока</option></select>
+    <div class="f-label">Приоритет</div>
+    <select class="f-select" id="tkPrio"><option value="normal" selected>Обычно</option><option value="important">Важно</option><option value="critical">🔴 Срочно</option></select>
+    <div class="f-label">Тип</div>
+    <select class="f-select" id="tkType"><option value="team" selected>👥 Команда</option><option value="free">🎯 Свободная</option></select>
+    <button class="modal-save" id="tkSave" onclick="saveTask()" style="margin-top:14px">Создать задачу</button>`;
+  document.getElementById('modalTask').classList.add('on');
+};
+window.saveTask=async()=>{
+  const who=document.getElementById('tkWho').value;
+  const title=document.getElementById('tkTitle').value.trim();
+  if(title.length<3){ alert('Заголовок — минимум 3 символа'); return; }
+  const desc=document.getElementById('tkDesc').value.trim();
+  const prio=document.getElementById('tkPrio').value; const type=document.getElementById('tkType').value;
+  const dueSel=document.getElementById('tkDue').value; const D=new Date(); let due_at=null;
+  if(dueSel==='today'){ D.setHours(23,59,0,0); due_at=D.getTime(); }
+  else if(dueSel==='tomorrow'){ D.setDate(D.getDate()+1); D.setHours(18,0,0,0); due_at=D.getTime(); }
+  else if(dueSel==='week'){ const wd=D.getDay(); const add=(7-wd)%7||7; D.setDate(D.getDate()+add); D.setHours(23,59,0,0); due_at=D.getTime(); }
+  const b=document.getElementById('tkSave'); b.disabled=true; b.textContent='Создаю…';
+  try{ await window.__call('createTask',{assignee_code:who,title,description:desc||null,priority:prio,type,due_at}); location.reload(); }
+  catch(e){ const m=(e.message||'')+''; alert(m.includes('уже')||m.includes('exists')?'Такая задача уже есть за последние 24 часа':('Не удалось: '+m)); b.disabled=false; b.textContent='Создать задачу'; } };
 
 /* ─── HERO ─── */
 function renderHero(d){
@@ -242,23 +306,27 @@ function renderDepts(d){
 /* ─── ЗАДАЧИ ─── */
 function taskItem(t){
   const meta=[t.priority!=='normal'?t.priority_label:'',t.due_label||t.due_date||'',t.progress_label].filter(Boolean).join(' · ');
+  const actions=t.can_complete
+    ? `<button class="task-skip" onclick="skipTask('${esc(t.id)}',event)" title="Отказаться">🚫</button><button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`
+    : (t.status==='done'?'<span class="task-done">✓</span>':'');
   return `<div class="task"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}</div>
-    ${t.can_complete?`<button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`:(t.status==='done'?'<span class="task-done">✓</span>':'')}</div>`;
+    <div style="display:flex;align-items:center;gap:4px">${actions}</div></div>`;
 }
 function renderTasks(d){
   const out=[]; const tb=d.tasks, nb=d.notifications;
   if(nb&&nb.recent&&nb.recent.length){
     const items=nb.recent.slice(0,5).map(n=>`<div class="notif ${n.is_read?'':'unread'}"><span class="ni-icon">${esc(n.icon||'🔔')}</span>
       <div><div class="ni-title">${esc(n.title)}</div><div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('');
-    out.push(`<div class="card"><div class="section-title">🔔 Уведомления${nb.unread_count?` · ${nb.unread_count} новых`:''}</div>${items}</div>`);
+    const ma=nb.unread_count?`<span class="nt-markall" id="notifMarkAll" onclick="markAllRead(false)">✓ отметить все</span>`:'';
+    out.push(`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="section-title" style="margin:0">🔔 Уведомления<span id="notifMeta">${nb.unread_count?` · ${nb.unread_count} новых`:''}</span></div>${ma}</div>${items}</div>`);
   }
-  if(tb){
-    const grp=(arr,title,cls)=>(arr&&arr.length)?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
-    const g=tb.groups;
-    const body=grp(g.expired,'⚠ Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На этой неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Сделано за 14 дней','tg-green');
-    out.push(`<div class="card"><div class="section-title">📋 Задачи</div>${body||'<div class="muted">Нет активных задач.</div>'}</div>`);
-  }
-  if(!out.length) out.push(`<div class="banner">Задач и уведомлений пока нет.</div>`);
+  const grp=(arr,title,cls)=>(arr&&arr.length)?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
+  const g=(tb&&tb.groups)||{};
+  const body=grp(g.expired,'⚠ Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На этой неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Сделано за 14 дней','tg-green');
+  out.push(`<div class="card"><div class="section-title">📋 Задачи</div>
+    <button class="add-task-btn" onclick="openCreateTask()">➕ Поставить задачу</button>
+    ${body||'<div class="muted">Нет активных задач.</div>'}</div>`);
   document.getElementById('screen-tasks').innerHTML=out.join('');
   const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
   document.getElementById('taskDot').textContent = cnt?' '+cnt:'';
