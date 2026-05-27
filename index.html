@@ -562,39 +562,51 @@ function renderTasks(d){
 }
 
 /* ─── СВЕТОФОР ─── */
+const POOL_TOTAL={newbie:386,experienced:934};
 function movementCard(d){
   const h=(d.position_history||[]).filter(p=>p.position!=null);
   if(h.length<2) return `<div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>
     <div class="soon"><span class="soon-ic">📈</span>История движения накапливается — график появится в ближайшие месяцы.</div></div>`;
-  const rows=h.map((p,i)=>{ const last=i===h.length-1; const w=Math.max(4,Math.round((1300-p.position)/1300*100));
+  const rows=h.map((p,i)=>{ const last=i===h.length-1; const tot=POOL_TOTAL[p.pool]||934; const w=Math.max(4,Math.round((tot-p.position)/tot*100));
     return `<div class="mv-row ${last?'now':''}"><span>${esc(p.label.split(' ')[0])}</span>
       <div class="mv-bar"><div class="mv-bar-fill" style="width:${w}%"></div></div>
       <span class="mv-pos">#${p.position}${last?'<span class="mv-now-tag">← сейчас</span>':''}</span></div>`; }).join('');
-  const first=h[0].position, lastP=h[h.length-1].position; const up=first-lastP;
-  const note=up>0?`📈 За 6 месяцев ты поднялся на <b>${up}</b> ${plural(up,'позицию','позиции','позиций')}. Так держать!`
-    :(up<0?`За полгода позиция снизилась на ${Math.abs(up)} — есть куда расти, всё впереди.`:'Позиция держится стабильно.');
+  const samePool=h.every(p=>p.pool===h[0].pool);
+  let note;
+  if(!samePool){ note='📈 За полгода ты перешёл из светофора новичков в светофор опытных — это новый, более сильный рейтинг.'; }
+  else { const up=h[0].position-h[h.length-1].position;
+    note=up>0?`📈 За 6 месяцев ты поднялся на <b>${up}</b> ${plural(up,'позицию','позиции','позиций')}. Так держать!`
+      :(up<0?`За полгода позиция снизилась на ${Math.abs(up)} — есть куда расти, всё впереди.`:'Позиция держится стабильно.'); }
   return `<div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>${rows}
     <div class="muted" style="margin-top:10px">${note}</div></div>`;
 }
 function plural(n,a,b,c){ const m10=n%10,m100=n%100; if(m10===1&&m100!==11)return a; if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b; return c; }
 function renderSvetofor(d){
   const u=d.user; const pos=u.position_in_company;
-  const cur=LEAGUES.find(l=>pos!=null&&pos>=l.from&&pos<=l.to);
-  const leagues=LEAGUES.map(l=>`<div class="sv-league ${l===cur?'you':''}"><span class="sv-l-tag" style="background:${l.color};color:${['#86efac','#fde68a','#fbbf24'].includes(l.color)?'#0f172a':'#fff'}">${esc(l.tag)}</span>
-    <span class="sv-l-name">${esc(l.name)}${l===cur?' · ты':''}</span><span class="sv-l-inc">${esc(l.inc)}</span></div>`).join('');
-  let nextNote='';
-  if(cur){ const idx=LEAGUES.indexOf(cur); if(idx>0){ const next=LEAGUES[idx-1]; nextNote=`До следующей зоны «${esc(next.name)}» (${next.from}–${next.to}) — ещё ${pos-next.to} мест`; } }
-  const zoneDesc=cur?`«${esc(cur.name)}» — доход ${esc(cur.inc)} ₽/мес`:'';
-  document.getElementById('screen-svetofor').innerHTML=`
-    <div class="grid-2">
-    <div class="svet-now"><div class="svet-pos-huge">${pos!=null?'#'+pos:'—'}</div><div class="svet-now-lbl">текущее место · из 1300 партнёров</div></div>
-    <div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700">Твоя зона</div>
-      <div class="svet-zone-name">${esc(u.svetofor_zone_label||(cur?cur.tag.replace(/^[^\s]+\s/,''):'—'))}</div>
+  const isNb=u.svetofor_pool==='newbie';
+  const total=isNb?POOL_TOTAL.newbie:POOL_TOTAL.experienced;
+  const title=isNb?'Светофор новичков':'Светофор опытных';
+  const sub=isNb?'место среди партнёров до 6 мес':'место среди опытных партнёров';
+  const head=`<div class="svet-now"><div style="font-size:12px;color:#cbd5e1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">🚦 ${title}</div>
+    <div class="svet-pos-huge">${pos!=null?'#'+pos:'—'}</div><div class="svet-now-lbl">${sub} · из ${total}</div></div>`;
+  let mid;
+  if(isNb){
+    mid=`<div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700">Светофор новичков</div>
+      <div class="svet-zone-sub" style="margin-top:6px">Ты в рейтинге партнёров со стажем до 6 месяцев. С 6-го месяца перейдёшь в светофор опытных — там свой, более сильный рейтинг.</div></div>`;
+  } else {
+    const cur=LEAGUES.find(l=>pos!=null&&pos>=l.from&&pos<=l.to);
+    const zoneDesc=cur?`«${esc(cur.name)}» — доход ${esc(cur.inc)} ₽/мес`:'';
+    let nextNote=''; if(cur){ const idx=LEAGUES.indexOf(cur); if(idx>0){ const next=LEAGUES[idx-1]; nextNote=`До следующей зоны «${esc(next.name)}» — ещё ${pos-next.to} мест`; } }
+    mid=`<div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700">Твоя зона</div>
+      <div class="svet-zone-name">${esc(u.svetofor_zone_label||(cur?cur.name:'—'))}</div>
       ${zoneDesc?`<div class="svet-zone-sub">${zoneDesc}</div>`:''}
-      ${nextNote?`<div class="svet-zone-sub" style="margin-top:6px">${nextNote}</div>`:''}</div>
-    </div>
-    <div class="card"><div class="section-title">🚦 Все лиги</div>${leagues}</div>
-    ${movementCard(d)}`;
+      ${nextNote?`<div class="svet-zone-sub" style="margin-top:6px">${nextNote}</div>`:''}</div>`;
+  }
+  const leaguesCard=isNb?'' : (()=>{ const cur=LEAGUES.find(l=>pos!=null&&pos>=l.from&&pos<=l.to);
+    const leagues=LEAGUES.map(l=>`<div class="sv-league ${l===cur?'you':''}"><span class="sv-l-tag" style="background:${l.color};color:${['#86efac','#fde68a','#fbbf24'].includes(l.color)?'#0f172a':'#fff'}">${esc(l.tag)}</span>
+      <span class="sv-l-name">${esc(l.name)}${l===cur?' · ты':''}</span><span class="sv-l-inc">${esc(l.inc)}</span></div>`).join('');
+    return `<div class="card"><div class="section-title">🚦 Лиги (опытные)</div>${leagues}</div>`; })();
+  document.getElementById('screen-svetofor').innerHTML=`<div class="grid-2">${head}${mid}</div>${leaguesCard}${movementCard(d)}`;
 }
 
 /* ─── МОДАЛКА «Изменить цель» ─── */
