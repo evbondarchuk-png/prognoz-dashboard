@@ -564,22 +564,37 @@ function renderTasks(d){
 /* ─── СВЕТОФОР ─── */
 const POOL_TOTAL={newbie:386,experienced:934};
 function poolTotals(d){ const t=(d.meta&&d.meta.system_totals)||{}; return {newbie:t.svetofor_newbie||POOL_TOTAL.newbie, experienced:t.svetofor_experienced||POOL_TOTAL.experienced}; }
+const POOL_CLR={newbie:'#16a34a',experienced:'#2b6cb0'};
 function movementCard(d){
   const h=(d.position_history||[]).filter(p=>p.position!=null);
   if(h.length<2) return `<div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>
     <div class="soon"><span class="soon-ic">📈</span>История движения накапливается — график появится в ближайшие месяцы.</div></div>`;
   const PT=poolTotals(d);
-  const rows=h.map((p,i)=>{ const last=i===h.length-1; const tot=PT[p.pool]||PT.experienced; const w=Math.max(4,Math.round((tot-p.position)/tot*100));
-    return `<div class="mv-row ${last?'now':''}"><span>${esc(p.label.split(' ')[0])}</span>
-      <div class="mv-bar"><div class="mv-bar-fill" style="width:${w}%"></div></div>
-      <span class="mv-pos">#${p.position}${last?'<span class="mv-now-tag">← сейчас</span>':''}</span></div>`; }).join('');
+  // линейный график (SVG). Y = высота в своём пуле (выше = ближе к топу), нормировано по пулу → пулы сопоставимы.
+  const W=320,H=150,padX=14,padT=24,padB=30; const plotW=W-padX*2, plotH=H-padT-padB;
+  const n=h.length; const X=i=>padX+(n>1?i*(plotW/(n-1)):plotW/2);
+  const yFrac=p=>{ const tot=PT[p.pool]||PT.experienced; return Math.max(0,Math.min(1,1-(p.position/tot))); }; // 1=топ
+  const Y=p=>padT+(1-yFrac(p))*plotH;
+  let segs='',dots='',labels='',marks='';
+  for(let i=0;i<n;i++){ const p=h[i],x=X(i),y=Y(p),clr=POOL_CLR[p.pool]||POOL_CLR.experienced;
+    if(i>0){ const pp=h[i-1],x0=X(i-1),y0=Y(pp); const diff=pp.pool!==p.pool;
+      segs+=`<line x1="${x0}" y1="${y0}" x2="${x}" y2="${y}" stroke="${clr}" stroke-width="2.5" ${diff?'stroke-dasharray="4 3"':''}/>`;
+      if(diff){ const mx=(x0+x)/2; marks+=`<line x1="${mx}" y1="${padT-6}" x2="${mx}" y2="${padT+plotH}" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="2 3"/>`; } }
+    dots+=`<circle cx="${x}" cy="${y}" r="${i===n-1?5:3.5}" fill="${clr}"/>`;
+    labels+=`<text x="${x}" y="${y-9}" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1f2e">#${p.position}</text>`;
+    labels+=`<text x="${x}" y="${H-12}" text-anchor="middle" font-size="9" fill="#7a8194">${esc(p.label.split(' ')[0])}</text>`;
+  }
+  const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${marks}${segs}${dots}${labels}</svg>`;
+  const legend=`<div style="display:flex;gap:14px;justify-content:center;font-size:11px;color:var(--muted);margin-top:4px">
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${POOL_CLR.newbie};vertical-align:middle"></span> светофор новичков</span>
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${POOL_CLR.experienced};vertical-align:middle"></span> светофор опытных</span></div>`;
   const samePool=h.every(p=>p.pool===h[0].pool);
   let note;
-  if(!samePool){ note='📈 За полгода ты перешёл из светофора новичков в светофор опытных — это новый, более сильный рейтинг.'; }
+  if(!samePool){ note='📈 Пунктир — переход из светофора новичков в светофор опытных (это новый, более сильный рейтинг, поэтому место «выше по номеру»).'; }
   else { const up=h[0].position-h[h.length-1].position;
     note=up>0?`📈 За 6 месяцев ты поднялся на <b>${up}</b> ${plural(up,'позицию','позиции','позиций')}. Так держать!`
       :(up<0?`За полгода позиция снизилась на ${Math.abs(up)} — есть куда расти, всё впереди.`:'Позиция держится стабильно.'); }
-  return `<div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>${rows}
+  return `<div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>${svg}${legend}
     <div class="muted" style="margin-top:10px">${note}</div></div>`;
 }
 function plural(n,a,b,c){ const m10=n%10,m100=n%100; if(m10===1&&m100!==11)return a; if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b; return c; }
