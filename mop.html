@@ -336,7 +336,7 @@ function memberCard(m){
   return `<div class="member-card ${m.is_at_risk?'at-risk':''} ${m.is_self?'is-self':''}" onclick="openMember('${esc(m.code)}')">
     <div class="member-avatar" style="background:${m.avatar_color_bg};color:${m.avatar_color_text}">${esc(m.avatar_initials||'?')}</div>
     <div class="member-info">
-      <div class="member-row-top"><span class="member-name">${esc(m.short_name||m.name)}${m.is_self?'<span class="self-tag">вы · справочно</span>':(m.is_newbie?'<span class="newbie-tag">новичок</span>':'')}</span>
+      <div class="member-row-top"><span class="member-name">${esc(m.short_name||m.name)}${m.is_self?'<span class="self-tag">вы · справочно</span>':(m.svetofor_pool==='newbie'?'<span class="newbie-tag">🌱 новичок</span>':(m.svetofor_pool==='experienced'?'<span class="newbie-tag">опытный</span>':''))}</span>
         <span class="member-ir" style="color:${STC[m.ir_status]||STC.no_data}">${m.ir_status==='no_data'?'—':m.ir_total+'%'}</span></div>
       <div class="mini-funnel">${mini}</div></div>
     <span class="member-arrow">›</span></div>`;

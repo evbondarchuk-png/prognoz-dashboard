@@ -563,11 +563,13 @@ function renderTasks(d){
 
 /* ─── СВЕТОФОР ─── */
 const POOL_TOTAL={newbie:386,experienced:934};
+function poolTotals(d){ const t=(d.meta&&d.meta.system_totals)||{}; return {newbie:t.svetofor_newbie||POOL_TOTAL.newbie, experienced:t.svetofor_experienced||POOL_TOTAL.experienced}; }
 function movementCard(d){
   const h=(d.position_history||[]).filter(p=>p.position!=null);
   if(h.length<2) return `<div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>
     <div class="soon"><span class="soon-ic">📈</span>История движения накапливается — график появится в ближайшие месяцы.</div></div>`;
-  const rows=h.map((p,i)=>{ const last=i===h.length-1; const tot=POOL_TOTAL[p.pool]||934; const w=Math.max(4,Math.round((tot-p.position)/tot*100));
+  const PT=poolTotals(d);
+  const rows=h.map((p,i)=>{ const last=i===h.length-1; const tot=PT[p.pool]||PT.experienced; const w=Math.max(4,Math.round((tot-p.position)/tot*100));
     return `<div class="mv-row ${last?'now':''}"><span>${esc(p.label.split(' ')[0])}</span>
       <div class="mv-bar"><div class="mv-bar-fill" style="width:${w}%"></div></div>
       <span class="mv-pos">#${p.position}${last?'<span class="mv-now-tag">← сейчас</span>':''}</span></div>`; }).join('');
@@ -581,32 +583,39 @@ function movementCard(d){
     <div class="muted" style="margin-top:10px">${note}</div></div>`;
 }
 function plural(n,a,b,c){ const m10=n%10,m100=n%100; if(m10===1&&m100!==11)return a; if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b; return c; }
+function zoneColor(cat){ cat=String(cat||''); if(cat.includes('Самые'))return '#16a34a'; if(cat.includes('Лучшие'))return '#22c55e'; if(cat.includes('Хорошие'))return '#86efac'; if(cat.includes('Средние'))return '#fbbf24'; if(cat.includes('Слабые'))return '#fb923c'; return '#f87171'; }
 function renderSvetofor(d){
-  const u=d.user; const pos=u.position_in_company;
-  const isNb=u.svetofor_pool==='newbie';
-  const total=isNb?POOL_TOTAL.newbie:POOL_TOTAL.experienced;
-  const title=isNb?'Светофор новичков':'Светофор опытных';
-  const sub=isNb?'место среди партнёров до 6 мес':'место среди опытных партнёров';
-  const head=`<div class="svet-now"><div style="font-size:12px;color:#cbd5e1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">🚦 ${title}</div>
-    <div class="svet-pos-huge">${pos!=null?'#'+pos:'—'}</div><div class="svet-now-lbl">${sub} · из ${total}</div></div>`;
-  let mid;
-  if(isNb){
-    mid=`<div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700">Светофор новичков</div>
-      <div class="svet-zone-sub" style="margin-top:6px">Ты в рейтинге партнёров со стажем до 6 месяцев. С 6-го месяца перейдёшь в светофор опытных — там свой, более сильный рейтинг.</div></div>`;
-  } else {
-    const cur=LEAGUES.find(l=>pos!=null&&pos>=l.from&&pos<=l.to);
-    const zoneDesc=cur?`«${esc(cur.name)}» — доход ${esc(cur.inc)} ₽/мес`:'';
-    let nextNote=''; if(cur){ const idx=LEAGUES.indexOf(cur); if(idx>0){ const next=LEAGUES[idx-1]; nextNote=`До следующей зоны «${esc(next.name)}» — ещё ${pos-next.to} мест`; } }
-    mid=`<div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700">Твоя зона</div>
-      <div class="svet-zone-name">${esc(u.svetofor_zone_label||(cur?cur.name:'—'))}</div>
-      ${zoneDesc?`<div class="svet-zone-sub">${zoneDesc}</div>`:''}
-      ${nextNote?`<div class="svet-zone-sub" style="margin-top:6px">${nextNote}</div>`:''}</div>`;
+  const u=d.user; const pool=u.svetofor_pool;
+  if(!pool){
+    document.getElementById('screen-svetofor').innerHTML=`<div class="card"><div class="section-title">🚦 Светофор</div>
+      <div class="soon"><span class="soon-ic">🚦</span>У тебя пока нет позиции в светофоре. Появится после первой сделки и попадания в рейтинг.</div></div>${movementCard(d)}`;
+    return;
   }
-  const leaguesCard=isNb?'' : (()=>{ const cur=LEAGUES.find(l=>pos!=null&&pos>=l.from&&pos<=l.to);
-    const leagues=LEAGUES.map(l=>`<div class="sv-league ${l===cur?'you':''}"><span class="sv-l-tag" style="background:${l.color};color:${['#86efac','#fde68a','#fbbf24'].includes(l.color)?'#0f172a':'#fff'}">${esc(l.tag)}</span>
-      <span class="sv-l-name">${esc(l.name)}${l===cur?' · ты':''}</span><span class="sv-l-inc">${esc(l.inc)}</span></div>`).join('');
-    return `<div class="card"><div class="section-title">🚦 Лиги (опытные)</div>${leagues}</div>`; })();
-  document.getElementById('screen-svetofor').innerHTML=`<div class="grid-2">${head}${mid}</div>${leaguesCard}${movementCard(d)}`;
+  const dc=u.position_delta_direction==='up'?'#4ade80':(u.position_delta_direction==='down'?'#f87171':'#cbd5e1');
+  const head=`<div class="svet-now">
+    <div style="font-size:12px;color:#cbd5e1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">🚦 ${esc(u.svetofor_pool_label||'')}</div>
+    <div class="svet-pos-huge">${u.position_in_pool!=null?'#'+u.position_in_pool:'—'}</div>
+    <div class="svet-now-lbl">${esc(u.position_label||'')}</div>
+    ${u.position_delta_label?`<div class="svet-move" style="color:${dc}">${esc(u.position_delta_label)}</div>`:''}</div>`;
+  if(pool==='newbie'){
+    document.getElementById('screen-svetofor').innerHTML=`${head}
+      <div class="card"><div class="section-title">📘 Светофор новичков</div>
+        <div style="font-size:13px;line-height:1.65">Ты в рейтинге партнёров первых <b>6 месяцев</b> работы. Здесь ты учишься, получаешь первые сделки и нарабатываешь опыт.<br><br>
+        После 6 месяцев стажа автоматически перейдёшь в <b>светофор опытных</b> — там появятся зоны и доходные ориентиры (от 9к до 768к ₽/мес).<br><br>
+        Сейчас задача — стабильно работать и двигаться вверх в этом светофоре.</div></div>
+      ${movementCard(d)}`;
+    return;
+  }
+  // опытный
+  const zb=u.svetofor_zone_label?`<div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700">Твоя зона</div>
+    <div class="svet-zone-name">${esc(u.svetofor_zone_category||'')} ${esc(u.svetofor_zone_label)}</div>
+    ${u.svetofor_zone_avg_income_short?`<div class="svet-zone-sub">средний доход ${esc(u.svetofor_zone_avg_income_short)} ₽/мес</div>`:''}</div>`
+    :`<div class="svet-zone"><div class="muted">Зона определяется по месту в светофоре опытных.</div></div>`;
+  const zones=(d.meta&&d.meta.svetofor_zones_experienced)||[];
+  const zlist=zones.length?`<div class="card"><div class="section-title">🚦 Зоны светофора опытных</div>
+    ${zones.map(z=>`<div class="sv-league ${z.is_current?'you':''}"><span class="sv-l-tag" style="background:${zoneColor(z.category)};color:${zoneColor(z.category)==='#86efac'?'#0f172a':'#fff'}">${esc(z.range)}</span>
+      <span class="sv-l-name">${esc(z.category||'')}${z.is_current?' · ты':''}</span><span class="sv-l-inc">${fmtShort(z.avg_income)} ₽</span></div>`).join('')}</div>`:'';
+  document.getElementById('screen-svetofor').innerHTML=`<div class="grid-2">${head}${zb}</div>${zlist}${movementCard(d)}`;
 }
 
 /* ─── МОДАЛКА «Изменить цель» ─── */
