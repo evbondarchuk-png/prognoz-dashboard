@@ -203,7 +203,7 @@ function helpCard(){ return `<button class="help-btn" onclick="openManager()">�
 /* ─── HERO ─── */
 function renderHero(d){
   const u=d.user,a=d.aggregates;
-  const meta=[]; if(u.rop_name)meta.push('РОП: '+esc(u.rop_name)); if(a)meta.push(a.scope.members_count+' партнёров');
+  const meta=[]; if(u.rop_name)meta.push('Управляющий партнёр: '+esc(u.rop_name)); if(a)meta.push(a.scope.members_count+' партнёров');
   let stats='';
   if(a){ stats=`<div class="stat-grid">
     <div class="stat"><div class="s-cap">ИР группы</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
@@ -269,10 +269,18 @@ function memberCard(m){
 function renderTeam(d){
   const t=d.team; const out=[];
   if(t&&t.members&&t.members.length){
-    const risk=t.members.filter(m=>m.is_at_risk&&!m.is_self).length;
-    out.push(`<div class="card"><div class="section-title">👥 Партнёры группы · ${t.total_count}${risk?` · ${risk} в риске`:''}</div>
-      ${t.members.map(memberCard).join('')}
+    const mem=t.members;
+    const risks=mem.filter(m=>m.is_at_risk&&!m.is_self);
+    const newbies=mem.filter(m=>m.is_newbie&&!m.is_self);
+    out.push(`<div class="card"><div class="section-title">👥 Партнёры группы · ${t.total_count}</div>
+      ${mem.map(memberCard).join('')}
       <div class="muted" style="margin-top:8px">Нажми на партнёра — откроется его кабинет.</div></div>`);
+    if(risks.length) out.push(`<div class="card"><div class="section-title">⚠️ В зоне риска · ${risks.length}</div>
+      ${risks.map(memberCard).join('')}
+      <div class="muted" style="margin-top:8px">ИР ниже 40% — нужен разбор и поддержка.</div></div>`);
+    if(newbies.length) out.push(`<div class="card"><div class="section-title">🌱 Новички группы · ${newbies.length}</div>
+      ${newbies.map(memberCard).join('')}
+      <div class="muted" style="margin-top:8px">Стаж до 5 месяцев — особое внимание.</div></div>`);
   } else out.push(`<div class="banner">В группе нет активных партнёров.</div>`);
   document.getElementById('screen-team').innerHTML=out.join('');
 }
