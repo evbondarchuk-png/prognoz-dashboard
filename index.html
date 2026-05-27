@@ -9,91 +9,166 @@
 </script>
 <style>
   :root{
-    --bg:#f7f6f3; --surface:#fff; --surface2:#f0efe9; --border:rgba(0,0,0,.1);
-    --text:#1a1a18; --text2:#5f5e5a; --text3:#9a9890;
-    --blue:#185FA5; --blue-bg:#E6F1FB; --green:#3B6D11; --green-bg:#EAF3DE; --gold:#BA7517;
-    --radius:10px; --st-green:#639922; --st-yellow:#EF9F27; --st-red:#A32D2D;
+    --bg:#f4f5f7; --surface:#fff; --surface2:#f1f3f7;
+    --ink:#1a1f2e; --muted:#7a8194; --line:#e6e8ee;
+    --brand:#2b6cb0; --brand-soft:#eaf2fb;
+    --buyer:#3b82f6; --seller:#10b981; --gold:#f59e0b;
+    --st-green:#16a34a; --st-yellow:#d97706; --st-red:#dc2626;
+    --green-bg:#e9f6ec; --yellow-bg:#fdf3e3; --red-bg:#fdeaea; --nd-bg:#eef0f4;
+    --radius:14px;
+    --shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;padding-bottom:64px}
-  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
-  .logo{font-size:16px;font-weight:600;color:var(--blue)} .logo span{color:var(--text);font-weight:400}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;padding-bottom:24px}
+  .header{background:var(--surface);border-bottom:1px solid var(--line);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
+  .logo{font-size:16px;font-weight:800;color:var(--brand)} .logo span{color:var(--muted);font-weight:500}
   .header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-  .date-badge{font-size:12px;color:var(--text2);background:var(--surface2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
-  .btn{font-size:12px;color:var(--text2);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-  .btn:hover{border-color:var(--blue);color:var(--blue)}
+  .date-badge{font-size:12px;color:var(--muted);background:var(--surface2);padding:4px 10px;border-radius:20px}
+  .btn{font-size:12px;color:var(--muted);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--line);cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .btn:hover{border-color:var(--brand);color:var(--brand)}
   .container{max-width:640px;margin:0 auto;padding:16px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
-  .muted{color:var(--text2);font-size:12px}
-  .section-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
-  .banner{background:#FFF8E6;border:1px solid #F0D98A;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px}
-  .soon{background:var(--surface2);border:1px dashed var(--border2,rgba(0,0,0,.18));border-radius:var(--radius);padding:18px;text-align:center;color:var(--text2);font-size:13px;margin-bottom:14px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .muted{color:var(--muted);font-size:12px}
+  .section-title{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em}
+  .banner{background:var(--brand-soft);border:1px solid #cfe1f5;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:#1a4061}
+  .soon{background:var(--surface2);border:1px dashed #c9cedb;border-radius:10px;padding:24px 18px;text-align:center;color:var(--muted);font-size:13px}
+  .soon .soon-ic{font-size:34px;display:block;margin-bottom:8px}
 
-  /* нижние табы */
-  .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:100}
-  .tabbar button{flex:1;border:none;background:none;padding:8px 4px;font-family:inherit;font-size:11px;color:var(--text3);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
-  .tabbar button .ti{font-size:18px}
-  .tabbar button.on{color:var(--blue)}
+  /* авто-цель баннер */
+  .goal-banner{display:flex;gap:10px;align-items:flex-start;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;font-size:13px;color:#1a4061}
+  .goal-banner .gb-x{margin-left:auto;color:var(--muted);cursor:pointer;font-size:16px;flex-shrink:0;line-height:1}
+  .goal-banner .gb-edit{color:var(--brand);font-weight:700;cursor:pointer;white-space:nowrap}
+
+  /* hero */
+  .hero{position:relative}
+  .hero-iconbar{position:absolute;top:0;right:0;display:flex;gap:8px}
+  .hib{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;position:relative}
+  .hib:hover{border-color:var(--brand)}
+  .hib-badge{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;border-radius:9px;background:var(--st-red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
+  .profile{display:flex;align-items:flex-start;gap:14px}
+  .ava{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2b6cb0);display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;color:#fff;flex-shrink:0}
+  .role-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--brand-soft);color:var(--brand);margin-bottom:4px}
+  .hero-name{font-size:20px;font-weight:800;line-height:1.15}
+  .hero-sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .sf-mini{margin-top:10px;display:inline-flex;align-items:baseline;gap:8px;background:var(--surface2);border-radius:10px;padding:8px 14px;cursor:pointer}
+  .sf-mini b{font-size:24px;font-weight:800;color:var(--ink)} .sf-mini .sf-z{font-size:11px}
+
+  /* достижения */
+  .achievements{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:14px;padding-bottom:2px}
+  .ach-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--green-bg);color:#14532d;border:1px solid #bbf7d0;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;white-space:nowrap}
+
+  /* income-track */
+  .income-track{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+  .it-row{display:flex;gap:14px;margin-bottom:10px}
+  .it-half{flex:1}
+  .it-cap{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:600;margin-bottom:4px}
+  .it-val{font-size:22px;font-weight:800}
+  .it-val.target{color:var(--brand)}
+  .it-bar{height:12px;background:var(--nd-bg);border-radius:7px;overflow:hidden;margin-bottom:10px}
+  .it-bar-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,#3b82f6,#2b6cb0);transition:width .5s ease}
+  .it-foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:12px;color:var(--muted)}
+  .it-link{color:var(--brand);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+  .it-link:hover{text-decoration:underline}
+
+  /* верхние табы */
+  .rtab-bar{display:flex;gap:8px;margin-bottom:18px;padding:7px;background:#f4f7fb;border:1px solid var(--line);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:56px;z-index:90}
+  .rtab{font-size:14px;padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
+  .rtab:hover{color:var(--ink);background:rgba(255,255,255,.7)}
+  .rtab.on{background:#fff;color:var(--brand);font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.08)}
   .screen{display:none} .screen.on{display:block}
 
-  .profile{display:flex;align-items:center;gap:14px}
-  .avatar{width:48px;height:48px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--blue);flex-shrink:0}
-  .pname{font-size:16px;font-weight:600}
-  .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-  .pill{font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid var(--border);white-space:nowrap}
-  .zone-badge{color:#fff;border:none}
-
+  /* ИР */
   .ir-top{display:flex;align-items:center;gap:18px}
-  .ir-big{font-size:40px;font-weight:700;line-height:1}
-  .ir-sides{flex:1;display:flex;flex-direction:column;gap:8px}
-  .ir-side{display:grid;grid-template-columns:90px 1fr 40px;gap:8px;align-items:center;font-size:12px}
-  .bar-bg{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
-  .bar-fill{height:100%;border-radius:3px;transition:width .4s}
+  .ir-big{font-size:46px;font-weight:800;line-height:1}
+  .ir-sides{flex:1;display:flex;flex-direction:column;gap:9px}
+  .ir-side{display:grid;grid-template-columns:84px 1fr 38px;gap:8px;align-items:center;font-size:12px;font-weight:600}
+  .bar-bg{height:8px;background:var(--nd-bg);border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px;transition:width .5s ease}
+  .status-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700}
+  .sb-green{background:var(--green-bg);color:var(--st-green)} .sb-yellow{background:var(--yellow-bg);color:var(--st-yellow)}
+  .sb-red{background:var(--red-bg);color:var(--st-red)} .sb-no_data{background:var(--nd-bg);color:var(--muted)}
 
-  .status-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
-  .sb-green{background:var(--green-bg);color:#173404} .sb-yellow{background:#FAEEDA;color:#412402}
-  .sb-red{background:#FCEBEB;color:#501313} .sb-no_data{background:#F1EFE8;color:#2C2C2A}
-
-  .funnel-side{margin-bottom:8px}
-  .fs-head{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px}
+  /* воронки */
+  .funnel-side{margin-bottom:14px}
+  .fs-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px}
   .fs-title{display:flex;align-items:center;gap:8px}
   .fs-dot{width:10px;height:10px;border-radius:3px}
-  .stage-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--sc,#185FA5);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
-  .stage-head{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;margin-bottom:6px}
-  .chev{color:var(--text3);font-size:12px;transition:transform .2s} .chev.open{transform:rotate(90deg)}
-  .stage-label{font-size:13px;font-weight:500}
-  .stage-numbers{font-size:12px;color:var(--text2);white-space:nowrap} .stage-numbers b{font-weight:600;margin-left:5px}
-  .stage-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
-  .stage-bar-fill{height:100%;border-radius:2px;transition:width .4s}
-  .stage-seg{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);display:flex;flex-direction:column;gap:7px}
+  .stage-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--sc,var(--buyer));border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s}
+  .stage-card:hover{box-shadow:var(--shadow)}
+  .stage-head{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+  .chev{color:var(--muted);font-size:12px;transition:transform .2s} .chev.open{transform:rotate(90deg)}
+  .stage-label{font-size:14px;font-weight:700}
+  .stage-numbers{font-size:12px;color:var(--muted);white-space:nowrap} .stage-numbers b{font-weight:800;margin-left:6px}
+  .stage-bar{height:10px;background:var(--nd-bg);border-radius:6px;overflow:hidden}
+  .stage-bar-fill{height:100%;border-radius:6px;transition:width .5s ease}
+  .stage-seg{margin-top:11px;padding-top:11px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:8px}
   .stage-seg.hidden{display:none}
-  .seg-row{display:grid;grid-template-columns:1fr auto 38px;gap:8px;font-size:11px;align-items:center;color:var(--text2)} .seg-row .sv{color:var(--text);font-weight:500}
+  .seg-row{display:grid;grid-template-columns:1fr auto 38px;gap:8px;font-size:11px;align-items:center;color:var(--muted)} .seg-row .sv{color:var(--ink);font-weight:600}
+  .tip{background:var(--brand-soft);border-radius:10px;padding:12px 14px;font-size:13px;color:#1a4061;margin-top:6px}
 
-  .coach-side{padding:4px 0 8px 12px;margin-bottom:8px;border-left:3px solid #185FA5}
+  /* диагностика */
+  .coach-side{padding:4px 0 10px 12px;margin-bottom:8px;border-left:3px solid var(--buyer)}
   .weak-list{margin-top:6px;display:flex;flex-direction:column;gap:4px}
   .weak{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--st-red)}
 
-  .notif{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
-  .notif:last-child{border-bottom:none} .notif.unread .ni-title{font-weight:600}
+  /* ИИ */
+  .ai-card{background:linear-gradient(135deg,#1e293b 0%,#2b3a52 100%);border-radius:var(--radius);padding:18px;margin-bottom:14px;color:#fff;box-shadow:var(--shadow)}
+  .ai-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .ai-orb{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ffd66b,#f59e0b);box-shadow:0 0 24px rgba(245,158,11,.5);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .ai-h{font-size:14px;font-weight:800} .ai-h span{color:#ffd66b}
+  .ai-text{font-size:14px;line-height:1.6;color:#cbd5e1} .ai-text b{color:#ffd66b;font-weight:700}
+  .ai-note{font-size:12px;color:#7d8fa8;margin-top:10px}
+
+  /* прогноз */
+  .fc-grid{display:flex;flex-direction:column;gap:10px}
+  .fc{border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .fc.accent{background:var(--brand-soft);border-color:#cfe1f5}
+  .fc-cap{font-size:12px;color:var(--muted);font-weight:600}
+  .fc-val{font-size:24px;font-weight:800;color:var(--brand);margin:2px 0}
+  .fc-sub{font-size:12px;color:var(--muted)}
+
+  /* уведомления/задачи */
+  .notif{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .notif:last-child{border-bottom:none} .notif.unread .ni-title{font-weight:700}
   .ni-icon{font-size:18px} .ni-title{font-size:13px}
-  .tg-title{font-size:12px;font-weight:600;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.3px}
-  .tg-red{color:var(--st-red)} .tg-amber{color:#854F0B} .tg-gray{color:var(--text3)} .tg-green{color:var(--green)}
-  .task{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
-  .task:last-child{border-bottom:none} .task-main{flex:1;min-width:0} .task-title{font-size:13px;font-weight:500}
+  .tg-title{font-size:12px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.03em}
+  .tg-red{color:var(--st-red)} .tg-amber{color:var(--st-yellow)} .tg-gray{color:var(--muted)} .tg-green{color:var(--st-green)}
+  .task{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .task:last-child{border-bottom:none} .task-main{flex:1;min-width:0} .task-title{font-size:13px;font-weight:600}
   .task-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--st-green);background:transparent;color:var(--st-green);cursor:pointer;font-size:15px;flex-shrink:0}
   .task-btn:hover{background:var(--green-bg)} .task-done{color:var(--st-green)}
 
   /* светофор */
-  .svet-hero{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-  .svet-now{flex:1;min-width:140px;background:var(--blue-bg);border-radius:8px;padding:14px;text-align:center}
-  .svet-pos{font-size:34px;font-weight:700;color:var(--blue)}
-  .svet-zone{flex:1;min-width:160px;background:var(--surface2);border-radius:8px;padding:14px}
-  .sv-league{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
-  .sv-league:last-child{border-bottom:none} .sv-league.you{font-weight:600}
-  .sv-l-tag{color:#fff;border-radius:20px;padding:2px 8px;font-size:11px;white-space:nowrap}
-  .sv-l-name{flex:1} .sv-l-inc{color:var(--text2)}
+  .svet-now{background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:14px;color:#cbd5e1}
+  .svet-pos-huge{font-size:60px;font-weight:800;line-height:1;background:linear-gradient(135deg,#ffd66b,#f59e0b);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .svet-now-lbl{font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
+  .svet-move{font-size:13px;font-weight:600;margin-top:6px}
+  .svet-zone{background:#fefce8;border:1px solid #fde68a;border-radius:var(--radius);padding:16px;margin-bottom:14px}
+  .svet-zone-name{font-size:26px;font-weight:800;color:#78350f;margin:4px 0}
+  .svet-zone-sub{font-size:13px;color:#92400e}
+  .sv-league{display:grid;grid-template-columns:150px 1fr auto;gap:8px;align-items:center;padding:8px;border-radius:8px;font-size:12px}
+  .sv-league.you{background:#fef3c7;border:1px solid #fcd34d}
+  .sv-l-tag{color:#fff;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;text-align:center}
+  .sv-l-name{font-weight:600} .sv-l-inc{color:var(--muted)}
 
-  #overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;color:var(--text2)}
+  /* модалки */
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:flex-end;justify-content:center;z-index:1000}
+  .modal-overlay.on{display:flex}
+  .modal{background:var(--surface);border-radius:18px 18px 0 0;width:100%;max-width:640px;padding:20px 18px 28px;max-height:90vh;overflow-y:auto}
+  @media(min-width:641px){.modal-overlay{align-items:center}.modal{border-radius:18px}}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .modal-title{font-size:17px;font-weight:800}
+  .modal-x{font-size:22px;color:var(--muted);cursor:pointer;line-height:1;background:none;border:none}
+  .goal-input{width:100%;font-size:22px;font-weight:800;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-family:inherit;text-align:center;margin-bottom:12px}
+  .preset{display:flex;justify-content:space-between;align-items:center;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font-family:inherit;font-size:14px;text-align:left;margin-bottom:8px}
+  .preset:hover{border-color:var(--brand)} .preset b{font-weight:800;color:var(--brand)}
+  .modal-save{width:100%;padding:14px;border:none;border-radius:10px;background:var(--brand);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
+  .modal-save:disabled{opacity:.6}
+  .modal-warn{font-size:12px;color:var(--st-yellow);background:var(--yellow-bg);border-radius:8px;padding:10px 12px;margin-top:10px}
+  .hof-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .hof-item:last-child{border-bottom:none}
+
+  #overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1100;color:var(--muted)}
   #overlay.hidden{display:none}
 </style>
 </head>
@@ -110,43 +185,56 @@
 </div>
 
 <div class="container">
+  <div id="goalBanner"></div>
+  <div id="hero"></div>
+  <div class="rtab-bar" id="tabbar">
+    <div class="rtab on" data-tab="main" onclick="showTab('main',this)">🏠 Главная</div>
+    <div class="rtab" data-tab="prognoz" onclick="showTab('prognoz',this)">📈 Прогноз</div>
+    <div class="rtab" data-tab="coach" onclick="showTab('coach',this)">🎓 Тренер</div>
+    <div class="rtab" data-tab="clients" onclick="showTab('clients',this)">👥 Клиенты</div>
+    <div class="rtab" data-tab="tasks" onclick="showTab('tasks',this)">📋 Задачи<span id="taskDot"></span></div>
+    <div class="rtab" data-tab="svetofor" onclick="showTab('svetofor',this)">🚦 Светофор</div>
+  </div>
   <div class="screen on" id="screen-main"></div>
   <div class="screen" id="screen-prognoz"></div>
+  <div class="screen" id="screen-coach"></div>
+  <div class="screen" id="screen-clients"></div>
   <div class="screen" id="screen-tasks"></div>
   <div class="screen" id="screen-svetofor"></div>
 </div>
 
-<div class="tabbar" id="tabbar">
-  <button class="on" data-tab="main" onclick="showTab('main',this)"><span class="ti">📊</span>Главная</button>
-  <button data-tab="prognoz" onclick="showTab('prognoz',this)"><span class="ti">📈</span>Прогноз</button>
-  <button data-tab="tasks" onclick="showTab('tasks',this)"><span class="ti">📋</span>Задачи<span id="taskDot"></span></button>
-  <button data-tab="svetofor" onclick="showTab('svetofor',this)"><span class="ti">🚦</span>Светофор</button>
-</div>
+<div class="modal-overlay" id="modalGoal"><div class="modal" id="modalGoalBody"></div></div>
+<div class="modal-overlay" id="modalHof"><div class="modal" id="modalHofBody"></div></div>
 
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
+const INCOME_SHARE=0.48;
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
-const SIDE_COLOR={buyer:'#185FA5',seller:'#3B6D11'};
+const SIDE_COLOR={buyer:'#3b82f6',seller:'#10b981'};
+const CTX={data:null,target:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtShort=(n)=>{ n=Number(n)||0; const a=Math.abs(n); if(a<1000)return String(Math.round(n)); if(a<1e6)return Math.round(n/1000)+'к'; return (Math.round(n/1e5)/10).toString().replace('.',',')+' млн'; };
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
 
 window.showTab=(id,btn)=>{
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));
   document.getElementById('screen-'+id).classList.add('on'); btn.classList.add('on');
   window.scrollTo(0,0);
 };
+window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
 window.toggleStage=(head)=>{ const c=head.closest('.stage-card'),s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); ch.classList.toggle('open'); };
 window.completeTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); const b=ev&&ev.target; if(b){b.disabled=true;b.textContent='…';}
   try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); if(b){b.disabled=false;b.textContent='✓';} } };
+window.closeModal=(id)=>document.getElementById(id).classList.remove('on');
 
 const LEAGUES=[
-  {tag:'🥇 ТОП 1–5',name:'Элита компании',inc:'от 700к',color:'#22c55e',from:1,to:5},
-  {tag:'🥈 ТОП 6–100',name:'Лучшие',inc:'300–700к',color:'#22c55e',from:6,to:100},
+  {tag:'🥇 ТОП 1–5',name:'Элита компании',inc:'от 700к',color:'#16a34a',from:1,to:5},
+  {tag:'🥈 ТОП 6–100',name:'Лучшие',inc:'300–700к',color:'#16a34a',from:6,to:100},
   {tag:'🟢 101–300',name:'Сильные',inc:'230–300к',color:'#86efac',from:101,to:300},
   {tag:'🟡 301–400',name:'Хорошие',inc:'160–230к',color:'#fde68a',from:301,to:400},
   {tag:'🟡 401–500',name:'Средние',inc:'140–160к',color:'#fbbf24',from:401,to:500},
@@ -154,6 +242,64 @@ const LEAGUES=[
   {tag:'🔴 801–1300',name:'Низкоэффективные',inc:'до 90к',color:'#f87171',from:801,to:1300},
 ];
 
+function daysPath(plan){ if(!plan||!plan.started_month) return null;
+  const [y,m]=plan.started_month.split('-').map(Number); const start=new Date(y,m-1,1);
+  const total=(plan.horizon_months||6)*30; const passed=Math.max(0,Math.round((Date.now()-start.getTime())/86400000));
+  return {passed:Math.min(passed,total),total}; }
+
+/* ─── HERO (профиль + достижения + income-track) ─── */
+function renderHero(d){
+  const u=d.user,g=d.goal,nb=d.notifications;
+  const unread=nb?.unread_count||0;
+  const meta=[]; if(u.mop_name)meta.push('Старший: '+esc(u.mop_name)); if(u.stazh_label)meta.push('стаж '+esc(u.stazh_label));
+  const sfMini=u.position_in_company!=null?`<div class="sf-mini" onclick="goTab('svetofor')"><b>#${u.position_in_company}</b><span class="sf-z muted">${esc(u.svetofor_zone_label||'')} · светофор ›</span></div>`:'';
+  const ach=(d.achievements||[]).map(a=>`<div class="ach-chip">${esc(a.emoji)} ${esc(a.text)}</div>`).join('');
+
+  // income-track
+  const inc=u.income_month, tgt=g?g.target_revenue_month:null;
+  const pct=(inc!=null&&tgt)?Math.min(100,Math.round(inc/tgt*100)):0;
+  const dp=daysPath(d.plan);
+  const toGoal=(inc!=null&&tgt&&tgt>inc)?`до цели ${fmtShort(tgt-inc)} ₽`:'цель достигнута 🎉';
+  const autoTxt=g?(g.is_auto?'цель авто (доход + 50к)':'цель установлена тобой'):'';
+  let track='';
+  if(g){ track=`<div class="income-track">
+    <div class="it-row">
+      <div class="it-half"><div class="it-cap">мой средний доход</div><div class="it-val">${inc!=null?esc(u.income_month_short):'—'} ₽</div></div>
+      <div class="it-half" style="text-align:right"><div class="it-cap">цель / мес</div><div class="it-val target">${esc(g.target_revenue_month_short)} ₽</div></div>
+    </div>
+    <div class="it-bar"><div class="it-bar-fill" style="width:${pct}%"></div></div>
+    <div class="it-foot">
+      <span class="it-link" onclick="openEditGoal()">✎ изменить цель</span>
+      <span class="it-link" onclick="openHof()">🏆 Зал славы</span>
+      <span>${toGoal}${autoTxt?' · '+autoTxt:''}</span>
+      ${dp?`<span>⏱ ${dp.passed} / ${dp.total} дней пути</span>`:''}
+    </div></div>`; }
+
+  document.getElementById('hero').innerHTML=`<div class="card hero">
+    <div class="hero-iconbar">
+      <div class="hib" onclick="goTab('tasks')">🔔${unread?`<span class="hib-badge">${unread>99?'99+':unread}</span>`:''}</div>
+      <div class="hib" onclick="goTab('tasks')">⚙️</div>
+    </div>
+    <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
+      <span class="role-tag">${esc(u.role_label||'Партнёр')}</span>
+      <div class="hero-name">${esc(u.name)}</div>
+      <div class="hero-sub">${meta.join(' · ')}</div>
+      ${sfMini}</div></div>
+    ${ach?`<div class="achievements">${ach}</div>`:''}
+    ${track}
+  </div>`;
+
+  // авто-цель баннер
+  const gb=document.getElementById('goalBanner');
+  if(g&&g.is_auto&&localStorage.getItem('goal_banner_dismissed')!=='1'){
+    gb.innerHTML=`<div class="goal-banner"><span>ℹ️</span>
+      <span>Система поставила прогнозный доход на основе твоей работы. Можешь изменить цель в любой момент — <span class="gb-edit" onclick="openEditGoal()">✎ изменить</span></span>
+      <span class="gb-x" onclick="dismissGoalBanner()">✕</span></div>`;
+  } else gb.innerHTML='';
+}
+window.dismissGoalBanner=()=>{ localStorage.setItem('goal_banner_dismissed','1'); document.getElementById('goalBanner').innerHTML=''; };
+
+/* ─── воронки ─── */
 function stageCard(side,st){
   const segs=(st.segments||[]).map(sg=>`<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
   const has=(st.segments||[]).length>0;
@@ -163,121 +309,172 @@ function stageCard(side,st){
     <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
     ${has?`<div class="stage-seg hidden">${segs}</div>`:''}</div>`;
 }
-function funnelSide(side,fs,pl){ if(!fs)return'';
+function funnelSide(side,fs,icon){ if(!fs)return'';
   return `<div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
-    <div><div style="font-weight:600">${esc(fs.label)}</div><div class="muted">ИР: ${fs.ir}% · ${esc(pl)}</div></div></div>
-    <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">${esc(fs.ir_status_label||'')}</span></div>
+    <div style="font-weight:700">${icon} ${esc(fs.label)}</div></div>
+    <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
     ${(fs.stages||[]).map(st=>stageCard(side,st)).join('')}</div>`;
 }
+
+/* ─── ГЛАВНАЯ ─── */
+function renderMain(d){
+  const f=d.funnel; const out=[];
+  if(f&&f.buyer){
+    out.push(`<div class="card"><div class="ir-top"><div class="ir-big" style="color:${barColor(f.ir_total)}">${f.ir_total}<span style="font-size:20px">%</span></div>
+      <div class="ir-sides"><div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${f.ir_buyer}%</b></div>
+      <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${f.ir_seller}%</b></div></div></div>
+      <div class="muted" style="margin-top:8px">Индекс развития · ${esc(f.period_label)} · насколько ты на пути к цели</div></div>`);
+    out.push(`<div class="card"><div class="section-title">Воронки · ${esc(f.period_label)}</div>${funnelSide('buyer',f.buyer,'🛒')}${funnelSide('seller',f.seller,'🏘')}</div>`);
+    const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
+    if(rec) out.push(`<div class="card"><div class="section-title">💡 Совет дня</div><div class="tip">${esc(rec)}</div></div>`);
+  } else out.push(`<div class="banner">Нет данных воронки — поставь цель, чтобы увидеть план и факт.</div>`);
+  document.getElementById('screen-main').innerHTML=out.join('');
+}
+
+/* ─── ПРОГНОЗ (по плану; реальный прогноз — после recomputeForecast) ─── */
+function renderPrognoz(d){
+  const p=d.plan; const out=[];
+  if(p&&p.months&&p.months.length){
+    const cur=p.months.find(m=>m.is_current)||p.months[0];
+    const idx=p.months.indexOf(cur); const nxt=p.months[idx+1];
+    const incOf=(m)=>fmtShort(Math.round((m.target_revenue||0)*INCOME_SHARE));
+    out.push(`<div class="fc-grid">
+      <div class="fc accent"><div class="fc-cap">Этот месяц · ${esc(cur.label)}</div><div class="fc-val">${incOf(cur)} ₽</div><div class="fc-sub">плановый доход по твоей цели</div></div>
+      ${nxt?`<div class="fc"><div class="fc-cap">Следующий · ${esc(nxt.label)}</div><div class="fc-val">${incOf(nxt)} ₽</div><div class="fc-sub">план следующего месяца</div></div>`:''}
+      <div class="fc"><div class="fc-cap">🎯 Путь к цели за 6 мес</div><div class="fc-val">${fmtShort(Math.round((p.total_target_revenue||0)*INCOME_SHARE))} ₽</div><div class="fc-sub">суммарный плановый доход цикла</div></div>
+    </div>
+    <div class="card" style="margin-top:14px"><div class="muted">📈 Живой прогноз по горячим клиентам и задаткам появится после подключения прогнозного модуля. Сейчас показаны плановые ориентиры.</div></div>`);
+  } else out.push(`<div class="card"><div class="section-title">📈 Прогноз дохода</div><div class="soon"><span class="soon-ic">📈</span>Появится, когда будет активная цель и план.</div></div>`);
+  document.getElementById('screen-prognoz').innerHTML=out.join('');
+}
+
+/* ─── ТРЕНЕР (диагностика + ИИ) ─── */
 function coachSide(side,c,title){ if(!c)return'';
   const rec=c.recommendation_for_realtor||c.recommendation_rop||'';
   const weak=(c.weak_points||[]).map(w=>`<div class="weak"><span>⚠ ${esc(w.bit_label)}</span><span class="muted">${esc(w.actual)} / порог ${esc(w.threshold)}</span></div>`).join('');
-  return `<div class="coach-side" style="border-left-color:${SIDE_COLOR[side]}"><div style="font-weight:600;font-size:13px">${esc(title)}</div>
+  return `<div class="coach-side" style="border-left-color:${SIDE_COLOR[side]}"><div style="font-weight:700;font-size:13px">${esc(title)}</div>
     ${c.description?`<div class="muted" style="margin:4px 0">${esc(c.description)}</div>`:''}
     ${rec?`<div style="margin:6px 0;font-size:13px">💡 ${esc(rec)}</div>`:''}${weak?`<div class="weak-list">${weak}</div>`:''}</div>`;
 }
+function renderCoach(d){
+  const out=[];
+  if(d.coach&&(d.coach.buyer||d.coach.seller)){
+    out.push(`<div class="card"><div class="section-title">🎓 Диагностика · что подтянуть</div>
+      ${coachSide('buyer',d.coach.buyer,'Покупатель')}${coachSide('seller',d.coach.seller,'Продавец')}
+      <div class="muted" style="margin-top:8px">Относительно твоей зоны${d.coach.zone_label?': '+esc(d.coach.zone_label):''}</div></div>`);
+  } else out.push(`<div class="card"><div class="section-title">🎓 Диагностика</div><div class="soon"><span class="soon-ic">🎓</span>Диагностика появится после ночного расчёта.</div></div>`);
+  out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Мой виртуальный <span>тренер</span></div></div>
+    <div class="ai-text">Скоро здесь появится <b>персональный совет от ИИ</b>. Сейчас работает базовая диагностика — смотри слабые места выше.</div>
+    <div class="ai-note">на YandexGPT — после слёта</div></div>`);
+  document.getElementById('screen-coach').innerHTML=out.join('');
+}
+
+/* ─── КЛИЕНТЫ (заглушка) ─── */
+function renderClients(){
+  document.getElementById('screen-clients').innerHTML=`<div class="card"><div class="soon"><span class="soon-ic">👥</span>
+    <div style="font-weight:700;color:var(--ink);font-size:15px;margin-bottom:6px">Список клиентов скоро</div>
+    Появится после интеграции с CRM «Этажей». Будет видна вся воронка клиентов: поток → горячие → задатки → сделки.</div></div>`;
+}
+
+/* ─── ЗАДАЧИ ─── */
 function taskItem(t){
   const meta=[t.priority!=='normal'?t.priority_label:'',t.due_label||t.due_date||'',t.progress_label].filter(Boolean).join(' · ');
   return `<div class="task"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}</div>
     ${t.can_complete?`<button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`:(t.status==='done'?'<span class="task-done">✓</span>':'')}</div>`;
 }
-
-function renderMain(d){
-  const u=d.user,g=d.goal,f=d.funnel;
-  const out=[];
-  const zoneBadge=u.svetofor_zone_label?`<span class="pill zone-badge" style="background:${u.svetofor_zone_color||'#888'}">${esc(u.svetofor_zone_label)}</span>`:'';
-  const posBadge=u.position_in_company!=null?`<span class="pill">Позиция #${u.position_in_company}</span>`:'';
-  const meta=[]; if(u.mop_name)meta.push('Старший: '+esc(u.mop_name)); if(u.stazh_label)meta.push('Стаж: '+esc(u.stazh_label));
-  out.push(`<div class="card profile"><div class="avatar">${esc(initials(u.name))}</div><div style="flex:1">
-    <div class="pname">${esc(u.name)}</div><div class="muted">${esc(u.role_label)}${meta.length?' · '+meta.join(' · '):''}</div>
-    <div class="badges">${posBadge}${zoneBadge}</div></div></div>`);
-
-  if(g){
-    out.push(`<div class="card"><div class="section-title">Моя цель</div>
-      <div style="font-size:22px;font-weight:700">${esc(g.target_revenue_month_short)} ₽/мес</div>
-      <div class="muted" style="margin-top:4px">Целевая зона: ${esc(g.target_zone_label||'—')}${g.is_auto?' · автоцель':''}</div>
-      ${g.can_change?'':`<div class="muted" style="margin-top:6px">🔒 ${esc(g.next_change_block_reason||'')}</div>`}</div>`);
-  } else out.push(`<div class="banner">Цель пока не поставлена.</div>`);
-
-  if(f&&f.buyer){
-    out.push(`<div class="card"><div class="ir-top"><div class="ir-big" style="color:${barColor(f.ir_total)}">${f.ir_total}<span style="font-size:18px">%</span></div>
-      <div class="ir-sides"><div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${f.ir_buyer}%</b></div>
-      <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${f.ir_seller}%</b></div></div></div>
-      <div class="muted" style="margin-top:6px">Индекс развития · ${esc(f.period_label)} · нормативы под твою цель растут к 6-му месяцу</div></div>`);
-    out.push(`<div class="card"><div class="section-title">Воронки</div>${funnelSide('buyer',f.buyer,f.period_label)}${funnelSide('seller',f.seller,f.period_label)}</div>`);
-  } else out.push(`<div class="banner">Нет данных воронки — поставь цель, чтобы увидеть план и факт.</div>`);
-
-  if(d.coach&&(d.coach.buyer||d.coach.seller)){
-    out.push(`<div class="card"><div class="section-title">Диагностика · что подтянуть</div>
-      ${coachSide('buyer',d.coach.buyer,'Покупатель')}${coachSide('seller',d.coach.seller,'Продавец')}
-      <div class="muted" style="margin-top:8px">Относительно твоей зоны${d.coach.zone_label?': '+esc(d.coach.zone_label):''}</div></div>`);
-  }
-
-  // место под ИИ-ассистента (интеграция позже)
-  out.push(`<div class="card"><div class="section-title">✨ ИИ-ассистент</div>
-    <div class="soon">Персональный разбор и мотивация от ИИ-наставника — скоро.<br><span class="muted">Подключаем YandexGPT</span></div></div>`);
-
-  document.getElementById('screen-main').innerHTML=out.join('');
-}
-
-function renderPrognoz(d){
-  document.getElementById('screen-prognoz').innerHTML=`<div class="card"><div class="section-title">📈 Прогноз дохода</div>
-    <div class="soon">Сколько закроешь в этом и следующем месяце — по горячим клиентам и задаткам.<br><span class="muted">Скоро</span></div></div>`;
-}
-
 function renderTasks(d){
   const out=[]; const tb=d.tasks, nb=d.notifications;
+  if(nb&&nb.recent&&nb.recent.length){
+    const items=nb.recent.slice(0,5).map(n=>`<div class="notif ${n.is_read?'':'unread'}"><span class="ni-icon">${esc(n.icon||'🔔')}</span>
+      <div><div class="ni-title">${esc(n.title)}</div><div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('');
+    out.push(`<div class="card"><div class="section-title">🔔 Уведомления${nb.unread_count?` · ${nb.unread_count} новых`:''}</div>${items}</div>`);
+  }
   if(tb){
     const grp=(arr,title,cls)=>(arr&&arr.length)?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
     const g=tb.groups;
-    const body=grp(g.expired,'Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Выполнено','tg-green');
-    out.push(`<div class="card"><div class="section-title">Мои задачи</div>${body||'<div class="muted">Нет активных задач.</div>'}</div>`);
-  }
-  if(nb&&nb.recent&&nb.recent.length){
-    const items=nb.recent.slice(0,10).map(n=>`<div class="notif ${n.is_read?'':'unread'}"><span class="ni-icon">${esc(n.icon||'🔔')}</span>
-      <div><div class="ni-title">${esc(n.title)}</div><div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('');
-    out.push(`<div class="card"><div class="section-title">Уведомления${nb.unread_count?` · ${nb.unread_count} новых`:''}</div>${items}</div>`);
+    const body=grp(g.expired,'⚠ Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На этой неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Сделано за 14 дней','tg-green');
+    out.push(`<div class="card"><div class="section-title">📋 Мои задачи</div>${body||'<div class="muted">Нет активных задач.</div>'}</div>`);
   }
   if(!out.length) out.push(`<div class="banner">Задач и уведомлений пока нет.</div>`);
   document.getElementById('screen-tasks').innerHTML=out.join('');
-  // точка на табе
   const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
   document.getElementById('taskDot').textContent = cnt?' '+cnt:'';
 }
 
+/* ─── СВЕТОФОР ─── */
 function renderSvetofor(d){
   const u=d.user; const pos=u.position_in_company;
   const cur=LEAGUES.find(l=>pos!=null&&pos>=l.from&&pos<=l.to);
-  const leagues=LEAGUES.map(l=>`<div class="sv-league ${l===cur?'you':''}"><span class="sv-l-tag" style="background:${l.color};color:${['#86efac','#fde68a','#fbbf24'].includes(l.color)?'#0f172a':'#fff'}">${esc(l.tag)}${l===cur?' ← ты':''}</span>
-    <span class="sv-l-name">${esc(l.name)}</span><span class="sv-l-inc">${esc(l.inc)}</span></div>`).join('');
+  const leagues=LEAGUES.map(l=>`<div class="sv-league ${l===cur?'you':''}"><span class="sv-l-tag" style="background:${l.color};color:${['#86efac','#fde68a','#fbbf24'].includes(l.color)?'#0f172a':'#fff'}">${esc(l.tag)}</span>
+    <span class="sv-l-name">${esc(l.name)}${l===cur?' · ты':''}</span><span class="sv-l-inc">${esc(l.inc)}</span></div>`).join('');
   let nextNote='';
-  if(cur){ const idx=LEAGUES.indexOf(cur); if(idx>0){ const next=LEAGUES[idx-1]; nextNote=`До зоны «${esc(next.name)}» (${next.from}–${next.to}) — ещё ${pos-next.to} мест`; } }
-  document.getElementById('screen-svetofor').innerHTML=`<div class="card"><div class="section-title">🚦 Светофор — моё место</div>
-    <div class="svet-hero">
-      <div class="svet-now"><div class="svet-pos">${pos!=null?'#'+pos:'—'}</div><div class="muted">место из 1300</div></div>
-      <div class="svet-zone"><div class="muted">Твоя зона</div><div style="font-size:16px;font-weight:600;margin:4px 0">${esc(u.svetofor_zone_label||'—')}</div>
-        ${nextNote?`<div class="muted">${nextNote}</div>`:''}</div>
-    </div>
-    <div class="section-title" style="margin-top:6px">Все лиги</div>${leagues}
-    <div class="muted" style="margin-top:10px">📈 История движения по месяцам — появится по мере накопления данных.</div></div>`;
+  if(cur){ const idx=LEAGUES.indexOf(cur); if(idx>0){ const next=LEAGUES[idx-1]; nextNote=`До следующей зоны «${esc(next.name)}» (${next.from}–${next.to}) — ещё ${pos-next.to} мест`; } }
+  const zoneDesc=cur?`«${esc(cur.name)}» — доход ${esc(cur.inc)} ₽/мес`:'';
+  document.getElementById('screen-svetofor').innerHTML=`
+    <div class="svet-now"><div class="svet-pos-huge">${pos!=null?'#'+pos:'—'}</div><div class="svet-now-lbl">текущее место · из 1300 партнёров</div></div>
+    <div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700">Твоя зона</div>
+      <div class="svet-zone-name">${esc(u.svetofor_zone_label||(cur?cur.tag.replace(/^[^\s]+\s/,''):'—'))}</div>
+      ${zoneDesc?`<div class="svet-zone-sub">${zoneDesc}</div>`:''}
+      ${nextNote?`<div class="svet-zone-sub" style="margin-top:6px">${nextNote}</div>`:''}</div>
+    <div class="card"><div class="section-title">🚦 Все лиги</div>${leagues}</div>
+    <div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>
+      <div class="soon"><span class="soon-ic">📈</span>История движения по светофору накапливается — график появится в ближайшие месяцы.</div></div>`;
 }
 
-function render(d){ renderMain(d); renderPrognoz(d); renderTasks(d); renderSvetofor(d); }
+/* ─── МОДАЛКА «Изменить цель» ─── */
+window.openEditGoal=()=>{
+  const d=CTX.data; const g=d.goal; const inc=d.user.income_month;
+  const cur=g?g.target_revenue_month:143415;
+  const presets=[
+    {v:143415,t:'Минимум — норма зоны 401–500',s:'143к ₽/мес'},
+  ];
+  if(inc!=null){ presets.push({v:inc+50000,t:'Текущий доход + 50к (рекомендуемая)',s:fmtShort(inc+50000)+' ₽/мес'});
+    presets.push({v:inc+100000,t:'Текущий доход + 100к (амбициозная)',s:fmtShort(inc+100000)+' ₽/мес'}); }
+  const locked=g&&!g.can_change;
+  document.getElementById('modalGoalBody').innerHTML=`
+    <div class="modal-head"><div class="modal-title">🎯 Изменить цель по доходу</div><button class="modal-x" onclick="closeModal('modalGoal')">✕</button></div>
+    <input class="goal-input" id="goalInput" type="number" inputmode="numeric" value="${cur}" />
+    ${presets.map(p=>`<button class="preset" onclick="document.getElementById('goalInput').value=${p.v}"><span>${esc(p.t)}</span><b>${esc(p.s)}</b></button>`).join('')}
+    <button class="modal-save" id="goalSaveBtn" ${locked?'disabled':''} onclick="saveGoal()">${locked?'🔒 Менять пока нельзя':'Сохранить и пересчитать план'}</button>
+    ${locked?`<div class="modal-warn">${esc(g.next_change_block_reason||'Цель можно менять не чаще раза в месяц.')}</div>`:`<div class="modal-warn">⏱ Менять цель можно не чаще раза в месяц. План пересчитается под новую цель.</div>`}`;
+  document.getElementById('modalGoal').classList.add('on');
+};
+window.saveGoal=async()=>{
+  const v=Math.round(Number(document.getElementById('goalInput').value)||0);
+  if(v<30000||v>5000000){ alert('Цель должна быть от 30 000 до 5 000 000 ₽'); return; }
+  const b=document.getElementById('goalSaveBtn'); b.disabled=true; b.textContent='Сохраняю…';
+  try{ await window.__call('setGoal',{user_code:CTX.target,new_target_revenue:v}); location.reload(); }
+  catch(e){ alert('Не удалось: '+(e.message||e)); b.disabled=false; b.textContent='Сохранить и пересчитать план'; }
+};
+
+/* ─── МОДАЛКА «Зал славы» (заглушка) ─── */
+window.openHof=()=>{
+  const ach=CTX.data.achievements||[];
+  const list=ach.length?ach.map(a=>`<div class="hof-item">${esc(a.emoji)} ${esc(a.text)}</div>`).join(''):'<div class="muted">Пока нет достижений — они появятся по мере роста показателей.</div>';
+  document.getElementById('modalHofBody').innerHTML=`
+    <div class="modal-head"><div class="modal-title">🏆 Зал славы</div><button class="modal-x" onclick="closeModal('modalHof')">✕</button></div>
+    ${list}
+    <div class="muted" style="margin-top:12px">Полная система достижений появится после слёта.</div>`;
+  document.getElementById('modalHof').classList.add('on');
+};
+
+function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); }
 
 (async ()=>{
   const me=await requireAuth();
   document.getElementById('logoutBtn').onclick=logout;
   const params=new URLSearchParams(location.search);
   const targetCode=params.get('agent')||me.code;
+  CTX.target=targetCode;
   if(params.get('agent')) document.getElementById('backBtn').style.display='inline-flex';
   const fns=getFunctions(getApp(),'europe-west1');
   window.__call=(name,data)=>httpsCallable(fns,name)(data).then(r=>r.data);
   try{
     const res=await httpsCallable(fns,'getDashboard')({ user_code:targetCode, view:'partner' });
-    const d=res.data;
+    const d=res.data; CTX.data=d;
     document.getElementById('dateBadge').textContent=new Date(d.meta?.generated_at||Date.now()).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
     render(d);
-  }catch(e){ document.getElementById('screen-main').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e); }
+  }catch(e){ document.getElementById('hero').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e); }
   document.getElementById('overlay').classList.add('hidden');
 })();
 </script>
