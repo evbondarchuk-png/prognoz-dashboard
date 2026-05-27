@@ -412,15 +412,21 @@ function funnelSide(side,fs,icon){ if(!fs)return'';
     ${(fs.stages||[]).map(st=>stageCard(side,st)).join('')}</div>`;
 }
 
-/* превью срочных задач для Главной */
+/* превью задач (сегодня + на неделе) для Главной */
 function tasksPreview(d){
   const g=d.tasks&&d.tasks.groups; if(!g) return '';
-  const urgent=[...(g.expired||[]),...(g.today||[])].slice(0,3);
-  if(!urgent.length) return '';
-  const items=urgent.map(t=>`<div class="task"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${(t.due_label||t.due_date)?`<div class="muted">${esc(t.due_label||t.due_date)}</div>`:''}</div>
-    ${t.can_complete?`<button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`:''}</div>`).join('');
-  return `<div class="card"><div class="tp-head"><div class="section-title" style="margin:0">🔥 Срочно сегодня · ${urgent.length}</div>
-    <span class="tp-link" onclick="goTab('tasks')">все задачи ↗</span></div>${items}</div>`;
+  const exp=(g.expired||[]), today=(g.today||[]), week=(g.week||[]);
+  if(!exp.length&&!today.length&&!week.length) return '';
+  const grp=(arr,title,cls)=>arr.length?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.slice(0,4).map(taskItem).join('')}`:'';
+  return `<div class="card"><div class="tp-head"><div class="section-title" style="margin:0">📋 Задачи на сегодня и неделю</div>
+    <span class="tp-link" onclick="goTab('tasks')">все задачи ↗</span></div>
+    ${grp(exp,'⚠ Просрочено','tg-red')}${grp(today,'Сегодня','tg-red')}${grp(week,'На этой неделе','tg-amber')}</div>`;
+}
+/* ИИ-наставник (заглушка) для Главной */
+function aiCardMain(){
+  return `<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">ИИ-<span>наставник</span></div></div>
+    <div class="ai-text">Здесь будет <b>персональный разбор</b> твоих воронок и живая мотивация — что подтянуть прямо сейчас, чтобы расти в светофоре.</div>
+    <div class="ai-note">Скоро · YandexGPT</div></div>`;
 }
 /* кнопка/карточка «помощь старшего партнёра» */
 function helpCard(d){
@@ -455,6 +461,7 @@ function renderMain(d){
     const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
     if(rec) out.push(`<div class="card"><div class="section-title">💡 Совет дня</div><div class="tip">${esc(rec)}</div></div>`);
   } else out.push(`<div class="banner">Нет данных воронки — поставь цель, чтобы увидеть план и факт.</div>`);
+  out.push(aiCardMain());
   out.push(helpCard(d));
   document.getElementById('screen-main').innerHTML=out.join('');
 }

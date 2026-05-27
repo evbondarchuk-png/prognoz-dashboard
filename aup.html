@@ -260,6 +260,17 @@ function aggSide(side,fs,icon){ if(!fs)return'';
     ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}`;
 }
 
+/* задачи на сегодня и неделю для Главной */
+function tasksMain(d){
+  const g=d.tasks&&d.tasks.groups; if(!g) return '';
+  const exp=g.expired||[],today=g.today||[],week=g.week||[];
+  if(!exp.length&&!today.length&&!week.length) return '';
+  const grp=(arr,t,cls)=>arr.length?`<div class="tg-title ${cls}">${t} · ${arr.length}</div>${arr.slice(0,4).map(taskItem).join('')}`:'';
+  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="section-title" style="margin:0">📋 Задачи на сегодня и неделю</div>
+    <span onclick="goTab('tasks')" style="font-size:12px;color:var(--brand);font-weight:700;cursor:pointer">все ↗</span></div>
+    ${grp(exp,'⚠ Просрочено','tg-red')}${grp(today,'Сегодня','tg-red')}${grp(week,'На этой неделе','tg-amber')}</div>`;
+}
+
 /* ─── ГЛАВНАЯ ─── */
 function renderMain(d){
   const a=d.aggregates; const out=[];
@@ -269,6 +280,7 @@ function renderMain(d){
       <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${a.ir_seller}%</b></div></div></div>
       <div class="muted" style="margin-top:8px">Средний ИР компании · ${esc(a.period_label)}</div></div>`);
     out.push(`<div class="grid-2"><div class="card">${aggSide('buyer',a.buyer,'🛒')}</div><div class="card">${aggSide('seller',a.seller,'🏘')}</div></div>`);
+    out.push(tasksMain(d));
     out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Сводка по <span>компании</span></div></div>
       <div class="ai-text">Скоро здесь появится <b>разбор компании от ИИ</b>: какие отделы лидируют, где системные риски, куда направить внимание.</div>
       <div class="ai-note">на YandexGPT — после слёта</div></div>`);
