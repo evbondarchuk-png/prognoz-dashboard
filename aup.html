@@ -144,6 +144,13 @@ const CTX={data:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
+function fcHero(fc){ if(!fc) return '';
+  const dv=fc.delta_vs_yesterday;
+  const dlt=dv&&dv.revenue_pct?` <span style="font-size:13px;color:${dv.direction==='up'?'var(--st-green)':'var(--st-red)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
+  return `<div class="stat-grid" style="margin-top:10px">
+    <div class="stat"><div class="s-cap">прогноз дохода (тек.)</div><b style="color:var(--brand)">${esc(fc.current_month.income_total_label)} ₽</b></div>
+    <div class="stat"><div class="s-cap">прогноз след. месяц</div><b style="color:var(--brand)">${esc(fc.next_month.income_total_label)} ₽</b>${dlt}</div>
+  </div>`; }
 
 window.showTab=(id,btn)=>{
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
@@ -158,20 +165,21 @@ window.completeTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); const b=ev&&ev.t
 /* ─── HERO ─── */
 function renderHero(d){
   const u=d.user,a=d.aggregates;
-  let stats='';
+  let stats='',fcStats='';
   if(a){ const depts=a.departments_count!=null?a.departments_count:(d.team?d.team.total_count:0);
     stats=`<div class="stat-grid">
       <div class="stat"><div class="s-cap">ИР компании</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
       <div class="stat"><div class="s-cap">отделов</div><b>${depts}</b></div>
       <div class="stat"><div class="s-cap">партнёров</div><b>${a.scope.members_count}</b></div>
       <div class="stat"><div class="s-cap">выполнение</div><b style="color:var(--st-green)">${a.scope.performance_pct}%</b></div>
-    </div>`; }
+    </div>`;
+    fcStats=fcHero(a.forecast); }
   document.getElementById('hero').innerHTML=`<div class="card">
     <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
       <span class="role-tag">${esc(u.role_label||'АУП')}</span>
       <div class="hero-name">${esc(u.name)}</div>
       <div class="hero-sub">Компания «Этажи» · Тюмень</div></div></div>
-    ${stats}</div>`;
+    ${stats}${fcStats}</div>`;
 }
 
 /* ─── воронка компании ─── */

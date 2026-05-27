@@ -143,6 +143,10 @@
   .fc-cap{font-size:12px;color:var(--muted);font-weight:600}
   .fc-val{font-size:24px;font-weight:800;color:var(--brand);margin:2px 0}
   .fc-sub{font-size:12px;color:var(--muted)}
+  .fc-big{font-size:30px;font-weight:800;color:var(--brand);margin:4px 0}
+  .risk-alert{margin-top:10px;padding:9px 12px;border-radius:8px;background:var(--yellow-bg);color:#92400e;font-size:13px;font-weight:600}
+  .risk-alert.surge{background:#fff7ed;color:#9a3412}
+  .risk-alert.deep{background:var(--red-bg);color:#991b1b}
 
   /* уведомления/задачи */
   .notif{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
@@ -390,20 +394,32 @@ function renderMain(d){
   document.getElementById('screen-main').innerHTML=out.join('');
 }
 
-/* ─── ПРОГНОЗ (по плану; реальный прогноз — после recomputeForecast) ─── */
+/* ─── ПРОГНОЗ (TZ-A10 — из forecast по bL/sL) ─── */
 function renderPrognoz(d){
-  const p=d.plan; const out=[];
-  if(p&&p.months&&p.months.length){
-    const cur=p.months.find(m=>m.is_current)||p.months[0];
-    const idx=p.months.indexOf(cur); const nxt=p.months[idx+1];
-    const incOf=(m)=>fmtShort(Math.round((m.target_revenue||0)*INCOME_SHARE));
-    out.push(`<div class="fc-grid">
-      <div class="fc accent"><div class="fc-cap">Этот месяц · ${esc(cur.label)}</div><div class="fc-val">${incOf(cur)} ₽</div><div class="fc-sub">плановый доход по твоей цели</div></div>
-      ${nxt?`<div class="fc"><div class="fc-cap">Следующий · ${esc(nxt.label)}</div><div class="fc-val">${incOf(nxt)} ₽</div><div class="fc-sub">план следующего месяца</div></div>`:''}
-      <div class="fc"><div class="fc-cap">🎯 Путь к цели за 6 мес</div><div class="fc-val">${fmtShort(Math.round((p.total_target_revenue||0)*INCOME_SHARE))} ₽</div><div class="fc-sub">суммарный плановый доход цикла</div></div>
-    </div>
-    <div class="card" style="margin-top:14px"><div class="muted">📈 Живой прогноз по горячим клиентам и задаткам появится после подключения прогнозного модуля. Сейчас показаны плановые ориентиры.</div></div>`);
-  } else out.push(`<div class="card"><div class="section-title">📈 Прогноз дохода</div><div class="soon"><span class="soon-ic">📈</span>Появится, когда будет активная цель и план.</div></div>`);
+  const f=d.forecast; const out=[];
+  if(f && (f.current_month.income>0 || f.next_month.income>0)){
+    const cm=f.current_month, nm=f.next_month, tm=f.two_mo, cp=f.cycle_progress;
+    out.push(`<div class="card"><div class="section-title">📍 Текущий месяц · ${esc(cm.label)}</div>
+      <div class="fc-big">${esc(cm.income_label)} ₽</div>
+      <div class="muted">факт ${esc(cm.fact_income_label)} + прогноз ${esc(cm.forecast_income_label)}</div>
+      <div class="muted" style="margin-top:4px">${cm.deals_total} сделок · ${cm.deals_closed} закрыто</div></div>`);
+    out.push(`<div class="card"><div class="section-title">📅 Следующий месяц · ${esc(nm.label)}</div>
+      <div class="fc-big">${esc(nm.income_label)} ₽</div>
+      <div class="muted">по горячим и задаткам · ${nm.deals_forecast} сделок прогноз</div></div>`);
+    const rc=tm.risk_flag==='deep_drop'?'deep':(tm.risk_flag==='next_month_surge'?'surge':'');
+    out.push(`<div class="card"><div class="section-title">🗓 Прогнозный доход на 2 месяца</div>
+      <div class="fc-big">${esc(tm.income_label)} ₽</div>
+      <div class="muted">${tm.deals_total} сделок в работе</div>
+      ${tm.risk_label?`<div class="risk-alert ${rc}">${esc(tm.risk_label)}</div>`:''}</div>`);
+    if(cp) out.push(`<div class="card"><div class="section-title">🎯 Шаг к цели</div>
+      <div class="muted">факт и прогноз закрытий за цикл 6 месяцев</div>
+      <div class="it-bar" style="margin:10px 0"><div class="it-bar-fill" style="width:${cp.progress_pct}%"></div></div>
+      <div class="muted">${esc(cp.income_to_date_label)} ₽ из ${esc(cp.target_income_6mo_label)} ₽ · ${cp.progress_pct}%</div>
+      <div style="margin-top:8px;font-weight:700;color:${cp.will_reach_target?'var(--st-green)':'var(--st-yellow)'}">${esc(cp.status_label)}</div></div>`);
+  } else {
+    out.push(`<div class="card"><div class="section-title">📈 Прогноз дохода</div>
+      <div class="soon"><span class="soon-ic">📈</span>Прогноз появится, когда в работе будут горячие клиенты и задатки.</div></div>`);
+  }
   document.getElementById('screen-prognoz').innerHTML=out.join('');
 }
 

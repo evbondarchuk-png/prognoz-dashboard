@@ -171,6 +171,13 @@ const CTX={data:null,target:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
+function fcHero(fc){ if(!fc) return '';
+  const dv=fc.delta_vs_yesterday;
+  const dlt=dv&&dv.revenue_pct?` <span style="font-size:13px;color:${dv.direction==='up'?'var(--st-green)':'var(--st-red)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
+  return `<div class="stat-grid" style="margin-top:10px">
+    <div class="stat"><div class="s-cap">прогноз дохода (тек.)</div><b style="color:var(--brand)">${esc(fc.current_month.income_total_label)} ₽</b></div>
+    <div class="stat"><div class="s-cap">прогноз след. месяц</div><b style="color:var(--brand)">${esc(fc.next_month.income_total_label)} ₽</b>${dlt}</div>
+  </div>`; }
 
 window.showTab=(id,btn)=>{
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
@@ -204,19 +211,20 @@ function helpCard(){ return `<button class="help-btn" onclick="openManager()">�
 function renderHero(d){
   const u=d.user,a=d.aggregates;
   const meta=[]; if(u.rop_name)meta.push('Управляющий партнёр: '+esc(u.rop_name)); if(a)meta.push(a.scope.members_count+' партнёров');
-  let stats='';
+  let stats='',fcStats='';
   if(a){ stats=`<div class="stat-grid">
     <div class="stat"><div class="s-cap">ИР группы</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
     <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--st-green)">${a.scope.performers_count}</b></div>
     <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--st-red)">${a.scope.underperformers_count}</b></div>
     <div class="stat"><div class="s-cap">всего</div><b>${a.scope.members_count}</b></div>
-  </div>`; }
+  </div>`;
+    fcStats=fcHero(a.forecast); }
   document.getElementById('hero').innerHTML=`<div class="card">
     <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
       <span class="role-tag">${esc(u.role_label||'Старший партнёр')}</span>
       <div class="hero-name">${esc(u.name)}</div>
       <div class="hero-sub">${meta.join(' · ')}</div></div></div>
-    ${stats}</div>`;
+    ${stats}${fcStats}</div>`;
 }
 
 /* ─── воронка группы ─── */
