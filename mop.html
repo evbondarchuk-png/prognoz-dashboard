@@ -67,6 +67,8 @@
   .mini-stage{flex:1;border-radius:1px}
   .member-arrow{color:var(--text3);flex-shrink:0}
   .newbie-tag{font-size:10px;color:var(--text3);border:1px solid var(--border);border-radius:10px;padding:1px 6px;margin-left:6px}
+  .self-tag{font-size:10px;color:var(--blue);border:1px solid var(--blue);border-radius:10px;padding:1px 6px;margin-left:6px}
+  .member-card.is-self{background:#F7FAFE}
 
   .notif{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
   .notif:last-child{border-bottom:none} .notif.unread .ni-title{font-weight:600}
@@ -125,10 +127,10 @@ function aggSide(side, fs, periodLabel){
 }
 function memberCard(m){
   const mini=(m.mini_funnel||[]).map(s=>`<div class="mini-stage" style="background:${STC[s.status]||STC.no_data}"></div>`).join('');
-  return `<div class="member-card ${m.is_at_risk?'at-risk':''}" onclick="openMember('${esc(m.code)}')">
+  return `<div class="member-card ${m.is_at_risk?'at-risk':''} ${m.is_self?'is-self':''}" onclick="openMember('${esc(m.code)}')">
     <div class="member-avatar" style="background:${m.avatar_color_bg};color:${m.avatar_color_text}">${esc(m.avatar_initials||'?')}</div>
     <div class="member-info">
-      <div class="member-row-top"><span class="member-name">${esc(m.short_name||m.name)}${m.is_newbie?'<span class="newbie-tag">новичок</span>':''}</span>
+      <div class="member-row-top"><span class="member-name">${esc(m.short_name||m.name)}${m.is_self?'<span class="self-tag">вы · справочно</span>':(m.is_newbie?'<span class="newbie-tag">новичок</span>':'')}</span>
         <span class="member-ir" style="color:${STC[m.ir_status]||STC.no_data}">${m.ir_status==='no_data'?'—':m.ir_total+'%'}</span></div>
       <div class="mini-funnel">${mini}</div>
     </div>
