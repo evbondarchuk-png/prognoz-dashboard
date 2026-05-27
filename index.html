@@ -26,8 +26,12 @@
   .date-badge{font-size:12px;color:var(--muted);background:var(--surface2);padding:4px 10px;border-radius:20px}
   .btn{font-size:12px;color:var(--muted);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--line);cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
   .btn:hover{border-color:var(--brand);color:var(--brand)}
-  .container{max-width:640px;margin:0 auto;padding:16px}
+  .container{max-width:1080px;margin:0 auto;padding:16px}
+  @media(min-width:860px){.container{padding:24px 28px}}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+  /* адаптивная сетка: 1 колонка на телефоне, 2 на широком экране */
+  .grid-2{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+  @media(min-width:860px){.grid-2{grid-template-columns:1fr 1fr}}
   .muted{color:var(--muted);font-size:12px}
   .section-title{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em}
   .banner{background:var(--brand-soft);border:1px solid #cfe1f5;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:#1a4061}
@@ -120,7 +124,8 @@
   .ai-note{font-size:12px;color:#7d8fa8;margin-top:10px}
 
   /* прогноз */
-  .fc-grid{display:flex;flex-direction:column;gap:10px}
+  .fc-grid{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:700px){.fc-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
   .fc{border:1px solid var(--line);border-radius:12px;padding:14px 16px}
   .fc.accent{background:var(--brand-soft);border-color:#cfe1f5}
   .fc-cap{font-size:12px;color:var(--muted);font-weight:600}
@@ -324,7 +329,7 @@ function renderMain(d){
       <div class="ir-sides"><div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${f.ir_buyer}%</b></div>
       <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${f.ir_seller}%</b></div></div></div>
       <div class="muted" style="margin-top:8px">Индекс развития · ${esc(f.period_label)} · насколько ты на пути к цели</div></div>`);
-    out.push(`<div class="card"><div class="section-title">Воронки · ${esc(f.period_label)}</div>${funnelSide('buyer',f.buyer,'🛒')}${funnelSide('seller',f.seller,'🏘')}</div>`);
+    out.push(`<div class="grid-2"><div class="card">${funnelSide('buyer',f.buyer,'🛒')}</div><div class="card">${funnelSide('seller',f.seller,'🏘')}</div></div>`);
     const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
     if(rec) out.push(`<div class="card"><div class="section-title">💡 Совет дня</div><div class="tip">${esc(rec)}</div></div>`);
   } else out.push(`<div class="banner">Нет данных воронки — поставь цель, чтобы увидеть план и факт.</div>`);
@@ -411,11 +416,13 @@ function renderSvetofor(d){
   if(cur){ const idx=LEAGUES.indexOf(cur); if(idx>0){ const next=LEAGUES[idx-1]; nextNote=`До следующей зоны «${esc(next.name)}» (${next.from}–${next.to}) — ещё ${pos-next.to} мест`; } }
   const zoneDesc=cur?`«${esc(cur.name)}» — доход ${esc(cur.inc)} ₽/мес`:'';
   document.getElementById('screen-svetofor').innerHTML=`
+    <div class="grid-2">
     <div class="svet-now"><div class="svet-pos-huge">${pos!=null?'#'+pos:'—'}</div><div class="svet-now-lbl">текущее место · из 1300 партнёров</div></div>
     <div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700">Твоя зона</div>
       <div class="svet-zone-name">${esc(u.svetofor_zone_label||(cur?cur.tag.replace(/^[^\s]+\s/,''):'—'))}</div>
       ${zoneDesc?`<div class="svet-zone-sub">${zoneDesc}</div>`:''}
       ${nextNote?`<div class="svet-zone-sub" style="margin-top:6px">${nextNote}</div>`:''}</div>
+    </div>
     <div class="card"><div class="section-title">🚦 Все лиги</div>${leagues}</div>
     <div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>
       <div class="soon"><span class="soon-ic">📈</span>История движения по светофору накапливается — график появится в ближайшие месяцы.</div></div>`;
