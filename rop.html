@@ -3,74 +3,123 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Прогноз — Кабинет руководителя</title>
+<title>Прогноз — Кабинет управляющего партнёра</title>
 <script type="importmap">
 { "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
 </script>
 <style>
   :root{
-    --bg:#f7f6f3; --surface:#fff; --surface2:#f0efe9; --border:rgba(0,0,0,.1);
-    --text:#1a1a18; --text2:#5f5e5a; --text3:#9a9890;
-    --blue:#185FA5; --blue-bg:#E6F1FB; --green:#3B6D11; --green-bg:#EAF3DE; --gold:#BA7517;
-    --radius:10px; --st-green:#639922; --st-yellow:#EF9F27; --st-red:#A32D2D;
+    --bg:#f4f5f7; --surface:#fff; --surface2:#f1f3f7;
+    --ink:#1a1f2e; --muted:#7a8194; --line:#e6e8ee;
+    --brand:#2b6cb0; --brand-soft:#eaf2fb;
+    --buyer:#3b82f6; --seller:#10b981; --gold:#f59e0b;
+    --st-green:#16a34a; --st-yellow:#d97706; --st-red:#dc2626;
+    --green-bg:#e9f6ec; --yellow-bg:#fdf3e3; --red-bg:#fdeaea; --nd-bg:#eef0f4;
+    --radius:14px; --shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
-  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
-  .logo{font-size:16px;font-weight:600;color:var(--blue)} .logo span{color:var(--text);font-weight:400}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;padding-bottom:24px}
+  .header{background:var(--surface);border-bottom:1px solid var(--line);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
+  .logo{font-size:16px;font-weight:800;color:var(--brand)} .logo span{color:var(--muted);font-weight:500}
   .header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-  .date-badge{font-size:12px;color:var(--text2);background:var(--surface2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
-  .btn{font-size:12px;color:var(--text2);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-  .btn:hover{border-color:var(--blue);color:var(--blue)}
-  .container{max-width:640px;margin:0 auto;padding:16px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
-  .muted{color:var(--text2);font-size:12px}
-  .section-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
-  .banner{background:#FFF8E6;border:1px solid #F0D98A;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px}
+  .date-badge{font-size:12px;color:var(--muted);background:var(--surface2);padding:4px 10px;border-radius:20px}
+  .btn{font-size:12px;color:var(--muted);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--line);cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .btn:hover{border-color:var(--brand);color:var(--brand)}
+  .container{max-width:1080px;margin:0 auto;padding:16px}
+  @media(min-width:860px){.container{padding:24px 28px}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .grid-2{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+  @media(min-width:860px){.grid-2{grid-template-columns:1fr 1fr}}
+  .muted{color:var(--muted);font-size:12px}
+  .section-title{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em}
+  .banner{background:var(--brand-soft);border:1px solid #cfe1f5;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:#1a4061}
+  .soon{background:var(--surface2);border:1px dashed #c9cedb;border-radius:10px;padding:24px 18px;text-align:center;color:var(--muted);font-size:13px}
+  .soon .soon-ic{font-size:34px;display:block;margin-bottom:8px}
 
-  .profile{display:flex;align-items:center;gap:14px}
-  .avatar{width:48px;height:48px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--blue);flex-shrink:0}
-  .pname{font-size:16px;font-weight:600}
+  .profile{display:flex;align-items:flex-start;gap:14px}
+  .ava{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2b6cb0);display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;color:#fff;flex-shrink:0}
+  .role-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--brand-soft);color:var(--brand);margin-bottom:4px}
+  .hero-name{font-size:20px;font-weight:800;line-height:1.15}
+  .hero-sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
+  @media(min-width:620px){.stat-grid{grid-template-columns:repeat(4,1fr)}}
+  .stat{background:var(--surface2);border-radius:10px;padding:12px 14px}
+  .stat .s-cap{font-size:11px;color:var(--muted);font-weight:600}
+  .stat b{font-size:22px;font-weight:800;display:block;line-height:1.2;margin-top:2px}
+  .groups-line{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .gchip{font-size:12px;background:var(--surface2);border-radius:20px;padding:5px 11px;font-weight:600}
+
+  .rtab-bar{display:flex;gap:8px;margin-bottom:18px;padding:7px;background:#f4f7fb;border:1px solid var(--line);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:56px;z-index:90}
+  .rtab{font-size:14px;padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
+  .rtab:hover{color:var(--ink);background:rgba(255,255,255,.7)}
+  .rtab.on{background:#fff;color:var(--brand);font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .screen{display:none} .screen.on{display:block}
 
   .ir-top{display:flex;align-items:center;gap:18px}
-  .ir-big{font-size:40px;font-weight:700;line-height:1}
-  .ir-sides{flex:1;display:flex;flex-direction:column;gap:8px}
-  .ir-side{display:grid;grid-template-columns:90px 1fr 40px;gap:8px;align-items:center;font-size:12px}
-  .bar-bg{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
-  .bar-fill{height:100%;border-radius:3px;transition:width .4s}
-  .perf{display:flex;gap:16px;margin-top:10px;font-size:12px;flex-wrap:wrap}
-  .perf b{font-size:18px;display:block}
-  .groups-line{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-  .gchip{font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
+  .ir-big{font-size:46px;font-weight:800;line-height:1}
+  .ir-sides{flex:1;display:flex;flex-direction:column;gap:9px}
+  .ir-side{display:grid;grid-template-columns:84px 1fr 38px;gap:8px;align-items:center;font-size:12px;font-weight:600}
+  .bar-bg{height:8px;background:var(--nd-bg);border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px;transition:width .5s ease}
+  .status-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700}
+  .sb-green{background:var(--green-bg);color:var(--st-green)} .sb-yellow{background:var(--yellow-bg);color:var(--st-yellow)}
+  .sb-red{background:var(--red-bg);color:var(--st-red)} .sb-no_data{background:var(--nd-bg);color:var(--muted)}
 
-  .status-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
-  .sb-green{background:var(--green-bg);color:#173404} .sb-yellow{background:#FAEEDA;color:#412402}
-  .sb-red{background:#FCEBEB;color:#501313} .sb-no_data{background:#F1EFE8;color:#2C2C2A}
-
-  .fs-head{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px}
+  .fs-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px}
   .fs-title{display:flex;align-items:center;gap:8px}
   .fs-dot{width:10px;height:10px;border-radius:3px}
-  .stage-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--sc,#185FA5);border-radius:8px;padding:10px 12px;margin-bottom:8px}
-  .stage-head{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-bottom:6px}
-  .stage-label{font-size:13px;font-weight:500}
-  .stage-numbers b{font-weight:600}
-  .stage-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
-  .stage-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+  .stage-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--sc,var(--buyer));border-radius:12px;padding:12px 14px;margin-bottom:8px}
+  .stage-head{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+  .stage-label{font-size:14px;font-weight:700}
+  .stage-numbers b{font-weight:800}
+  .stage-bar{height:10px;background:var(--nd-bg);border-radius:6px;overflow:hidden}
+  .stage-bar-fill{height:100%;border-radius:6px;transition:width .5s ease}
 
-  .member-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px}
-  .member-card:hover{border-color:var(--blue)}
+  .member-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:11px;cursor:pointer;min-height:48px;transition:box-shadow .15s}
+  .member-card:hover{box-shadow:var(--shadow)}
   .member-card.at-risk{border-left:3px solid var(--st-red)}
-  .member-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+  .member-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
   .member-info{flex:1;min-width:0}
   .member-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px}
-  .member-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .member-sub{font-size:11px;color:var(--text3)}
-  .member-ir{font-size:13px;font-weight:600;flex-shrink:0}
-  .mini-funnel{display:flex;gap:2px;height:4px;margin-top:4px}
-  .mini-stage{flex:1;border-radius:1px}
-  .member-arrow{color:var(--text3);flex-shrink:0}
+  .member-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .member-ir{font-size:14px;font-weight:800;flex-shrink:0}
+  .member-sub{font-size:11px;color:var(--muted);margin-bottom:5px}
+  .mini-funnel{display:flex;gap:3px;height:6px}
+  .mini-stage{flex:1;border-radius:2px}
+  .member-arrow{color:var(--muted);flex-shrink:0}
 
-  #overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;color:var(--text2)}
+  .ai-card{background:linear-gradient(135deg,#1e293b 0%,#2b3a52 100%);border-radius:var(--radius);padding:18px;margin-bottom:14px;color:#fff;box-shadow:var(--shadow)}
+  .ai-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .ai-orb{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ffd66b,#f59e0b);box-shadow:0 0 24px rgba(245,158,11,.5);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .ai-h{font-size:14px;font-weight:800} .ai-h span{color:#ffd66b}
+  .ai-text{font-size:14px;line-height:1.6;color:#cbd5e1} .ai-text b{color:#ffd66b;font-weight:700}
+  .ai-note{font-size:12px;color:#7d8fa8;margin-top:10px}
+
+  .notif{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .notif:last-child{border-bottom:none} .notif.unread .ni-title{font-weight:700}
+  .ni-icon{font-size:18px} .ni-title{font-size:13px}
+  .tg-title{font-size:12px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.03em}
+  .tg-red{color:var(--st-red)} .tg-amber{color:var(--st-yellow)} .tg-gray{color:var(--muted)} .tg-green{color:var(--st-green)}
+  .task{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .task:last-child{border-bottom:none} .task-main{flex:1;min-width:0} .task-title{font-size:13px;font-weight:600}
+  .task-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--st-green);background:transparent;color:var(--st-green);cursor:pointer;font-size:15px;flex-shrink:0}
+  .task-btn:hover{background:var(--green-bg)} .task-done{color:var(--st-green)}
+  .help-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px solid #fca5a5;background:#fef2f2;color:#b91c1c;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:14px}
+  .help-btn:hover{background:#fee2e2}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:flex-end;justify-content:center;z-index:1000}
+  .modal-overlay.on{display:flex}
+  .modal{background:var(--surface);border-radius:18px 18px 0 0;width:100%;max-width:640px;padding:20px 18px 28px;max-height:90vh;overflow-y:auto}
+  @media(min-width:641px){.modal-overlay{align-items:center}.modal{border-radius:18px}}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .modal-title{font-size:17px;font-weight:800}
+  .modal-x{font-size:22px;color:var(--muted);cursor:pointer;line-height:1;background:none;border:none}
+  .mgr-card{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface2);border-radius:12px;margin-bottom:14px}
+  .mgr-ava{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2b6cb0);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0}
+  .mgr-topic{padding:11px 2px;border-bottom:1px solid var(--line);font-size:13px;display:flex;justify-content:space-between;gap:8px}
+  .mgr-topic:last-child{border-bottom:none}
+
+  #overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1100;color:var(--muted)}
   #overlay.hidden{display:none}
 </style>
 </head>
@@ -85,7 +134,22 @@
     <button class="btn" id="logoutBtn">Выход</button>
   </div>
 </div>
-<div class="container" id="root"></div>
+
+<div class="container">
+  <div id="hero"></div>
+  <div class="rtab-bar" id="tabbar">
+    <div class="rtab on" data-tab="main" onclick="showTab('main',this)">🏠 Главная</div>
+    <div class="rtab" data-tab="prognoz" onclick="showTab('prognoz',this)">📈 Прогноз</div>
+    <div class="rtab" data-tab="groups" onclick="showTab('groups',this)">👥 Старшие партнёры</div>
+    <div class="rtab" data-tab="tasks" onclick="showTab('tasks',this)">📋 Задачи<span id="taskDot"></span></div>
+  </div>
+  <div class="screen on" id="screen-main"></div>
+  <div class="screen" id="screen-prognoz"></div>
+  <div class="screen" id="screen-groups"></div>
+  <div class="screen" id="screen-tasks"></div>
+</div>
+
+<div class="modal-overlay" id="modalMgr"><div class="modal" id="modalMgrBody"></div></div>
 
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
@@ -93,28 +157,99 @@ import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.j
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
-const STC={green:'#639922',yellow:'#EF9F27',red:'#A32D2D',no_data:'#cfcdc6'};
-const SIDE_COLOR={buyer:'#185FA5',seller:'#3B6D11'};
+const STC={green:'#16a34a',yellow:'#d97706',red:'#dc2626',no_data:'#cbd0db'};
+const SIDE_COLOR={buyer:'#3b82f6',seller:'#10b981'};
+const CTX={data:null,target:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
-window.openGroup=(code)=>{ location.href='mop.html?mop='+encodeURIComponent(code); };
+function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
 
-function aggStageCard(side, st){
+window.showTab=(id,btn)=>{
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('screen-'+id).classList.add('on'); btn.classList.add('on');
+  window.scrollTo(0,0);
+};
+window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
+window.openGroup=(code)=>{ location.href='mop.html?mop='+encodeURIComponent(code); };
+window.closeModal=(id)=>document.getElementById(id).classList.remove('on');
+window.completeTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); const b=ev&&ev.target; if(b){b.disabled=true;b.textContent='…';}
+  try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); if(b){b.disabled=false;b.textContent='✓';} } };
+
+window.openManager=()=>{
+  document.getElementById('modalMgrBody').innerHTML=`
+    <div class="modal-head"><div class="modal-title">🆘 Помощь АУП</div><button class="modal-x" onclick="closeModal('modalMgr')">✕</button></div>
+    <div class="mgr-card"><div class="mgr-ava">АУ</div><div>
+      <div style="font-weight:800">Руководство компании (АУП)</div><div class="muted">на связи</div></div></div>
+    <div class="section-title">С чем может помочь</div>
+    <div class="mgr-topic"><span>Сложная ситуация в отделе</span><span class="muted">→</span></div>
+    <div class="mgr-topic"><span>Ресурсы и поддержка по плану отдела</span><span class="muted">→</span></div>
+    <div class="mgr-topic"><span>Эскалация крупной сделки</span><span class="muted">→</span></div>
+    <div class="muted" style="margin-top:12px">Свяжись с АУП лично или через корпоративный чат.</div>`;
+  document.getElementById('modalMgr').classList.add('on');
+};
+function helpCard(){ return `<button class="help-btn" onclick="openManager()">🆘 Запросить помощь АУП</button>`; }
+
+/* ─── HERO ─── */
+function renderHero(d){
+  const u=d.user,a=d.aggregates;
+  const meta=[]; if(a){meta.push(a.scope.members_count+' партнёров'); if(a.groups_summary)meta.push(a.groups_summary.total+' групп');}
+  let stats='',gline='';
+  if(a){ stats=`<div class="stat-grid">
+    <div class="stat"><div class="s-cap">ИР отдела</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
+    <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--st-green)">${a.scope.performers_count}</b></div>
+    <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--st-red)">${a.scope.underperformers_count}</b></div>
+    <div class="stat"><div class="s-cap">всего</div><b>${a.scope.members_count}</b></div>
+  </div>`;
+    const gs=a.groups_summary;
+    if(gs) gline=`<div class="groups-line"><span class="gchip">Групп: <b>${gs.total}</b></span>
+      <span class="gchip" style="color:var(--st-green)">🟢 в зелёной: ${gs.in_green}</span>
+      <span class="gchip" style="color:var(--st-red)">🔴 ниже: ${gs.in_red}</span></div>`;
+  }
+  document.getElementById('hero').innerHTML=`<div class="card">
+    <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
+      <span class="role-tag">${esc(u.role_label||'Управляющий партнёр')}</span>
+      <div class="hero-name">${esc(u.name)}</div>
+      <div class="hero-sub">${meta.join(' · ')}</div></div></div>
+    ${stats}${gline}</div>`;
+}
+
+/* ─── воронка отдела ─── */
+function aggStageCard(side,st){
   return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
     <div class="stage-head"><span class="stage-label">${esc(st.label)}</span>
       <span class="stage-numbers"><b style="color:${barColor(st.progress_pct,st.is_revenue)}">${st.progress_pct}%</b></span></div>
-    <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
-  </div>`;
+    <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div></div>`;
 }
-function aggSide(side, fs, periodLabel){
-  if(!fs) return '';
-  return `<div style="margin-bottom:8px">
-    <div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
-      <div><div style="font-weight:600">${esc(fs.label)}</div><div class="muted">ИР: ${fs.ir}% · ${esc(periodLabel)}</div></div></div>
-      <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">${esc(fs.ir_status_label||'')}</span></div>
-    ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}
-  </div>`;
+function aggSide(side,fs,icon){ if(!fs)return'';
+  return `<div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
+    <div style="font-weight:700">${icon} ${esc(fs.label)}</div></div>
+    <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
+    ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}`;
 }
+
+/* ─── ГЛАВНАЯ ─── */
+function renderMain(d){
+  const a=d.aggregates; const out=[];
+  if(a){
+    out.push(`<div class="card"><div class="ir-top"><div class="ir-big" style="color:${barColor(a.ir_total)}">${a.ir_total}<span style="font-size:20px">%</span></div>
+      <div class="ir-sides"><div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${a.ir_buyer}%</b></div>
+      <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${a.ir_seller}%</b></div></div></div>
+      <div class="muted" style="margin-top:8px">Средний ИР отдела · ${esc(a.period_label)} · выполнение ${a.scope.performance_pct}%</div></div>`);
+    out.push(`<div class="grid-2"><div class="card">${aggSide('buyer',a.buyer,'🛒')}</div><div class="card">${aggSide('seller',a.seller,'🏘')}</div></div>`);
+    out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Сводка по <span>отделу</span></div></div>
+      <div class="ai-text">Скоро здесь появится <b>разбор отдела от ИИ</b>: какие группы лидируют, где риски, на что направить старших партнёров.</div>
+      <div class="ai-note">на YandexGPT — после слёта</div></div>`);
+  } else out.push(`<div class="banner">Нет агрегатов отдела — возможно, ночной пересчёт ещё не прошёл.</div>`);
+  document.getElementById('screen-main').innerHTML=out.join('');
+}
+
+function renderPrognoz(){
+  document.getElementById('screen-prognoz').innerHTML=`<div class="card"><div class="section-title">📈 Прогноз отдела</div>
+    <div class="soon"><span class="soon-ic">📈</span>Прогноз комиссий и выручки отдела на текущий и следующий месяц появится после подключения прогнозного модуля.</div></div>`;
+}
+
+/* ─── СТАРШИЕ ПАРТНЁРЫ ─── */
 function groupCard(m){
   const mini=(m.mini_funnel||[]).map(s=>`<div class="mini-stage" style="background:${STC[s.status]||STC.no_data}"></div>`).join('');
   return `<div class="member-card ${m.is_at_risk?'at-risk':''}" onclick="openGroup('${esc(m.code)}')">
@@ -122,74 +257,63 @@ function groupCard(m){
     <div class="member-info">
       <div class="member-row-top"><span class="member-name">Группа ${esc(m.short_name||m.name)}</span>
         <span class="member-ir" style="color:${STC[m.ir_status]||STC.no_data}">${m.ir_status==='no_data'?'—':m.ir_total+'%'}</span></div>
-      <div class="member-sub">${m.group_size!=null?m.group_size+' партнёров':''}</div>
-      <div class="mini-funnel">${mini}</div>
-    </div>
-    <span class="member-arrow">›</span>
-  </div>`;
+      ${m.group_size!=null?`<div class="member-sub">${m.group_size} партнёров</div>`:''}
+      <div class="mini-funnel">${mini}</div></div>
+    <span class="member-arrow">›</span></div>`;
+}
+function renderGroups(d){
+  const t=d.team; const out=[];
+  if(t&&t.members&&t.members.length){
+    out.push(`<div class="card"><div class="section-title">👥 Группы отдела · ${t.total_count}</div>
+      ${t.members.map(groupCard).join('')}
+      <div class="muted" style="margin-top:8px">Нажми на группу — откроется кабинет старшего партнёра.</div></div>`);
+  } else out.push(`<div class="banner">В отделе нет активных групп.</div>`);
+  document.getElementById('screen-groups').innerHTML=out.join('');
 }
 
-function render(d){
-  const u=d.user, a=d.aggregates, t=d.team;
-  const parts=[];
-  parts.push(`<div class="card profile">
-    <div class="avatar">${esc((u.short_name||u.name||'?').slice(0,2))}</div>
-    <div style="flex:1"><div class="pname">${esc(u.name)}</div>
-      <div class="muted">${esc(u.role_label)}${a?' · '+esc(a.scope.label):''}</div></div>
-  </div>`);
-
-  if(a){
-    const gs=a.groups_summary;
-    parts.push(`<div class="card">
-      <div class="ir-top">
-        <div class="ir-big" style="color:${barColor(a.ir_total)}">${a.ir_total}<span style="font-size:18px">%</span></div>
-        <div class="ir-sides">
-          <div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${a.ir_buyer}%</b></div>
-          <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(a.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${a.ir_seller}%</b></div>
-        </div>
-      </div>
-      <div class="perf">
-        <div><b style="color:var(--st-green)">${a.scope.performers_count}</b>выполняют ≥70%</div>
-        <div><b style="color:var(--st-red)">${a.scope.underperformers_count}</b>отстают</div>
-        <div><b>${a.scope.members_count}</b>партнёров</div>
-      </div>
-      ${gs?`<div class="groups-line">
-        <span class="gchip">Групп: <b>${gs.total}</b></span>
-        <span class="gchip" style="color:#173404">🟢 в зелёной: ${gs.in_green}</span>
-        <span class="gchip" style="color:#501313">🔴 ниже: ${gs.in_red}</span></div>`:''}
-      <div class="muted" style="margin-top:8px">Средний ИР отдела · ${esc(a.period_label)} · выполнение ${a.scope.performance_pct}%</div>
-    </div>`);
-    parts.push(`<div class="card"><div class="section-title">Сводная воронка отдела</div>
-      ${aggSide('buyer',a.buyer,a.period_label)}${aggSide('seller',a.seller,a.period_label)}</div>`);
-  } else {
-    parts.push(`<div class="banner">Нет агрегатов отдела — возможно, ночной пересчёт ещё не прошёл.</div>`);
-  }
-
-  if(t && t.members && t.members.length){
-    parts.push(`<div class="card"><div class="section-title">Группы отдела · ${t.total_count}</div>
-      ${t.members.map(groupCard).join('')}</div>`);
-  } else {
-    parts.push(`<div class="banner">В отделе нет активных групп.</div>`);
-  }
-  document.getElementById('root').innerHTML = parts.join('');
+/* ─── ЗАДАЧИ ─── */
+function taskItem(t){
+  const meta=[t.priority!=='normal'?t.priority_label:'',t.due_label||t.due_date||'',t.progress_label].filter(Boolean).join(' · ');
+  return `<div class="task"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}</div>
+    ${t.can_complete?`<button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`:(t.status==='done'?'<span class="task-done">✓</span>':'')}</div>`;
 }
+function renderTasks(d){
+  const out=[]; const tb=d.tasks, nb=d.notifications;
+  if(nb&&nb.recent&&nb.recent.length){
+    const items=nb.recent.slice(0,5).map(n=>`<div class="notif ${n.is_read?'':'unread'}"><span class="ni-icon">${esc(n.icon||'🔔')}</span>
+      <div><div class="ni-title">${esc(n.title)}</div><div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('');
+    out.push(`<div class="card"><div class="section-title">🔔 Уведомления${nb.unread_count?` · ${nb.unread_count} новых`:''}</div>${items}</div>`);
+  }
+  if(tb){
+    const grp=(arr,title,cls)=>(arr&&arr.length)?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
+    const g=tb.groups;
+    const body=grp(g.expired,'⚠ Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На этой неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Сделано за 14 дней','tg-green');
+    out.push(`<div class="card"><div class="section-title">📋 Задачи</div>${body||'<div class="muted">Нет активных задач.</div>'}</div>`);
+  }
+  if(!out.length) out.push(`<div class="banner">Задач и уведомлений пока нет.</div>`);
+  out.push(helpCard());
+  document.getElementById('screen-tasks').innerHTML=out.join('');
+  const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
+  document.getElementById('taskDot').textContent = cnt?' '+cnt:'';
+}
+
+function render(d){ renderHero(d); renderMain(d); renderPrognoz(); renderGroups(d); renderTasks(d); }
 
 (async ()=>{
-  const me = await requireAuth();
-  document.getElementById('logoutBtn').onclick = logout;
-  const params = new URLSearchParams(location.search);
-  const targetCode = params.get('rop') || me.code;
+  const me=await requireAuth();
+  document.getElementById('logoutBtn').onclick=logout;
+  const params=new URLSearchParams(location.search);
+  const targetCode=params.get('rop')||me.code;
+  CTX.target=targetCode;
   if(params.get('rop')) document.getElementById('backBtn').style.display='inline-flex';
-  const fns = getFunctions(getApp(), 'europe-west1');
+  const fns=getFunctions(getApp(),'europe-west1');
+  window.__call=(name,data)=>httpsCallable(fns,name)(data).then(r=>r.data);
   try{
-    const res = await httpsCallable(fns,'getDashboard')({ user_code: targetCode, view:'department' });
-    const d = res.data;
-    document.getElementById('dateBadge').textContent = new Date(d.meta?.generated_at||Date.now()).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+    const res=await httpsCallable(fns,'getDashboard')({ user_code:targetCode, view:'department' });
+    const d=res.data; CTX.data=d;
+    document.getElementById('dateBadge').textContent=new Date(d.meta?.generated_at||Date.now()).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
     render(d);
-  }catch(e){
-    document.getElementById('root').innerHTML = `<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`;
-    console.error(e);
-  }
+  }catch(e){ document.getElementById('hero').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e); }
   document.getElementById('overlay').classList.add('hidden');
 })();
 </script>
