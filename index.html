@@ -180,6 +180,13 @@
   .sv-league.you{background:#fef3c7;border:1px solid #fcd34d}
   .sv-l-tag{color:#fff;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;text-align:center}
   .sv-l-name{font-weight:600} .sv-l-inc{color:var(--muted)}
+  /* график движения */
+  .mv-row{display:grid;grid-template-columns:54px 1fr auto;gap:10px;align-items:center;margin-bottom:8px;font-size:12px}
+  .mv-row.now .mv-bar-fill{background:linear-gradient(90deg,#ffd66b,#f59e0b)}
+  .mv-bar{height:14px;background:var(--nd-bg);border-radius:7px;overflow:hidden}
+  .mv-bar-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,#3b82f6,#2b6cb0);transition:width .5s ease}
+  .mv-pos{font-weight:700;white-space:nowrap}
+  .mv-now-tag{font-size:10px;color:var(--gold);font-weight:700;margin-left:4px}
 
   /* модалки */
   .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:flex-end;justify-content:center;z-index:1000}
@@ -555,6 +562,21 @@ function renderTasks(d){
 }
 
 /* ─── СВЕТОФОР ─── */
+function movementCard(d){
+  const h=(d.position_history||[]).filter(p=>p.position!=null);
+  if(h.length<2) return `<div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>
+    <div class="soon"><span class="soon-ic">📈</span>История движения накапливается — график появится в ближайшие месяцы.</div></div>`;
+  const rows=h.map((p,i)=>{ const last=i===h.length-1; const w=Math.max(4,Math.round((1300-p.position)/1300*100));
+    return `<div class="mv-row ${last?'now':''}"><span>${esc(p.label.split(' ')[0])}</span>
+      <div class="mv-bar"><div class="mv-bar-fill" style="width:${w}%"></div></div>
+      <span class="mv-pos">#${p.position}${last?'<span class="mv-now-tag">← сейчас</span>':''}</span></div>`; }).join('');
+  const first=h[0].position, lastP=h[h.length-1].position; const up=first-lastP;
+  const note=up>0?`📈 За 6 месяцев ты поднялся на <b>${up}</b> ${plural(up,'позицию','позиции','позиций')}. Так держать!`
+    :(up<0?`За полгода позиция снизилась на ${Math.abs(up)} — есть куда расти, всё впереди.`:'Позиция держится стабильно.');
+  return `<div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>${rows}
+    <div class="muted" style="margin-top:10px">${note}</div></div>`;
+}
+function plural(n,a,b,c){ const m10=n%10,m100=n%100; if(m10===1&&m100!==11)return a; if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b; return c; }
 function renderSvetofor(d){
   const u=d.user; const pos=u.position_in_company;
   const cur=LEAGUES.find(l=>pos!=null&&pos>=l.from&&pos<=l.to);
@@ -572,8 +594,7 @@ function renderSvetofor(d){
       ${nextNote?`<div class="svet-zone-sub" style="margin-top:6px">${nextNote}</div>`:''}</div>
     </div>
     <div class="card"><div class="section-title">🚦 Все лиги</div>${leagues}</div>
-    <div class="card"><div class="section-title">📈 Как я двигался за 6 месяцев</div>
-      <div class="soon"><span class="soon-ic">📈</span>История движения по светофору накапливается — график появится в ближайшие месяцы.</div></div>`;
+    ${movementCard(d)}`;
 }
 
 /* ─── МОДАЛКА «Изменить цель» ─── */
