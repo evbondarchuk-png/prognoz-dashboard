@@ -388,9 +388,9 @@ function renderHero(d){
       ${dp?`<span>⏱ ${dp.passed} / ${dp.total} дней пути</span>`:''}
     </div></div>`; }
 
-  // вал текущего месяца (факт+прогноз) + прогноз следующего (TZ: вал у шапки)
+  // вал текущего месяца (факт+прогноз) + прогноз следующего (TZ: вал у шапки, показываем даже 0)
   const fc=d.forecast; let valBar='';
-  if(fc && (fc.current_month.revenue>0 || fc.next_month.revenue>0)){
+  if(fc){
     valBar=`<div class="val-bar">
       <div class="val-cell"><div class="vb-cap">вал за ${esc(fc.current_month.label||'месяц')}</div><div class="vb-num">${esc(fc.current_month.revenue_label)} ₽</div><div class="vb-sub">факт ${esc(fc.current_month.fact_revenue_label)} + прогноз</div></div>
       <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-num">${esc(fc.next_month.revenue_label)} ₽</div><div class="vb-sub">по горячим и задаткам</div></div>
@@ -532,32 +532,45 @@ function coachSide(side,c,title){ if(!c)return'';
     ${c.description?`<div class="muted" style="margin:4px 0">${esc(c.description)}</div>`:''}
     ${rec?`<div style="margin:6px 0;font-size:13px">💡 ${esc(rec)}</div>`:''}${weak?`<div class="weak-list">${weak}</div>`:''}</div>`;
 }
-function f12Buyer(a){ if(!a)return'';
-  return `<div class="f12-steps">
-    <div class="f12-step"><div class="v">${a.flow}</div><div class="c">поток/мес</div></div>
-    <div class="f12-step"><div class="v">${a.hot}</div><div class="c">горячие</div></div>
-    <div class="f12-step"><div class="v">${a.deposits}</div><div class="c">задатки</div></div>
-    <div class="f12-step"><div class="v">${a.deals}</div><div class="c">сделки</div></div></div>
-    <div class="f12-conv"><span>→ ${a.conv_hot}%</span><span>→ ${a.conv_dep}%</span><span>→ ${a.conv_deal}%</span></div>`;
+// этап воронки 12 мес в стиле главной (stage-card): значение + бар-конверсия + раскрытие сегментов
+function f12Stage(side,label,sub,value,convPct,isFirst,segRows){
+  const has=segRows&&segRows.length;
+  const barW=isFirst?100:Math.min(100,convPct);
+  const conv=isFirst?'':`<span class="stage-numbers">конв. <b style="color:var(--brand)">${convPct}%</b></span>`;
+  return `<div class="stage-card" style="--sc:${SIDE_COLOR[side]}">
+    <div class="stage-head" onclick="toggleStage(this)"><span class="chev">${has?'›':''}</span>
+      <span class="stage-label">${esc(label)} <span style="font-weight:400;color:var(--muted);font-size:11px">${esc(sub)}</span></span>
+      <span class="stage-numbers"><b>${value}</b>${conv?' · ':''}${conv}</span></div>
+    <div class="stage-bar"><div class="stage-bar-fill" style="width:${barW}%;background:${SIDE_COLOR[side]}"></div></div>
+    ${has?`<div class="stage-seg hidden">${segRows.join('')}</div>`:''}</div>`;
 }
-function f12Seller(a){ if(!a)return'';
-  return `<div class="f12-steps">
-    <div class="f12-step"><div class="v">${a.objects}</div><div class="c">объектов</div></div>
-    <div class="f12-step"><div class="v">${a.hot}</div><div class="c">горячие</div></div>
-    <div class="f12-step"><div class="v">${a.deposits}</div><div class="c">задатки</div></div>
-    <div class="f12-step"><div class="v">${a.deals}</div><div class="c">сделки/мес</div></div></div>
-    <div class="f12-conv"><span>→ ${a.conv_hot}%</span><span>→ ${a.conv_dep}%</span><span>→ ${a.conv_deal}%</span></div>`;
+function f12SegRow(label,left,right){ return `<div class="seg-row"><span class="sv">${esc(label)}</span><span>${esc(left)}</span><b>${esc(right)}</b></div>`; }
+function f12Buyer(a,segs){ if(!a)return'';
+  const sr=(segs||[]).filter(s=>s.flow>0||s.deals>0).map(s=>f12SegRow(s.label,'доля '+s.flow_pct+'%',s.deals+' сд/мес'));
+  return f12Stage('buyer','Поток','вход/мес',a.flow,100,true,null)
+    +f12Stage('buyer','Горячие','/мес',a.hot,a.conv_hot,false,null)
+    +f12Stage('buyer','Задатки','/мес',a.deposits,a.conv_dep,false,null)
+    +f12Stage('buyer','Сделки','/мес',a.deals,a.conv_deal,false,sr);
 }
-function f12SegRows(segs,side){ return (segs||[]).filter(s=>s.deals>0||(side==='buyer'?s.flow>0:s.objects>0)).map(s=>
-  `<div class="f12-seg"><span class="sv">${esc(s.label)}</span><span class="sm">${side==='buyer'?'доля '+s.flow_pct+'%':s.objects+' ОН'}</span><span>${s.deals} сд/мес</span></div>`).join(''); }
+function f12Seller(a,segs){ if(!a)return'';
+  const sr=(segs||[]).filter(s=>s.objects>0||s.deals>0).map(s=>f12SegRow(s.label,s.objects+' ОН',s.deals+' сд/мес'));
+  return f12Stage('seller','Объекты в базе','шт',a.objects,100,true,null)
+    +f12Stage('seller','Горячие ОН','/мес',a.hot,a.conv_hot,false,null)
+    +f12Stage('seller','Задатки','/мес',a.deposits,a.conv_dep,false,null)
+    +f12Stage('seller','Сделки','/мес',a.deals,a.conv_deal,false,sr);
+}
 function renderCoach(d){
   const out=[];
   const f12=d.funnel12m;
   if(f12){
-    out.push(`<div class="card"><div class="section-title">📊 Как ты работаешь · в среднем за 12 месяцев</div>
-      <div class="f12-side"><div style="font-weight:700;margin-bottom:2px">🛒 Покупатель</div>${f12Buyer(f12.buyer&&f12.buyer.all)}${f12SegRows(f12.buyer&&f12.buyer.segments,'buyer')}</div>
-      <div class="f12-side" style="margin-top:12px"><div style="font-weight:700;margin-bottom:2px">🏘 Продавец</div>${f12Seller(f12.seller&&f12.seller.all)}${f12SegRows(f12.seller&&f12.seller.segments,'seller')}</div>
-      <div class="muted" style="margin-top:8px">Конверсии: поток→горячие→задатки→сделки. Видно твой стиль работы и где теряются клиенты.</div></div>`);
+    const st=d.user&&d.user.stazh_months; const m=(st!=null&&st<12)?st:12;
+    const per=`в среднем за ${m} ${plural(m,'месяц','месяца','месяцев')} работы`;
+    out.push(`<div class="card"><div class="section-title">📊 Как ты работаешь</div>
+      <div class="muted" style="margin:-6px 0 12px">${per} · конверсии показывают, где теряются клиенты</div>
+      <div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR.buyer}"></span><div style="font-weight:700">🛒 Покупатель</div></div></div>
+        ${f12Buyer(f12.buyer&&f12.buyer.all, f12.buyer&&f12.buyer.segments)}</div>
+      <div class="funnel-side" style="margin-top:10px"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR.seller}"></span><div style="font-weight:700">🏘 Продавец</div></div></div>
+        ${f12Seller(f12.seller&&f12.seller.all, f12.seller&&f12.seller.segments)}</div></div>`);
   }
   if(d.coach&&(d.coach.buyer||d.coach.seller)){
     out.push(`<div class="card"><div class="section-title">🎓 Диагностика · что подтянуть</div>
