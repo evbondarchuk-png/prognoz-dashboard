@@ -53,6 +53,30 @@
   .rtab{font-size:14px;padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
   .rtab:hover{color:var(--ink);background:rgba(255,255,255,.7)}
   .rtab.on{background:#fff;color:var(--brand);font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  /* карточки команды (TZ-A20) */
+  .real-row{padding:16px 18px;background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
+  .real-row.drill .rr-name{cursor:pointer}.real-row.drill .rr-name:hover{color:var(--brand)}
+  .real-row:last-child{margin-bottom:0}
+  .real-row-top{display:grid;grid-template-columns:48px 220px 1fr auto;gap:14px;align-items:center}
+  .rr-ava{width:48px;height:48px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+  .rr-info{min-width:0}.rr-name{font-size:15px;font-weight:700;color:var(--ink)}
+  .rr-arr{color:var(--muted);font-weight:400;font-size:18px}.rr-meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .rr-task-btn{background:var(--brand);color:#fff;border:none;font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;white-space:nowrap}
+  .rr-coach-inline{padding:9px 12px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #ddd6fe;border-radius:8px;display:flex;gap:8px;align-items:flex-start;min-width:0}
+  .rr-ai-i{font-size:13px;flex-shrink:0}.rr-ai-t{font-size:12px;color:#5b21b6;line-height:1.4;flex:1;min-width:0}.rr-ai-t b{color:#4c1d95}
+  .rr-metrics-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:13px;padding:11px 12px;background:#fafbfc;border-radius:9px;border:1px solid var(--line)}
+  .rr-m{text-align:center}.rr-m-lbl{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;font-weight:600;line-height:1.2}
+  .rr-m-val{font-size:14px;font-weight:700;color:var(--ink);margin-top:4px;white-space:nowrap}.rr-m-val small{font-size:11px;color:var(--muted);font-weight:500}.rr-m-val.v-brand{color:var(--brand)}
+  .t-up{color:#16a34a;font-size:12px}.t-down{color:#dc2626;font-size:12px}.t-flat{color:var(--muted);font-size:11px}
+  .rr-activity{margin-top:10px;padding:8px 12px;background:linear-gradient(90deg,#fefce8,#fef9c3);border:1px solid #fef08a;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:#78350f;flex-wrap:wrap}
+  .rr-act-i{font-size:14px}.rr-act-item b{color:#451a03;font-weight:700;font-size:13px}.rr-act-sep{color:#a16207}
+  .rr-act-clickable{cursor:pointer;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.4)}.rr-act-clickable:hover{background:#fff}.rr-act-arr{font-size:11px;color:#a16207;margin-left:3px}
+  .risk-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+  .rb-ok{background:#dcfce7;color:#166534}.rb-noresult{background:#fee2e2;color:#991b1b}.rb-irdown{background:#fef3c7;color:#92400e}
+  .rb-noenter{background:#fee2e2;color:#991b1b}.rb-notask{background:#fef3c7;color:#92400e}.rb-nofc{background:#fecaca;color:#7f1d1d}
+  @media(max-width:1080px){.real-row-top{grid-template-columns:48px 1fr auto;gap:12px}.rr-coach-inline{grid-column:1/-1;margin-top:8px}}
+  @media(max-width:900px){.rr-metrics-grid{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:560px){.rr-metrics-grid{grid-template-columns:repeat(2,1fr)}}
   .screen{display:none} .screen.on{display:block}
 
   /* ИР */
@@ -355,21 +379,49 @@ function memberCard(m){
       <div class="mini-funnel">${mini}</div></div>
     <span class="member-arrow">›</span></div>`;
 }
+function fmtMoney(n){ n=Number(n)||0; if(n>=1000000) return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(n>=1000) return Math.round(n/1000)+' тыс'; return String(Math.round(n)); }
+function trendArrow(dir){ if(dir==='up')return '<span class="t-up">▲</span>'; if(dir==='down')return '<span class="t-down">▼</span>'; return '<span class="t-flat">▬</span>'; }
+function teamCardHTML(p){
+  const click=p.drill_url?`onclick="location.href='${esc(p.drill_url)}'"`:'';
+  const coach=p.coach_short?`<div class="rr-coach-inline"><span class="rr-ai-i">🎓</span><span class="rr-ai-t"><b>Тренер:</b> ${esc(p.coach_short)}</span></div>`:'<div></div>';
+  const actBits=[];
+  if(p.has_tasks) actBits.push(`<span class="rr-act-item"><b>${p.tasks_done_pct_month}%</b> задач за месяц</span><span class="rr-act-sep">·</span>`);
+  actBits.push(`<span class="rr-act-item rr-act-clickable" onclick="openAchievementsModal('${esc(p.code)}',${p.achievements_count_month||0})"><b>${p.achievements_count_month||0}</b> достижений <span class="rr-act-arr">↗</span></span>`);
+  const act=(p.has_tasks||p.achievements_count_month)?`<div class="rr-activity"><span class="rr-act-i">⚡</span>${actBits.join('')}</div>`:'';
+  const newbie=p.is_newbie?' <span class="newbie-tag">🌱 новичок</span>':'';
+  return `<div class="real-row ${p.drill_url?'drill':''}">
+    <div class="real-row-top">
+      <div class="rr-ava" style="background:${p.avatar_color}">${esc(p.initials||'?')}</div>
+      <div class="rr-info">
+        <div class="rr-name" ${click}>${esc(p.name)}${newbie}${p.drill_url?' <span class="rr-arr">›</span>':''}</div>
+        <div class="rr-meta">${esc(p.meta||'')}</div>
+        <span class="risk-badge ${p.risk_class||'rb-ok'}" style="margin-top:5px;display:inline-block">${esc(p.risk_label||'')} ${p.risk_animal||''}</span>
+      </div>
+      ${coach}
+      <button class="rr-task-btn" onclick="openCreateTaskFor('${esc(p.code)}');event.stopPropagation();">➕ Задача</button>
+    </div>
+    <div class="rr-metrics-grid">
+      <div class="rr-m"><div class="rr-m-lbl">ИР неделя</div><div class="rr-m-val v-brand">${p.ir_week}% ${trendArrow(p.ir_week_trend)}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">ИР месяц</div><div class="rr-m-val v-brand">${p.ir_month}% ${trendArrow(p.ir_month_trend)}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">тек. вал · факт/прогноз</div><div class="rr-m-val">${fmtMoney(p.revenue_fact_current)} <small>/</small> ${fmtMoney(p.revenue_forecast_current)}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">тек. сделки · факт/прогноз</div><div class="rr-m-val">${p.deals_fact_current} <small>/</small> ${p.deals_forecast_current}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">след. вал · прогноз</div><div class="rr-m-val">${fmtMoney(p.revenue_forecast_next)}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">след. сделки · прогноз</div><div class="rr-m-val">${p.deals_forecast_next}</div></div>
+    </div>
+    ${act}
+  </div>`;
+}
+window.openCreateTaskFor=(code)=>{ window.openCreateTask(); const sel=document.getElementById('tkWho'); if(sel) sel.value=code; };
+window.openAchievementsModal=(code,n)=>{ alert('История достижений — скоро здесь будет.\nДостижений за месяц: '+(n||0)); };
 function renderTeam(d){
-  const t=d.team; const out=[];
-  if(t&&t.members&&t.members.length){
-    const mem=t.members;
-    const risks=mem.filter(m=>m.is_at_risk&&!m.is_self);
-    const newbies=mem.filter(m=>m.is_newbie&&!m.is_self);
-    out.push(`<div class="card"><div class="section-title">👥 Партнёры группы · ${t.total_count}</div>
-      ${mem.map(memberCard).join('')}
-      <div class="muted" style="margin-top:8px">Нажми на партнёра — откроется его кабинет.</div></div>`);
-    if(risks.length) out.push(`<div class="card"><div class="section-title">⚠️ В зоне риска · ${risks.length}</div>
-      ${risks.map(memberCard).join('')}
-      <div class="muted" style="margin-top:8px">ИР ниже 40% — нужен разбор и поддержка.</div></div>`);
-    if(newbies.length) out.push(`<div class="card"><div class="section-title">🌱 Новички группы · ${newbies.length}</div>
-      ${newbies.map(memberCard).join('')}
-      <div class="muted" style="margin-top:8px">Стаж до 5 месяцев — особое внимание.</div></div>`);
+  const tc=d.team_cards; const out=[];
+  if(tc&&tc.members&&tc.members.length){
+    out.push(`<div class="card"><div class="section-title">👥 Партнёры группы · ${tc.total_count}</div>
+      ${tc.members.map(teamCardHTML).join('')}
+      <div class="muted" style="margin-top:8px">Нажми на имя — откроется кабинет партнёра. «➕ Задача» — поставить задачу.</div></div>`);
+  } else if(d.team&&d.team.members&&d.team.members.length){
+    out.push(`<div class="card"><div class="section-title">👥 Партнёры группы · ${d.team.total_count}</div>
+      ${d.team.members.map(memberCard).join('')}</div>`);
   } else out.push(`<div class="banner">В группе нет активных партнёров.</div>`);
   document.getElementById('screen-team').innerHTML=out.join('');
 }
