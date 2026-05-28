@@ -269,6 +269,7 @@
 <div class="modal-overlay" id="modalHof"><div class="modal" id="modalHofBody"></div></div>
 <div class="modal-overlay" id="modalMgr"><div class="modal" id="modalMgrBody"></div></div>
 <div class="modal-overlay" id="modalTask"><div class="modal" id="modalTaskBody"></div></div>
+<div class="modal-overlay" id="modalNotif"><div class="modal" id="modalNotifBody"></div></div>
 
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
@@ -399,7 +400,7 @@ function renderHero(d){
 
   document.getElementById('hero').innerHTML=`<div class="card hero">
     <div class="hero-iconbar">
-      <div class="hib" onclick="goTab('tasks')">🔔${unread?`<span class="hib-badge">${unread>99?'99+':unread}</span>`:''}</div>
+      <div class="hib" onclick="openNotifications()">🔔${unread?`<span class="hib-badge">${unread>99?'99+':unread}</span>`:''}</div>
       <div class="hib" onclick="goTab('tasks')">⚙️</div>
     </div>
     <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
@@ -422,14 +423,32 @@ function renderHero(d){
 }
 window.dismissGoalBanner=()=>{ localStorage.setItem('goal_banner_dismissed','1'); document.getElementById('goalBanner').innerHTML=''; };
 
+/* модалка уведомлений (как в макете) */
+window.openNotifications=()=>{
+  const nb=CTX.data&&CTX.data.notifications;
+  const rec=(nb&&nb.recent)||[];
+  const items=rec.length?rec.map(n=>`<div class="notif ${n.is_read?'':'unread'}"><span class="ni-icon">${esc(n.icon||'🔔')}</span>
+    <div><div class="ni-title">${esc(n.title)}</div>${n.body?`<div class="muted">${esc(n.body)}</div>`:''}<div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('')
+    :'<div class="muted">Уведомлений пока нет.</div>';
+  const ma=(nb&&nb.unread_count)?`<span class="nt-markall" onclick="markAllRead(false);closeModal('modalNotif')">✓ отметить все</span>`:'';
+  document.getElementById('modalNotifBody').innerHTML=`
+    <div class="modal-head"><div class="modal-title">🔔 Уведомления${(nb&&nb.unread_count)?` · ${nb.unread_count}`:''}</div><button class="modal-x" onclick="closeModal('modalNotif')">✕</button></div>
+    ${ma?`<div style="text-align:right;margin-bottom:8px">${ma}</div>`:''}${items}
+    <div class="muted" style="margin-top:12px">Все уведомления также во вкладке «Задачи».</div>`;
+  document.getElementById('modalNotif').classList.add('on');
+};
+
 /* ─── воронки ─── */
 function stageCard(side,st){
-  const segs=(st.segments||[]).map(sg=> st.is_revenue
-    ? `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--st-green)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`
-    : `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
+  const segs=(st.segments||[]).map(sg=>{
+    if(st.is_revenue) return `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--st-green)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`;
+    if(sg.is_objects) return `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:var(--st-green)">${esc(sg.plan_label)}</b></div>`;
+    return `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`;
+  }).join('');
   const has=(st.segments||[]).length>0;
+  const note=st.note?` <span style="font-size:11px;color:var(--seller);font-weight:600">· ${esc(st.note)}</span>`:'';
   return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
-    <div class="stage-head" onclick="toggleStage(this)"><span class="chev">${has?'›':''}</span><span class="stage-label">${esc(st.label)}</span>
+    <div class="stage-head" onclick="toggleStage(this)"><span class="chev">${has?'›':''}</span><span class="stage-label">${esc(st.label)}${note}</span>
       <span class="stage-numbers">${esc(st.fact_label)} / ${esc(st.plan_label)}<b style="color:${barColor(st.progress_pct,st.is_revenue)}">${st.progress_pct}%</b></span></div>
     <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
     ${has?`<div class="stage-seg hidden">${segs}</div>`:''}</div>`;
@@ -481,7 +500,6 @@ window.openManager=()=>{
 /* ─── ГЛАВНАЯ ─── */
 function renderMain(d){
   const f=d.funnel; const out=[];
-  out.push(tasksPreview(d));
   if(f&&f.buyer){
     out.push(`<div class="card"><div class="ir-top"><div class="ir-big" style="color:${barColor(f.ir_total)}">${f.ir_total}<span style="font-size:20px">%</span></div>
       <div class="ir-sides"><div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${f.ir_buyer}%</b></div>
@@ -491,6 +509,7 @@ function renderMain(d){
     const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
     if(rec) out.push(`<div class="card"><div class="section-title">💡 Совет дня</div><div class="tip">${esc(rec)}</div></div>`);
   } else out.push(`<div class="banner">Нет данных воронки — поставь цель, чтобы увидеть план и факт.</div>`);
+  out.push(tasksPreview(d));
   out.push(aiCardMain());
   out.push(helpCard(d));
   document.getElementById('screen-main').innerHTML=out.join('');
