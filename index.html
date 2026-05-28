@@ -161,6 +161,13 @@
   .fc-val{font-size:24px;font-weight:800;color:var(--brand);margin:2px 0}
   .fc-sub{font-size:12px;color:var(--muted)}
   .fc-big{font-size:30px;font-weight:800;color:var(--brand);margin:4px 0}
+  /* стретч-рычаги */
+  .stretch-card{border:1px solid #cfe1f5;background:var(--brand-soft);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+  .stretch-lever{font-size:13px;font-weight:800;color:var(--brand);margin-bottom:8px}
+  .stretch-row{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px;padding:5px 0;align-items:center}
+  .stretch-row.main{font-weight:700}
+  .stretch-arrow{color:var(--st-green);font-weight:700}
+  .stretch-flow{font-size:13px;margin-top:6px;padding-top:6px;border-top:1px solid #cfe1f5}
   .risk-alert{margin-top:10px;padding:9px 12px;border-radius:8px;background:var(--yellow-bg);color:#92400e;font-size:13px;font-weight:600}
   .risk-alert.surge{background:#fff7ed;color:#9a3412}
   .risk-alert.deep{background:var(--red-bg);color:#991b1b}
@@ -513,9 +520,22 @@ function renderMain(d){
   document.getElementById('screen-main').innerHTML=out.join('');
 }
 
+/* стретч-рычаги (TZ-A18): как расти в целевую зону — конверсия + поток */
+function stretchSide(m,icon,flowTitle){ if(!m)return'';
+  const rows=m.conversions.map(c=>`<div class="stretch-row ${c.is_main_lever?'main':''}"><span>${c.is_main_lever?'🎯 ':''}${esc(c.stage)}</span><span>${c.current_pct}% <span class="stretch-arrow">→ ${c.target_pct}%</span></span></div>`).join('');
+  const flow=m.flow_growth_pct>0?`<div class="stretch-flow">📈 ${esc(flowTitle)}: ${m.flow_start} → ${m.flow_target} (+${m.flow_growth_pct}%)</div>`:`<div class="stretch-flow">📈 ${esc(flowTitle)}: держи ${m.flow_start} — рычаг в конверсии</div>`;
+  return `<div class="stretch-card"><div class="stretch-lever">${icon} ${esc(m.main_lever_label)}</div>${rows}${flow}</div>`;
+}
+function renderStretch(d){
+  const s=d.plan&&d.plan.stretch; if(!s||!s.enabled) return '';
+  return `<div class="card"><div class="section-title">🚀 Как вырасти в целевую зону</div>
+    <div class="muted" style="margin:-6px 0 10px">План роста: где конверсия ниже эталона — подтягиваем её, остаток добираем потоком.</div>
+    ${stretchSide(s.buyer,'🛒','Входящий поток')}${stretchSide(s.seller,'🏘','Объекты в базе')}</div>`;
+}
 /* ─── ПРОГНОЗ (TZ-A10 — из forecast по bL/sL) ─── */
 function renderPrognoz(d){
   const f=d.forecast; const out=[];
+  out.push(renderStretch(d));
   if(f && (f.current_month.income>0 || f.next_month.income>0)){
     const cm=f.current_month, nm=f.next_month, tm=f.two_mo, cp=f.cycle_progress;
     const zp=(lbl)=>`<div style="font-size:15px;font-weight:700;color:var(--st-green);margin-top:2px">≈ ЗП ${esc(lbl)} ₽</div>`;
