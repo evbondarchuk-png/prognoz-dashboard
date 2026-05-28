@@ -163,12 +163,12 @@ const CTX={data:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
-function fcHero(fc){ if(!fc || !((fc.current_month&&fc.current_month.income_total>0)||(fc.next_month&&fc.next_month.income_total>0))) return '';
+function fcHero(fc){ if(!fc || !((fc.current_month&&fc.current_month.revenue_total>0)||(fc.next_month&&fc.next_month.revenue_total>0))) return '';
   const dv=fc.delta_vs_yesterday;
   const dlt=dv&&dv.revenue_pct?` <span style="font-size:13px;color:${dv.direction==='up'?'var(--st-green)':'var(--st-red)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
   return `<div class="stat-grid" style="margin-top:10px">
-    <div class="stat"><div class="s-cap">прогноз дохода (тек.)</div><b style="color:var(--brand)">${esc(fc.current_month.income_total_label)} ₽</b></div>
-    <div class="stat"><div class="s-cap">прогноз след. месяц</div><b style="color:var(--brand)">${esc(fc.next_month.income_total_label)} ₽</b>${dlt}</div>
+    <div class="stat"><div class="s-cap">прогноз вала (тек.)</div><b style="color:var(--brand)">${esc(fc.current_month.revenue_total_label)} ₽</b></div>
+    <div class="stat"><div class="s-cap">прогноз вала (след.)</div><b style="color:var(--brand)">${esc(fc.next_month.revenue_total_label)} ₽</b>${dlt}</div>
   </div>`; }
 
 window.showTab=(id,btn)=>{
@@ -295,12 +295,12 @@ function fcCard(title,big,sub,delta){
 }
 function renderPrognoz(d){
   const a=d.aggregates; const f=a&&a.forecast; const out=[];
-  if(f && (f.current_month.income_total>0 || f.next_month.income_total>0)){
+  if(f && (f.current_month.revenue_total>0 || f.next_month.revenue_total>0)){
     const cm=f.current_month,nm=f.next_month,tm=f.two_mo,dv=f.delta_vs_yesterday;
     const dlt=dv&&dv.revenue_pct?` <span style="font-size:14px;color:${dv.direction==='up'?'var(--st-green)':'var(--st-red)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
-    out.push(fcCard('📍 Текущий месяц',cm.income_total_label,`прогноз дохода компании · вал ${esc(cm.revenue_total_label)} ₽ · ${cm.deals_closed} закрыто / ${cm.deals_forecast} в работе`));
-    out.push(fcCard('📅 Следующий месяц',nm.income_total_label,`${nm.deals_forecast} сделок прогноз`,dlt));
-    out.push(fcCard('🗓 Прогноз на 2 месяца',tm.income_total_label,`${tm.deals_total} сделок в работе${f.at_risk_count?` · ⚠ ${f.at_risk_count} партнёров в риске`:''}`));
+    out.push(fcCard('📍 Текущий месяц',cm.revenue_total_label,`прогнозный вал компании · ${cm.deals_closed} закрыто / ${cm.deals_forecast} в работе`));
+    out.push(fcCard('📅 Следующий месяц',nm.revenue_total_label,`${nm.deals_forecast} сделок прогноз`,dlt));
+    out.push(fcCard('🗓 Прогноз на 2 месяца',tm.revenue_total_label,`${tm.deals_total} сделок в работе${f.at_risk_count?` · ⚠ ${f.at_risk_count} партнёров в риске`:''}`));
   } else out.push(`<div class="card"><div class="section-title">📈 Прогноз компании</div><div class="soon"><span class="soon-ic">📈</span>Прогноз появится, когда у партнёров будут горячие клиенты и задатки в работе.</div></div>`);
   document.getElementById('screen-prognoz').innerHTML=out.join('');
 }
