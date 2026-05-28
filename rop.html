@@ -366,7 +366,8 @@ function taskItem(t){
   const actions=t.can_complete
     ? `<button class="task-skip" onclick="skipTask('${esc(t.id)}',event)" title="Отказаться">🚫</button><button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`
     : (t.status==='done'?'<span class="task-done">✓</span>':'');
-  return `<div class="task"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}</div>
+  const author=t.author_display?`<div class="muted" style="font-size:11px">${esc(t.author_display)}${t.author_reason?` · ${esc(t.author_reason)}`:''}</div>`:'';
+  return `<div class="task"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}${author}</div>
     <div style="display:flex;align-items:center;gap:4px">${actions}</div></div>`;
 }
 function renderTasks(d){
