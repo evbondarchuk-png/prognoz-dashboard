@@ -131,6 +131,14 @@
   .seg-row{display:grid;grid-template-columns:1fr auto 38px;gap:8px;font-size:11px;align-items:center;color:var(--muted)} .seg-row .sv{color:var(--ink);font-weight:600}
   .tip{background:var(--brand-soft);border-radius:10px;padding:12px 14px;font-size:13px;color:#1a4061;margin-top:6px}
 
+  /* воронка 12 мес (Тренер) */
+  .f12-side{margin-bottom:12px}
+  .f12-steps{display:flex;align-items:stretch;gap:0;margin:8px 0}
+  .f12-step{flex:1;text-align:center;padding:8px 4px;background:var(--surface2);border-radius:8px;margin:0 2px}
+  .f12-step .v{font-size:18px;font-weight:800} .f12-step .c{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.02em}
+  .f12-conv{display:flex;justify-content:space-around;font-size:11px;color:var(--brand);font-weight:700;margin-top:2px}
+  .f12-seg{display:grid;grid-template-columns:1fr auto auto;gap:8px;font-size:11px;padding:5px 2px;border-top:1px dashed var(--line);align-items:center}
+  .f12-seg .sv{color:var(--ink);font-weight:600} .f12-seg .sm{color:var(--muted)}
   /* диагностика */
   .coach-side{padding:4px 0 10px 12px;margin-bottom:8px;border-left:3px solid var(--buyer)}
   .weak-list{margin-top:6px;display:flex;flex-direction:column;gap:4px}
@@ -524,13 +532,38 @@ function coachSide(side,c,title){ if(!c)return'';
     ${c.description?`<div class="muted" style="margin:4px 0">${esc(c.description)}</div>`:''}
     ${rec?`<div style="margin:6px 0;font-size:13px">💡 ${esc(rec)}</div>`:''}${weak?`<div class="weak-list">${weak}</div>`:''}</div>`;
 }
+function f12Buyer(a){ if(!a)return'';
+  return `<div class="f12-steps">
+    <div class="f12-step"><div class="v">${a.flow}</div><div class="c">поток/мес</div></div>
+    <div class="f12-step"><div class="v">${a.hot}</div><div class="c">горячие</div></div>
+    <div class="f12-step"><div class="v">${a.deposits}</div><div class="c">задатки</div></div>
+    <div class="f12-step"><div class="v">${a.deals}</div><div class="c">сделки</div></div></div>
+    <div class="f12-conv"><span>→ ${a.conv_hot}%</span><span>→ ${a.conv_dep}%</span><span>→ ${a.conv_deal}%</span></div>`;
+}
+function f12Seller(a){ if(!a)return'';
+  return `<div class="f12-steps">
+    <div class="f12-step"><div class="v">${a.objects}</div><div class="c">объектов</div></div>
+    <div class="f12-step"><div class="v">${a.hot}</div><div class="c">горячие</div></div>
+    <div class="f12-step"><div class="v">${a.deposits}</div><div class="c">задатки</div></div>
+    <div class="f12-step"><div class="v">${a.deals}</div><div class="c">сделки/мес</div></div></div>
+    <div class="f12-conv"><span>→ ${a.conv_hot}%</span><span>→ ${a.conv_dep}%</span><span>→ ${a.conv_deal}%</span></div>`;
+}
+function f12SegRows(segs,side){ return (segs||[]).filter(s=>s.deals>0||(side==='buyer'?s.flow>0:s.objects>0)).map(s=>
+  `<div class="f12-seg"><span class="sv">${esc(s.label)}</span><span class="sm">${side==='buyer'?'доля '+s.flow_pct+'%':s.objects+' ОН'}</span><span>${s.deals} сд/мес</span></div>`).join(''); }
 function renderCoach(d){
   const out=[];
+  const f12=d.funnel12m;
+  if(f12){
+    out.push(`<div class="card"><div class="section-title">📊 Как ты работаешь · в среднем за 12 месяцев</div>
+      <div class="f12-side"><div style="font-weight:700;margin-bottom:2px">🛒 Покупатель</div>${f12Buyer(f12.buyer&&f12.buyer.all)}${f12SegRows(f12.buyer&&f12.buyer.segments,'buyer')}</div>
+      <div class="f12-side" style="margin-top:12px"><div style="font-weight:700;margin-bottom:2px">🏘 Продавец</div>${f12Seller(f12.seller&&f12.seller.all)}${f12SegRows(f12.seller&&f12.seller.segments,'seller')}</div>
+      <div class="muted" style="margin-top:8px">Конверсии: поток→горячие→задатки→сделки. Видно твой стиль работы и где теряются клиенты.</div></div>`);
+  }
   if(d.coach&&(d.coach.buyer||d.coach.seller)){
     out.push(`<div class="card"><div class="section-title">🎓 Диагностика · что подтянуть</div>
       ${coachSide('buyer',d.coach.buyer,'Покупатель')}${coachSide('seller',d.coach.seller,'Продавец')}
       <div class="muted" style="margin-top:8px">Относительно твоей зоны${d.coach.zone_label?': '+esc(d.coach.zone_label):''}</div></div>`);
-  } else out.push(`<div class="card"><div class="section-title">🎓 Диагностика</div><div class="soon"><span class="soon-ic">🎓</span>Диагностика появится после ночного расчёта.</div></div>`);
+  } else if(!f12) out.push(`<div class="card"><div class="section-title">🎓 Диагностика</div><div class="soon"><span class="soon-ic">🎓</span>Диагностика появится после ночного расчёта.</div></div>`);
   out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Мой виртуальный <span>тренер</span></div></div>
     <div class="ai-text">Скоро здесь появится <b>персональный совет от ИИ</b>. Сейчас работает базовая диагностика — смотри слабые места выше.</div>
     <div class="ai-note">на YandexGPT — после слёта</div></div>`);
