@@ -299,8 +299,7 @@ function renderPrognoz(d){
     const cm=f.current_month,nm=f.next_month,tm=f.two_mo,dv=f.delta_vs_yesterday;
     const dlt=dv&&dv.revenue_pct?` <span style="font-size:14px;color:${dv.direction==='up'?'var(--st-green)':'var(--st-red)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
     out.push(fcCard('📍 Текущий месяц',cm.revenue_total_label,`прогнозный вал компании · ${cm.deals_closed} закрыто / ${cm.deals_forecast} в работе`));
-    out.push(fcCard('📅 Следующий месяц',nm.revenue_total_label,`${nm.deals_forecast} сделок прогноз`,dlt));
-    out.push(fcCard('🗓 Прогноз на 2 месяца',tm.revenue_total_label,`${tm.deals_total} сделок в работе${f.at_risk_count?` · ⚠ ${f.at_risk_count} партнёров в риске`:''}`));
+    out.push(fcCard('📅 Следующий месяц',nm.revenue_total_label,`${nm.deals_forecast} сделок прогноз${f.at_risk_count?` · ⚠ ${f.at_risk_count} партнёров в риске`:''}`,dlt));
   } else out.push(`<div class="card"><div class="section-title">📈 Прогноз компании</div><div class="soon"><span class="soon-ic">📈</span>Прогноз появится, когда у партнёров будут горячие клиенты и задатки в работе.</div></div>`);
   document.getElementById('screen-prognoz').innerHTML=out.join('');
 }

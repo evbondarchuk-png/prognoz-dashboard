@@ -476,15 +476,11 @@ function renderPrognoz(d){
       <div class="fc-big">${esc(cm.revenue_label)} ₽<span style="font-size:14px;color:var(--muted);font-weight:600"> вал</span></div>
       ${zp(cm.income_label)}
       <div class="muted" style="margin-top:6px">факт ${esc(cm.fact_revenue_label)} + прогноз ${esc(cm.forecast_revenue_label)} · ${cm.deals_total} сделок (${cm.deals_closed} закрыто)</div></div>`);
+    const rc=tm.risk_flag==='deep_drop'?'deep':(tm.risk_flag==='next_month_surge'?'surge':'');
     out.push(`<div class="card"><div class="section-title">📅 Следующий месяц · ${esc(nm.label)}</div>
       <div class="fc-big">${esc(nm.revenue_label)} ₽<span style="font-size:14px;color:var(--muted);font-weight:600"> вал</span></div>
       ${zp(nm.income_label)}
-      <div class="muted" style="margin-top:6px">по горячим и задаткам · ${nm.deals_forecast} сделок прогноз</div></div>`);
-    const rc=tm.risk_flag==='deep_drop'?'deep':(tm.risk_flag==='next_month_surge'?'surge':'');
-    out.push(`<div class="card"><div class="section-title">🗓 Прогноз на 2 месяца</div>
-      <div class="fc-big">${esc(tm.revenue_label)} ₽<span style="font-size:14px;color:var(--muted);font-weight:600"> вал</span></div>
-      ${zp(tm.income_label)}
-      <div class="muted" style="margin-top:6px">${tm.deals_total} сделок в работе · ЗП ≈ 48% от вала</div>
+      <div class="muted" style="margin-top:6px">по горячим и задаткам · ${nm.deals_forecast} сделок прогноз · ЗП ≈ 48% от вала</div>
       ${tm.risk_label?`<div class="risk-alert ${rc}">${esc(tm.risk_label)}</div>`:''}</div>`);
     if(cp) out.push(`<div class="card"><div class="section-title">🎯 Шаг к цели</div>
       <div class="muted">факт и прогноз закрытий за цикл 6 месяцев</div>
