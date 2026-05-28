@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Прогноз — Кабинет РОПа</title>
+<!-- Локальные библиотеки (корп-сети блокируют gstatic/Cloudflare). import map
+     перенаправляет gstatic-импорты firebase на /libs/, код модулей не меняется. -->
+<script type="importmap">
+{
+  "imports": {
+    "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/"
+  }
+}
+</script>
+<script src="/libs/chart/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #5f5e5a;
+    --text3: #9a9890;
+    --blue: #185FA5;
+    --blue-bg: #E6F1FB;
+    --blue-text: #0C447C;
+    --green: #3B6D11;
+    --green-bg: #EAF3DE;
+    --amber: #854F0B;
+    --amber-bg: #FAEEDA;
+    --red: #A32D2D;
+    --red-bg: #FCEBEB;
+    --teal: #0F6E56;
+    --teal-bg: #E1F5EE;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 12px; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 16px; font-weight: 600; color: var(--blue); }
+  .logo span { color: var(--text); font-weight: 400; }
+  .role-badge { background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .date-badge { font-size: 12px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+  .logout-btn { font-size: 12px; color: var(--text2); background: transparent; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-family: inherit; transition: all .15s; }
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+  .rop-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
+  .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; flex-shrink: 0; }
+  .av-blue { background: var(--blue-bg); color: var(--blue-text); }
+  .rop-info { flex: 1; }
+  .rop-name { font-size: 16px; font-weight: 600; }
+  .rop-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius); padding: 4px; margin-bottom: 20px; border: 1px solid var(--border); }
+  .tab { flex: 1; padding: 9px 8px; border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; color: var(--text2); transition: all .15s; text-align: center; font-family: inherit; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 500; border: 1px solid var(--border); }
+  .tab:hover:not(.active) { color: var(--text); background: rgba(0,0,0,0.04); }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px; }
+  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; line-height: 1.3; }
+  .metric-value { font-size: 22px; font-weight: 600; line-height: 1; }
+  .metric-delta { font-size: 11px; margin-top: 5px; color: var(--text3); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .card-title-left { display: flex; align-items: center; gap: 6px; }
+
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .pill-green { background: var(--green-bg); color: var(--green); }
+  .pill-amber { background: var(--amber-bg); color: var(--amber); }
+  .pill-red { background: var(--red-bg); color: var(--red); }
+  .pill-blue { background: var(--blue-bg); color: var(--blue-text); }
+  .pill-gray { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
+
+  .r-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .r-table th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text2); padding: 6px 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
+  .r-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .r-table tr:last-child td { border-bottom: none; }
+  .r-table tr:hover td { background: var(--surface2); cursor: pointer; }
+  .r-name { font-weight: 500; }
+  .r-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .ir-mini { display: flex; align-items: center; gap: 6px; }
+  .ir-mini-bg { width: 80px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+  .ir-mini-fill { height: 100%; border-radius: 3px; }
+  .ir-mini-val { font-size: 12px; font-weight: 500; min-width: 28px; }
+
+  .placeholder { padding: 18px; text-align: center; color: var(--text3); font-size: 12px; font-style: italic; }
+
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 14px; color: var(--text2); }
+  .loading-overlay.hidden { display: none; }
+
+  @media (max-width: 600px) {
+    .rop-card { flex-wrap: wrap; }
+    .tabs { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">Загрузка...</div>
+
+<header class="header">
+  <div class="logo">Прогноз <span>/ система управления продажами</span></div>
+  <span class="role-badge" id="roleBadge">РОП</span>
+  <div class="header-right">
+    <div class="date-badge" id="currentDate"></div>
+    <button class="logout-btn" id="logoutBtn">Выйти</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Кнопка возврата: видна только в режиме просмотра (?rop=КОД) -->
+  <a id="backFromRop" href="#" onclick="history.back(); return false;" style="display:none; align-items:center; gap:6px; padding:8px 12px; margin-bottom:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text2); text-decoration:none; font-size:13px; width:max-content;">
+    ← Назад
+  </a>
+
+  <!-- Индикатор «просмотр чужого кабинета» -->
+  <div id="viewingIndicator" style="display:none; background:var(--amber-bg); color:var(--amber); padding:8px 14px; border-radius:var(--radius-sm); margin-bottom:12px; font-size:13px;">
+    👁 Просмотр кабинета РОПа: <strong id="viewingRopName">—</strong>
+  </div>
+
+  <!-- Empty-state: нет МОПов -->
+  <div id="emptyBanner" style="display:none; background:var(--blue-bg); color:var(--blue-text); padding:14px 18px; border-radius:var(--radius-sm); margin-bottom:16px; font-size:13px; line-height:1.5;">
+    <strong>Нет подчинённых МОПов</strong> в /users/{ваш-код}/subordinates. Возможные причины: список ещё не залит, либо это тестовая роль (например, aup без своих подчинённых).
+  </div>
+
+  <!-- ROP profile -->
+  <div class="rop-card">
+    <div class="avatar av-blue" id="ropAvatar">??</div>
+    <div class="rop-info">
+      <div class="rop-name" id="ropName">—</div>
+      <div class="rop-meta" id="ropMeta">—</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('overview',this)">📊 Сводка отдела</button>
+    <button class="tab" onclick="showTab('managers',this)">👥 Менеджеры</button>
+    <button class="tab" onclick="showTab('stazh',this)">📅 По стажу</button>
+  </div>
+
+  <!-- SCREEN: Сводка -->
+  <div id="screen-overview" class="screen active">
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Средний ИР отдела</div><div class="metric-value">—</div></div>
+      <div class="metric"><div class="metric-label">Выручка отдела (мес)</div><div class="metric-value">—</div></div>
+      <div class="metric"><div class="metric-label">Сделок за месяц</div><div class="metric-value">—</div></div>
+      <div class="metric"><div class="metric-label">МОПов</div><div class="metric-value">—</div></div>
+      <div class="metric"><div class="metric-label">МОПов в красной зоне</div><div class="metric-value">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-title-left">🔥 Критические зоны</div></div>
+      <div class="placeholder">данных пока нет</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-title-left">💡 Системные проблемы отдела</div></div>
+      <div class="placeholder">данных пока нет</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-title-left">📈 Потенциал роста</div></div>
+      <div class="placeholder">данных пока нет</div>
+    </div>
+  </div>
+
+  <!-- SCREEN: Менеджеры -->
+  <div id="screen-managers" class="screen">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;color:var(--text2)">
+        👥 Рейтинг менеджеров — сортировка по среднему ИР группы, кликни на строку для деталей
+      </div>
+      <div style="overflow-x:auto">
+        <table class="r-table" id="managersTable">
+          <thead>
+            <tr>
+              <th>МОП</th>
+              <th>Группа</th>
+              <th>Средний ИР</th>
+              <th>Выручка</th>
+              <th>Сделок/мес</th>
+              <th>Выполнение плана</th>
+              <th>Активность</th>
+            </tr>
+          </thead>
+          <tbody id="managersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: По стажу -->
+  <div id="screen-stazh" class="screen">
+    <div class="card">
+      <div class="card-title"><div class="card-title-left">📅 Риелторы отдела по стажу</div></div>
+      <div id="stazhGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center;padding:28px 16px 16px;font-size:12px;color:var(--text3)">Система «Прогноз» · РОП-дашборд</div>
+
+<!-- ============================================================
+     AUTH GUARD — только rop / aup / admin.
+     ============================================================ -->
+<script type="module">
+  import { requireAuth, logout, canRead } from './auth-guard.js';
+  import { getSubordinates, getUser } from './firebase-reader.js';
+  import { calculateIR, getNormatives } from './ir.js';
+  import { segmentByStazh, STAZH_SEGMENTS } from './metrics.js';
+
+  const user = await requireAuth({ allowedRoles: ['rop', 'aup', 'admin'] });
+  window.currentUser = user;
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+
+  // Режим просмотра: ?rop=КОД открывает кабинет другого РОПа
+  // (АУП пришёл из aup.html). hasRopParam — кнопка «Назад» и индикатор.
+  // isViewingOther — управляет canRead-проверкой.
+  const params = new URLSearchParams(location.search);
+  const viewRopCode = params.get('rop');
+  const hasRopParam = !!viewRopCode;
+  const isViewingOther = hasRopParam && viewRopCode !== user.code;
+  const targetCode = viewRopCode || user.code;
+
+  // Роутинг-guard: rop.html — кабинет РОПа. Не-РОП без ?rop= (прямой заход)
+  // отправляется в свой кабинет. Просмотр (?rop=) не трогаем. Риелтор/МОП
+  // сюда не доходят — их отсекает requireAuth(allowedRoles) выше.
+  if (user.role !== 'rop' && !hasRopParam) {
+    const home = { aup: 'aup.html', admin: 'aup.html' }[user.role];
+    if (home) { location.href = home; throw new Error('routing guard'); }
+  }
+
+  if (isViewingOther) {
+    const ownUserData = await getUser(user.code);
+    if (!canRead(user, viewRopCode, ownUserData)) {
+      alert('У вас нет прав смотреть кабинет этого РОПа.');
+      location.href = 'rop.html';
+      throw new Error('canRead denied');
+    }
+  }
+
+  // Загружаем профиль РОПа и его МОПов параллельно.
+  const [ropProfile, mopList] = await Promise.all([
+    getUser(targetCode),
+    getSubordinates(targetCode),  // [{code, data}] МОПов
+  ]);
+
+  // Для каждого МОПа: его профиль (имя + lastLoginAt) и его риелторы.
+  // Это N доп. запросов на МОПа (Rules покрывают: ropCode = я → пускают).
+  const mopsExtended = await Promise.all(mopList.map(async (mop) => {
+    const [mopProfile, realtors] = await Promise.all([
+      getUser(mop.code),
+      getSubordinates(mop.code),
+    ]);
+    return { code: mop.code, archive: mop.data, profile: mopProfile, realtors };
+  }));
+
+  window.ROP_VIEW_MODE = hasRopParam ? { viewedCode: targetCode } : null;
+  window.ROP_DATA = buildRopData({ user, targetCode, ropProfile, mopsExtended });
+
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  window.init();
+
+  // ===== helpers =====
+
+  function buildRopData({ user, targetCode, ropProfile, mopsExtended }) {
+    const ropName = ropProfile?.name
+      || (targetCode === user.code ? user.name : '')
+      || 'Без имени';
+
+    // Сборка строк МОПов с агрегатами по их риелторам.
+    const managers = mopsExtended.map(mop => {
+      const realtorsWithData = mop.realtors.filter(r => r.data);
+      const realtorIRs = realtorsWithData.map(r => {
+        const ir = calculateIR(r.data, getNormatives(r.data.division));
+        return Math.round((ir?.irTotal || 0) * 100);
+      });
+      const avgIR = realtorIRs.length
+        ? Math.round(realtorIRs.reduce((s, v) => s + v, 0) / realtorIRs.length)
+        : 0;
+      const totalIncome = realtorsWithData.reduce((s, r) => s + (r.data.income || 0), 0);
+      const totalDeals = realtorsWithData.reduce(
+        (s, r) => s + ((r.data.b?.all?.deals ?? 0) + (r.data.s?.all?.deals ?? 0)),
+        0
+      );
+      const mopName = mop.archive?.name || mop.profile?.name || mop.code;
+      const lastLoginAt = mop.profile?.lastLoginAt || null;
+      return {
+        code: mop.code,
+        name: mopName,
+        teamSize: mop.realtors.length,
+        teamSizeWithData: realtorsWithData.length,
+        avgIR,
+        totalIncome,
+        totalDeals,
+        lastLoginAt,
+        division: mop.archive?.division || null,
+      };
+    }).sort((a, b) => b.avgIR - a.avgIR);
+
+    // Агрегаты отдела — по всем риелторам с данными.
+    const allRealtors = mopsExtended.flatMap(m => m.realtors);
+    const allRealtorsWithData = allRealtors.filter(r => r.data);
+    const irs = allRealtorsWithData.map(r => {
+      const ir = calculateIR(r.data, getNormatives(r.data.division));
+      return Math.round((ir?.irTotal || 0) * 100);
+    });
+    const deptAvgIR = irs.length
+      ? Math.round(irs.reduce((s, v) => s + v, 0) / irs.length)
+      : 0;
+    const deptIncome = allRealtorsWithData.reduce((s, r) => s + (r.data.income || 0), 0);
+    const deptDeals = allRealtorsWithData.reduce(
+      (s, r) => s + ((r.data.b?.all?.deals ?? 0) + (r.data.s?.all?.deals ?? 0)),
+      0
+    );
+    const redMopsCount = mopsExtended.filter(m => {
+      const z = zoneFromDivision(m.archive?.division);
+      return z === 'low' || z === 'new';
+    }).length;
+
+    // Сегменты по стажу — на массиве архивных данных риелторов (с stazh).
+    const stazhGroups = segmentByStazh(allRealtorsWithData.map(r => r.data));
+    // Превратим в [{label, count, avgIR}].
+    const stazhStats = STAZH_SEGMENTS.map(seg => {
+      const ags = stazhGroups[seg.key] || [];
+      const segIRs = ags.map(a => {
+        const ir = calculateIR(a, getNormatives(a.division));
+        return Math.round((ir?.irTotal || 0) * 100);
+      });
+      const avgIR = segIRs.length
+        ? Math.round(segIRs.reduce((s, v) => s + v, 0) / segIRs.length)
+        : 0;
+      return { key: seg.key, label: seg.label, count: ags.length, avgIR };
+    });
+
+    return {
+      ropName,
+      ropInitials: initialsFrom(ropName),
+      managers,
+      deptStats: {
+        mopsCount: mopsExtended.length,
+        realtorsCount: allRealtors.length,
+        realtorsWithDataCount: allRealtorsWithData.length,
+        avgIR: deptAvgIR,
+        totalIncome: deptIncome,
+        totalDeals: deptDeals,
+        redMopsCount,
+      },
+      stazhStats,
+    };
+  }
+
+  function initialsFrom(name) {
+    if (!name) return '??';
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return String(name).slice(0, 2).toUpperCase();
+  }
+
+  function zoneFromDivision(div) {
+    if (!div) return 'avg';
+    if (/ТОП|1[-–]5\b|6[-–]15/i.test(div)) return 'best';
+    if (/16[-–]100/.test(div)) return 'good';
+    if (/101[-–]200/.test(div)) return 'mid';
+    if (/201[-–]|301[-–]|401[-–]|^[23]\d\d/.test(div)) return 'avg';
+    if (/500|без/i.test(div)) return 'low';
+    return 'avg';
+  }
+</script>
+
+<!-- ============================================================
+     РЕНДЕРЫ. window.ROP_DATA приходит из модульного блока сверху.
+     ============================================================ -->
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function goToMop(code) {
+  location.href = 'mop.html?mop=' + encodeURIComponent(code);
+}
+
+function irColor(v) {
+  if (v >= 70) return '#3B6D11';
+  if (v >= 50) return '#185FA5';
+  if (v >= 35) return '#854F0B';
+  return '#A32D2D';
+}
+
+function formatMoneyShort(v) {
+  if (v == null) return '—';
+  const n = Math.round(v);
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.', ',') + 'M ₽';
+  if (n >= 1000) return Math.round(n / 1000) + 'к ₽';
+  return n + ' ₽';
+}
+
+function setMetric(el, value, label, delta) {
+  if (!el) return;
+  el.querySelector('.metric-value').textContent = value;
+  if (label !== undefined) el.querySelector('.metric-label').textContent = label;
+  if (delta === undefined) {
+    el.querySelector('.metric-delta')?.remove();
+  } else {
+    const d = el.querySelector('.metric-delta');
+    if (d) { d.textContent = delta; }
+    else {
+      const newD = document.createElement('div');
+      newD.className = 'metric-delta';
+      newD.textContent = delta;
+      el.appendChild(newD);
+    }
+  }
+}
+
+// Активность по lastLoginAt — приблизительно.
+function activityLabel(lastLoginAt) {
+  if (!lastLoginAt) return '—';
+  const now = Date.now();
+  const ts = Number(lastLoginAt);
+  if (!ts) return '—';
+  const days = Math.floor((now - ts) / 86400000);
+  if (days <= 0) return 'сегодня';
+  if (days === 1) return 'вчера';
+  if (days < 7) return days + ' дн. назад';
+  if (days < 30) return Math.floor(days / 7) + ' нед. назад';
+  return Math.floor(days / 30) + ' мес. назад';
+}
+
+function renderManagers(managers) {
+  const tbody = document.getElementById('managersBody');
+  if (!managers.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Нет МОПов с данными</td></tr>';
+    return;
+  }
+  tbody.innerHTML = managers.map(m => {
+    const ircolor = irColor(m.avgIR);
+    const incomeStr = m.totalIncome > 0 ? formatMoneyShort(m.totalIncome) : '—';
+    const dealsStr = Number(m.totalDeals || 0).toFixed(1).replace('.', ',');
+    return `<tr onclick="goToMop('${m.code}')">
+      <td>
+        <div class="r-name">${m.name}</div>
+        <div class="r-sub">Код: ${m.code}</div>
+      </td>
+      <td>${m.teamSize} ${m.teamSize === 1 ? 'риелтор' : 'риелторов'}${m.teamSizeWithData < m.teamSize ? ` <span style="color:var(--text3)">(с данными: ${m.teamSizeWithData})</span>` : ''}</td>
+      <td>
+        <div class="ir-mini">
+          <div class="ir-mini-bg"><div class="ir-mini-fill" style="width:${Math.min(m.avgIR, 100)}%;background:${ircolor}"></div></div>
+          <span class="ir-mini-val" style="color:${ircolor}">${m.avgIR}%</span>
+        </div>
+      </td>
+      <td>${incomeStr}</td>
+      <td>${dealsStr}</td>
+      <td><span style="color:var(--text3)">—</span></td>
+      <td><span style="color:var(--text2);font-size:12px">${activityLabel(m.lastLoginAt)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStazh(stazhStats) {
+  const grid = document.getElementById('stazhGrid');
+  if (!stazhStats || !stazhStats.length) {
+    grid.innerHTML = '<div class="placeholder">данных пока нет</div>';
+    return;
+  }
+  grid.innerHTML = stazhStats.map(seg => `
+    <div class="metric">
+      <div class="metric-label">${seg.label}</div>
+      <div class="metric-value">${seg.count}</div>
+      <div class="metric-delta">средний ИР: ${seg.count > 0 ? seg.avgIR + '%' : '—'}</div>
+    </div>
+  `).join('');
+}
+
+function init() {
+  // 0. Режим просмотра (?rop=КОД) — показать кнопку «Назад» и индикатор.
+  if (window.ROP_VIEW_MODE) {
+    const back = document.getElementById('backFromRop');
+    if (back) back.style.display = 'inline-flex';
+    const ind = document.getElementById('viewingIndicator');
+    if (ind) ind.style.display = '';
+  }
+
+  const data = window.ROP_DATA;
+  const now = new Date();
+  document.getElementById('currentDate').textContent =
+    now.toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'});
+
+  // 1. Шапка.
+  if (data) {
+    document.getElementById('ropName').textContent = data.ropName || '—';
+    document.getElementById('ropAvatar').textContent = data.ropInitials || '??';
+    const metaParts = [];
+    metaParts.push(`Отдел: ${data.deptStats.mopsCount} МОП${data.deptStats.mopsCount === 1 ? '' : 'ов'}`);
+    metaParts.push(`Риелторов: ${data.deptStats.realtorsCount}` +
+      (data.deptStats.realtorsWithDataCount < data.deptStats.realtorsCount
+        ? ` (с данными: ${data.deptStats.realtorsWithDataCount})`
+        : ''));
+    document.getElementById('ropMeta').innerHTML = metaParts.join(' &nbsp;·&nbsp; ');
+
+    if (window.ROP_VIEW_MODE) {
+      document.getElementById('viewingRopName').textContent = data.ropName || '—';
+    }
+
+    const rb = document.getElementById('roleBadge');
+    if (rb) {
+      const roleLabels = { rop: 'РОП', aup: 'АУП', admin: 'Админ' };
+      rb.textContent = roleLabels[window.currentUser?.role] || window.currentUser?.role || '—';
+    }
+  }
+
+  // 2. Пустое состояние: нет МОПов.
+  if (!data || data.deptStats.mopsCount === 0) {
+    document.getElementById('emptyBanner').style.display = '';
+    document.querySelector('.tabs').style.display = 'none';
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    return;
+  }
+
+  // 3. Метрики Сводки.
+  const m = document.querySelectorAll('#screen-overview .metrics .metric');
+  const ds = data.deptStats;
+  setMetric(m[0], ds.avgIR + '%',                'Средний ИР отдела');
+  setMetric(m[1], formatMoneyShort(ds.totalIncome), 'Выручка отдела (мес)');
+  setMetric(m[2], Number(ds.totalDeals).toFixed(1).replace('.', ','), 'Сделок за месяц');
+  setMetric(m[3], String(ds.mopsCount),           'МОПов', `риелторов: ${ds.realtorsCount}`);
+  setMetric(m[4], String(ds.redMopsCount),        'МОПов в красной зоне', `из ${ds.mopsCount}`);
+
+  // 4. Менеджеры (рейтинг).
+  renderManagers(data.managers || []);
+
+  // 5. По стажу.
+  renderStazh(data.stazhStats || []);
+}
+
+window.init = init;
+</script>
+</body>
+</html>
