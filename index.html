@@ -85,6 +85,15 @@
   .it-foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:12px;color:var(--muted)}
   .it-link{color:var(--brand);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
   .it-link:hover{text-decoration:underline}
+  /* вал у шапки */
+  .val-bar{display:flex;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+  .val-cell{flex:1;background:var(--brand-soft);border-radius:10px;padding:10px 12px}
+  .vb-cap{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .vb-num{font-size:19px;font-weight:800;color:var(--brand);margin:2px 0}
+  .vb-sub{font-size:11px;color:var(--muted)}
+  /* легенда факт/план */
+  .fs-legend{font-size:11px;color:var(--muted);margin:-4px 2px 10px;display:flex;gap:14px}
+  .fs-legend b{color:var(--ink);font-weight:700}
 
   /* верхние табы */
   .rtab-bar{display:flex;gap:8px;margin-bottom:18px;padding:7px;background:#f4f7fb;border:1px solid var(--line);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:56px;z-index:90}
@@ -371,6 +380,15 @@ function renderHero(d){
       ${dp?`<span>⏱ ${dp.passed} / ${dp.total} дней пути</span>`:''}
     </div></div>`; }
 
+  // вал текущего месяца (факт+прогноз) + прогноз следующего (TZ: вал у шапки)
+  const fc=d.forecast; let valBar='';
+  if(fc && (fc.current_month.revenue>0 || fc.next_month.revenue>0)){
+    valBar=`<div class="val-bar">
+      <div class="val-cell"><div class="vb-cap">вал за ${esc(fc.current_month.label||'месяц')}</div><div class="vb-num">${esc(fc.current_month.revenue_label)} ₽</div><div class="vb-sub">факт ${esc(fc.current_month.fact_revenue_label)} + прогноз</div></div>
+      <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-num">${esc(fc.next_month.revenue_label)} ₽</div><div class="vb-sub">по горячим и задаткам</div></div>
+    </div>`;
+  }
+
   document.getElementById('hero').innerHTML=`<div class="card hero">
     <div class="hero-iconbar">
       <div class="hib" onclick="goTab('tasks')">🔔${unread?`<span class="hib-badge">${unread>99?'99+':unread}</span>`:''}</div>
@@ -383,6 +401,7 @@ function renderHero(d){
       ${sfMini}</div></div>
     ${ach?`<div class="achievements">${ach}</div>`:''}
     ${track}
+    ${valBar}
   </div>`;
 
   // авто-цель баннер
@@ -409,6 +428,7 @@ function funnelSide(side,fs,icon){ if(!fs)return'';
   return `<div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
     <div style="font-weight:700">${icon} ${esc(fs.label)}</div></div>
     <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
+    <div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div>
     ${(fs.stages||[]).map(st=>stageCard(side,st)).join('')}</div>`;
 }
 
