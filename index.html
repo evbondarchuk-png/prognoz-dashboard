@@ -416,7 +416,9 @@ window.dismissGoalBanner=()=>{ localStorage.setItem('goal_banner_dismissed','1')
 
 /* ─── воронки ─── */
 function stageCard(side,st){
-  const segs=(st.segments||[]).map(sg=>`<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
+  const segs=(st.segments||[]).map(sg=> st.is_revenue
+    ? `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--st-green)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`
+    : `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
   const has=(st.segments||[]).length>0;
   return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
     <div class="stage-head" onclick="toggleStage(this)"><span class="chev">${has?'›':''}</span><span class="stage-label">${esc(st.label)}</span>
