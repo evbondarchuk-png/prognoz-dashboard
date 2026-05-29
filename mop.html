@@ -344,9 +344,15 @@ function renderMain(d){
       <div class="muted" style="margin-top:8px">Средний ИР группы · ${esc(a.period_label)} · выполнение ${a.scope.performance_pct}%</div></div>`);
     out.push(`<div class="grid-2"><div class="card">${aggSide('buyer',a.buyer,'🛒')}</div><div class="card">${aggSide('seller',a.seller,'🏘')}</div></div>`);
     out.push(tasksMain(d));
-    out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Сводка по <span>группе</span></div></div>
-      <div class="ai-text">Скоро здесь появится <b>разбор группы от ИИ</b>: кто тянет вверх, кому нужна помощь, что сделать на этой неделе.</div>
-      <div class="ai-note">на YandexGPT — после слёта</div></div>`);
+    if(d.ai_coach&&d.ai_coach.motivator_text){
+      out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">💬</div><div class="ai-h">ИИ-<span>наставник</span></div></div>
+        <div class="ai-text" style="color:#fff">${esc(d.ai_coach.motivator_text)}</div>
+        <div class="ai-note">YandexGPT · лично тебе</div></div>`);
+    } else {
+      out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Сводка по <span>группе</span></div></div>
+        <div class="ai-text">Скоро здесь появится <b>разбор группы от ИИ</b>: кто тянет вверх, кому нужна помощь, что сделать на этой неделе.</div>
+        <div class="ai-note">на YandexGPT — после слёта</div></div>`);
+    }
   } else out.push(`<div class="banner">Нет агрегатов группы — возможно, ночной пересчёт ещё не прошёл.</div>`);
   document.getElementById('screen-main').innerHTML=out.join('');
 }
