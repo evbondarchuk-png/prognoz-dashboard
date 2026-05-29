@@ -511,8 +511,12 @@ function renderMain(d){
       <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${f.ir_seller}%</b></div></div></div>
       <div class="muted" style="margin-top:8px">Индекс развития · ${esc(f.period_label)} · насколько ты на пути к цели</div></div>`);
     out.push(`<div class="grid-2"><div class="card">${funnelSide('buyer',f.buyer,'🛒')}</div><div class="card">${funnelSide('seller',f.seller,'🏘')}</div></div>`);
-    const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
-    if(rec) out.push(`<div class="card"><div class="section-title">💡 Совет дня</div><div class="tip">${esc(rec)}</div></div>`);
+    if(d.ai_coach&&d.ai_coach.motivator_text){
+      out.push(`<div class="card" style="border:1px solid #ddd6fe;background:linear-gradient(135deg,#f5f3ff,#ede9fe)"><div style="display:flex;gap:9px;align-items:flex-start"><span style="font-size:18px;flex-shrink:0">💬</span><div style="font-size:13.5px;color:#5b21b6;line-height:1.5">${esc(d.ai_coach.motivator_text)}</div></div></div>`);
+    } else {
+      const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
+      if(rec) out.push(`<div class="card"><div class="section-title">💡 Совет дня</div><div class="tip">${esc(rec)}</div></div>`);
+    }
   } else out.push(`<div class="banner">Нет данных воронки — поставь цель, чтобы увидеть план и факт.</div>`);
   out.push(tasksPreview(d));
   out.push(aiCardMain());
@@ -606,9 +610,15 @@ function renderCoach(d){
       <div class="muted" style="margin:-6px 0 10px">Куда ты стремишься — сравнение с нормами следующей зоны, а не твоей текущей</div>
       ${coachSide('buyer',d.coach_target.buyer,'Покупатель')}${coachSide('seller',d.coach_target.seller,'Продавец')}</div>`);
   }
-  out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Мой виртуальный <span>тренер</span></div></div>
-    <div class="ai-text">Скоро здесь появится <b>персональный совет от ИИ</b>. Сейчас работает базовая диагностика — смотри слабые места выше.</div>
-    <div class="ai-note">на YandexGPT — после слёта</div></div>`);
+  if(d.ai_coach&&d.ai_coach.coach_text){
+    out.unshift(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">🎓</div><div class="ai-h">Персональный <span>ИИ-тренер</span></div></div>
+      <div class="ai-text" style="white-space:pre-line">${esc(d.ai_coach.coach_text)}</div>
+      <div class="ai-note">на YandexGPT · по твоим реальным данным</div></div>`);
+  } else {
+    out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Мой виртуальный <span>тренер</span></div></div>
+      <div class="ai-text">Скоро здесь появится <b>персональный совет от ИИ</b>. Сейчас работает базовая диагностика — смотри слабые места выше.</div>
+      <div class="ai-note">на YandexGPT — после слёта</div></div>`);
+  }
   document.getElementById('screen-coach').innerHTML=out.join('');
 }
 
