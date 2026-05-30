@@ -65,6 +65,19 @@ export function requireAuth(opts = {}) {
         location.href = 'index.html';
         return;
       }
+      // Авто-роутинг по роли (если зашёл на index.html без явного ?agent=).
+      // Сессия Firebase сохранена локально, поэтому при возврате на сайт
+      // пользователь часто попадает на index.html — а МОП/РОП/АУП должны
+      // открываться на своих кабинетах. Свой кабинет риелтора руководители
+      // всё равно могут открыть явно: index.html?agent=<свой_код>.
+      const path = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+      const hasAgentParam = new URLSearchParams(location.search).has('agent');
+      const homeByRole = { mop: 'mop.html', rop: 'rop.html', aup: 'aup.html', admin: 'aup.html' };
+      const home = homeByRole[userInfo.role];
+      if (home && path === 'index.html' && !hasAgentParam) {
+        location.href = home;
+        return;
+      }
       resolve(userInfo);
     });
   });
