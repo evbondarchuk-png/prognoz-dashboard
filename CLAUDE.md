@@ -94,6 +94,9 @@ activity, autocele, labels, dates) — гоняется локально, све
 - **Задачи:** createTask, updateTaskStatus, updateTaskProgress, expireTasks,
   markNotificationsRead, backfillTaskAuthors.
 - **Сценарии:** runScenariosDaily(+Admin), cleanupScenarioTasksAdmin.
+- **ИИ-тренер (YandexGPT):** generateAiCoachBatch (onCall admin/aup),
+  generateAiCoachNightly (onSchedule, по умолчанию пропуск). `aiCoach.js` +
+  `lib/yandexgpt.js`. Секреты `YANDEX_API_KEY`/`YANDEX_FOLDER_ID`.
 - **Разовые/демо:** backfillHistoryAdmin, recomputeSvetoforZonesAdmin.
 
 Все `*Admin` — onCall, `cors:true`, только admin/aup, вызываются из консоли
@@ -112,8 +115,8 @@ activity, autocele, labels, dates) — гоняется локально, све
   (опережающие: closedCur, fcstCur, fcstNext, actONCur — остаток ОН…),
   `comm/` (личные чеки), `commAvg/` (чеки 12 мес), `commFact/` (реальные
   комиссии тек.мес до рубля), income. Свежая дата: `/index/latest/date`.
-  ⚠️ Архиватор обновляет нерегулярно (последняя ~2026-05-15); данные n8n
-  (прогноз/чеки/доход/остаток ОН) я заливал в архив из CSV вручную.
+  ✅ С 2026-05-28 архив наполняется **автоматически каждую ночь** (Apps Script
+  `archiveToday`, 03:30 МСK) — см. раздел 7. Ручные заливки CSV больше не нужны.
 - `/plans/{код}/{plan_id}` — months[1..6] (norms+income), target_zone_id,
   plan_formula_version (`a8v5_stretch`), stretch{}.
 - `/goals/{код}/active` — target_revenue_month, is_auto.
@@ -122,6 +125,11 @@ activity, autocele, labels, dates) — гоняется локально, све
   месячные точки `{YYYY-MM-01}` = история светофора (seeded:false=реальная).
 - `/aggregates/{group|department}/{код}/{дата}` — ir_*, breakdown, forecast.
 - `/coach/{код}/current` — buyer/seller {code, bits, variant_data из справочника}.
+- `/ai_coach/{код}/current` — {coach_text, motivator_text,
+  coach_brief_for_manager, mode, generated_at, model}; `/prev` — предыдущая
+  версия. Пишет generateAiCoachBatch.
+- `/config/ai_coach/pilot_rop` — если задан, ночной generateAiCoachNightly
+  гонит ИИ-тексты по этому отделу. Не задан = ночью ничего не тратится.
 - `/tasks/{id}` (author_label!), `/notifications/{код}/items` + `/meta`.
 - `/data_division/cities/tyumen/` — zones (24, с range_start/end + конверсии +
   доход), avg_commission_by_segment, benchmark_conversions.
@@ -142,6 +150,9 @@ activity, autocele, labels, dates) — гоняется локально, све
   прогнозные сделки × чек. **Чек личный** (commAvg), городской если
   отклонение >30% или нет данных (План А). **Доход = вал × 0.48.**
   Партнёру показываем вал + «≈ ЗП»; руководителям — только вал.
+  **Единый источник факта-вала ВЕЗДЕ** (риелтор, ИР, агрегаты МОП/РОП) —
+  `commFact`. `lib/funnels.js` собирает revenue ТОЛЬКО из commFact, без
+  расчёта сделки×чек, иначе шапка и карточки разъезжаются.
 - **Автоцель:** max(доход+50к, пол mid_401_500, **доход следующей зоны**
   светофора) — застрявших лидеров своей зоны тянем в следующую.
   `assignAutoGoalsAdmin({reassign:true})` — переназначить существующие.
@@ -153,6 +164,25 @@ activity, autocele, labels, dates) — гоняется локально, све
   6 мес (SVG, цвет по пулу, переход помечен).
 - **Тренер:** диагностика по текущей зоне (coach) + 2-й блок по целевой
   зоне (coach_target на лету) + воронка 12 мес (стиль работы).
+- **ИИ-тренер (YandexGPT Pro):** 1 вызов → 3 текста: `coach_text` (партнёру),
+  `motivator_text` (живая поддержка с эмоциями), `coach_brief_for_manager`
+  (200 симв «он/она + что делать руководителю»). Режим по силе:
+  top/mid/lagging/newbie — топу про целевую зону, отстающему 1-2 фокуса.
+  Жёсткий гард: модель НЕ выдумывает числа, только из входных. Рельсы =
+  variant_data из /vocabularies (пересказ, не искажение).
+- **Карточки команды (МОП/РОП, A20):** `team_cards.members[]` с аватаром,
+  риск-бейджем (🐆/🐇/🐢), выжимкой тренера, 6 метриками. `coach_short`
+  всегда непустой: ИИ-brief → recommendation_for_realtor → autoBrief.
+
+---
+
+## 6.1. Авто-роутинг логина (auth-guard.js)
+
+Firebase сохраняет сессию локально → большинство входов идут НЕ через OTP.
+При возврате на `prognoz.info` пользователь попадает на `index.html`. Если
+роль `mop/rop/aup/admin` и нет явного `?agent=...`, `requireAuth`
+автоматически кидает на `mop.html`/`rop.html`/`aup.html`. Свой риелторский
+кабинет руководители открывают через `index.html?agent=<свой_код>`.
 
 ---
 
@@ -168,6 +198,21 @@ nightly идемпотентен (если браузер оборвёт сое�
 **Консоль Егора:** длинные однострочники с русским текстом рвутся при
 копировании (перенос → SyntaxError). Давай короткие строки без переносов
 внутри строковых литералов.
+
+**Ночное автообновление данных (с 2026-05-28).** Лист n8n «data» (Google-таблица,
+проект Apps Script `prognoz-archive`, файл `archive.gs` v3.1) заливается в архив
+сам: триггер `archiveToday` в **03:30 МСК** (n8n заканчивает к 03:00 МСК, ночные
+функции стартуют в 05:00 МСК — окно безопасно). Пишет все столбцы 0–220:
+`b/ s/` (12 мес), `bL/ sL/` (опереж.), `commAvg` (=столбцы 11–19), `commFact`
+(=212–220), income; `sL.actONCur` = ОСТАТОК ОН из 12-мес блока (столбцы 86…),
+`growCur` = набранные за месяц. Авторизация записи — через `DD_getToken_`/`DD_put_`
+из файла `data_division.gs` того же проекта (прямой PUT без токена → 401, из-за
+чего старый v3 по триггеру не отрабатывал). Менять время: цифра `atHour()` в
+`setupNightlyTrigger` → перезапустить функцию. Детали — auto-memory
+`reference_archiver_apps_script.md` и `project_nightly_data_cycle.md`.
+Дальше досчитывают ночные кроны: nightlySnapshot 05:00 МСК → recomputeIRGroups/
+Departments. **Планы a8v5 ночью НЕ трогаем** — пересчёт ручной (recomputePlansAdmin);
+но `setGoal` пересчитывает план конкретного партнёра сразу при смене ЗП.
 
 ---
 
@@ -190,9 +235,12 @@ nightly идемпотентен (если браузер оборвёт сое�
 
 ## 9. Открытые задачи / на потом
 
-- **YandexGPT (ТЗ-6):** ИИ-тренер поверх справочника, прогон на отделе
-  Колмогоровой (~150₽). Нужен `YANDEX_API_KEY` в Secret + generateAiCoachBatch.
-  Промпты пишет Коля.
+- **ИИ-тренер (TZ-6.2/6.3):** ✅ развёрнут на проде. Пилот прогнан на группе
+  МОП Колмогоров Евгений `10633` (24 чел, ~84₽). Прогон **по запросу**
+  (`generateAiCoachBatch({mop_code|rop_code|user_codes, dryRun?})` из консоли
+  под АУП). ⚠️ dryRun ТОЖЕ тратит токены. Ночной автопрогон отключён,
+  включается через `/config/ai_coach/pilot_rop` (но крон сейчас на rop-уровень).
+  Подробнее — auto-memory `reference_yandexgpt_ai_coach.md`.
 - **Тестовые задачи** (`related_scenario_id: test_seed`) — убрать перед демо
   (висят у всех для проверки отображения; чистка — отдельной командой).
 - **Сценарии задач** (ir_dropped_2w/objects_below_norm/no_deals_30d) —
