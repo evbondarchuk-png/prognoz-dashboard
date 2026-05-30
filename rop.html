@@ -281,13 +281,16 @@ function helpCard(){ return `<button class="help-btn" onclick="openManager()">�
 /* ─── HERO ─── */
 function renderHero(d){
   const u=d.user,a=d.aggregates;
-  const meta=[]; if(a){meta.push(a.scope.members_count+' партнёров'); if(a.groups_summary)meta.push(a.groups_summary.total+' групп');}
+  const totalP=a&&(a.scope.active_count!=null?a.scope.active_count:a.scope.members_count);
+  const inIR=a&&a.scope.members_count;
+  const meta=[]; if(a){meta.push(totalP+' партнёров'); if(a.groups_summary)meta.push(a.groups_summary.total+' групп');}
   let stats='',gline='',fcStats='';
-  if(a){ stats=`<div class="stat-grid">
+  if(a){ const subAll=totalP!==inIR?`<div class="muted" style="font-size:10px;margin-top:2px">в расчёте ИР: ${inIR}</div>`:'';
+    stats=`<div class="stat-grid">
     <div class="stat"><div class="s-cap">ИР отдела</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
     <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--st-green)">${a.scope.performers_count}</b></div>
     <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--st-red)">${a.scope.underperformers_count}</b></div>
-    <div class="stat"><div class="s-cap">всего</div><b>${a.scope.members_count}</b></div>
+    <div class="stat"><div class="s-cap">всего</div><b>${totalP}</b>${subAll}</div>
   </div>`;
     fcStats=fcHero(a.forecast);
     const gs=a.groups_summary;
