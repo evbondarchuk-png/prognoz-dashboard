@@ -40,7 +40,7 @@
  /* Прочее */
  --transition:0.15s ease; --max-width:1180px; --app-header-h:56px;
  /* Совместимость со старым кодом (этапы 2-8 уберут) */
- --radius:14px;
+ 
  }
 
   /* TZ-A22 §3.3 — единый каркас .hero (алиасы существующих .card + .stat-grid + .stat) */
@@ -65,12 +65,12 @@
  .btn:hover{border-color:var(--brand);color:var(--brand)}
  .container{max-width:1080px;margin:0 auto;padding:16px}
  @media(min-width:860px){.container{padding:24px 28px}}
- .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+ .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
  .grid-2{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
  @media(min-width:860px){.grid-2{grid-template-columns:1fr 1fr}}
  .muted{color:var(--muted);font-size:var(--fs-12)}
  .section-title{font-size:var(--fs-12);font-weight:var(--fw-b);color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em}
- .banner{background:var(--brand-soft);border:1px solid #cfe1f5;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:var(--fs-13);color:#1a4061}
+ .banner{background:var(--brand-soft);border:1px solid #cfe1f5;border-radius:var(--r-xl);padding:14px 16px;margin-bottom:14px;font-size:var(--fs-13);color:#1a4061}
  .soon{background:var(--surface-2);border:1px dashed #c9cedb;border-radius:10px;padding:24px 18px;text-align:center;color:var(--muted);font-size:var(--fs-13)}
  .soon .soon-ic{font-size:var(--fs-28);display:block;margin-bottom:8px}
 
@@ -152,7 +152,7 @@
  .mini-stage{flex:1;border-radius:2px}
  .member-arrow{color:var(--muted);flex-shrink:0}
 
- .ai-card{background:linear-gradient(135deg,#1e293b 0%,#2b3a52 100%);border-radius:var(--radius);padding:18px;margin-bottom:14px;color:#fff;box-shadow:var(--shadow)}
+ .ai-card{background:linear-gradient(135deg,#1e293b 0%,#2b3a52 100%);border-radius:var(--r-xl);padding:18px;margin-bottom:14px;color:#fff;box-shadow:var(--shadow)}
  .ai-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
  .ai-orb{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ffd66b,#f59e0b);box-shadow:0 0 24px rgba(245,158,11,.5);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:var(--fs-22)}
  .ai-h{font-size:var(--fs-14);font-weight:var(--fw-eb)} .ai-h span{color:#ffd66b}
