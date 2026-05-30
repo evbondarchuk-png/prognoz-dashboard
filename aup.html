@@ -233,10 +233,13 @@ function renderHero(d){
   const u=d.user,a=d.aggregates;
   let stats='',fcStats='';
   if(a){ const depts=a.departments_count!=null?a.departments_count:(d.team?d.team.total_count:0);
+    const total=a.scope.active_count!=null?a.scope.active_count:a.scope.members_count;
+    const inIR=a.scope.members_count;
+    const subPart=total!==inIR?`<div class="muted" style="font-size:10px;margin-top:2px">в расчёте ИР: ${inIR}</div>`:'';
     stats=`<div class="stat-grid">
       <div class="stat"><div class="s-cap">ИР компании</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
       <div class="stat"><div class="s-cap">отделов</div><b>${depts}</b></div>
-      <div class="stat"><div class="s-cap">партнёров</div><b>${a.scope.members_count}</b></div>
+      <div class="stat"><div class="s-cap">партнёров</div><b>${total}</b>${subPart}</div>
       <div class="stat"><div class="s-cap">выполнение</div><b style="color:var(--st-green)">${a.scope.performance_pct}%</b></div>
     </div>`;
     fcStats=fcHero(a.forecast); }
