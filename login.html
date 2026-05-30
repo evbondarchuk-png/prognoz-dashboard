@@ -128,7 +128,27 @@
       margin-right: 8px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
+  
+/* TZ-A22 §3.6/§3.8 — единые кнопки и бейджи (готовы для этапа 5) */
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);font-family:inherit;font-size:var(--fs-13);font-weight:var(--fw-sb);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-pill);border:1px solid var(--brand);background:var(--brand);color:var(--on-dark);cursor:pointer;transition:var(--transition);line-height:1;white-space:nowrap}
+.btn-primary:hover:not(:disabled){background:var(--brand-hover);border-color:var(--brand-hover)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);font-family:inherit;font-size:var(--fs-13);font-weight:var(--fw-sb);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-pill);border:1px solid var(--line);background:transparent;color:var(--ink-soft);cursor:pointer;transition:var(--transition);line-height:1;white-space:nowrap}
+.btn-secondary:hover:not(:disabled){border-color:var(--brand);color:var(--brand)}
+.btn-danger{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);font-family:inherit;font-size:var(--fs-13);font-weight:var(--fw-sb);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-pill);border:1px solid var(--bad);background:transparent;color:var(--bad);cursor:pointer;transition:var(--transition);line-height:1;white-space:nowrap}
+.btn-danger:hover:not(:disabled){background:var(--bad-bg)}
+.btn-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border-radius:50%;border:1px solid transparent;cursor:pointer;font-size:var(--fs-14);background:transparent;transition:var(--transition);font-family:inherit}
+.btn-icon.ok{color:var(--ok);border-color:var(--ok)} .btn-icon.ok:hover{background:var(--ok-bg)}
+.btn-icon.muted{color:var(--muted)} .btn-icon.muted:hover{color:var(--bad)}
+
+.badge{display:inline-flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-12);font-weight:var(--fw-sb);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);line-height:1.2}
+.badge-ok{background:var(--ok-bg);color:var(--ok)}
+.badge-warn{background:var(--warn-bg);color:var(--warn)}
+.badge-bad{background:var(--bad-bg);color:var(--bad)}
+.badge-nd{background:var(--nd-bg);color:var(--nd)}
+.badge-info{background:var(--brand-soft);color:var(--brand)}
+
+</style>
 </head>
 <body>
   <div class="card">
