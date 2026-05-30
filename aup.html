@@ -100,18 +100,30 @@
  .fs-legend{font-size:var(--fs-11);color:var(--muted);margin:-2px 2px 10px;display:flex;gap:14px}
  .fs-legend b{color:var(--ink);font-weight:var(--fw-b)}
 
- .member-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:11px;cursor:pointer;min-height:48px;transition:box-shadow .15s}
- .member-card:hover{box-shadow:var(--shadow)}
- .member-card.at-risk{border-left:3px solid var(--bad)}
- .member-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-12);font-weight:var(--fw-b);flex-shrink:0}
- .member-info{flex:1;min-width:0}
- .member-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px}
- .member-name{font-size:var(--fs-14);font-weight:var(--fw-sb);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
- .member-ir{font-size:var(--fs-14);font-weight:var(--fw-eb);flex-shrink:0}
- .member-sub{font-size:var(--fs-11);color:var(--muted);margin-bottom:5px}
- .mini-funnel{display:flex;gap:3px;height:6px}
- .mini-stage{flex:1;border-radius:2px}
- .member-arrow{color:var(--muted);flex-shrink:0}
+ /* карточки команды (TZ-A20 / TZ-A22) — единый компонент member-row */
+ .member-row{padding:16px 18px;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:12px}
+ .member-row.drill .rr-name{cursor:pointer}.member-row.drill .rr-name:hover{color:var(--brand)}
+ .member-row:last-child{margin-bottom:0}
+ .member-row-top{display:grid;grid-template-columns:48px 220px 1fr auto;gap:14px;align-items:center}
+ .rr-ava{width:48px;height:48px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:var(--fs-14);font-weight:var(--fw-b)}
+ .rr-info{min-width:0}.rr-name{font-size:var(--fs-14);font-weight:var(--fw-b);color:var(--ink)}
+ .rr-arr{color:var(--muted);font-weight:var(--fw-r);font-size:var(--fs-16)}.rr-meta{font-size:var(--fs-12);color:var(--muted);margin-top:2px}
+ .rr-task-btn{background:var(--brand);color:#fff;border:none;font-size:var(--fs-12);font-weight:var(--fw-b);padding:8px 14px;border-radius:var(--r-sm);cursor:pointer;white-space:nowrap}
+ .rr-coach-inline{padding:9px 12px;background:linear-gradient(135deg,var(--ai-purple-bg-1),var(--ai-purple-bg-2));border:1px solid var(--ai-purple-line);border-radius:var(--r-sm);display:flex;gap:8px;align-items:flex-start;min-width:0}
+ .rr-ai-i{font-size:var(--fs-13);flex-shrink:0}.rr-ai-t{font-size:var(--fs-12);color:var(--ai-purple-ink);line-height:1.4;flex:1;min-width:0}.rr-ai-t b{color:var(--ai-purple-ink-strong)}
+ .rr-metrics-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:13px;padding:11px 12px;background:#fafbfc;border-radius:var(--r-sm);border:1px solid var(--line)}
+ .rr-m{text-align:center}.rr-m-lbl{font-size:var(--fs-11);color:var(--muted);text-transform:uppercase;letter-spacing:.3px;font-weight:var(--fw-sb);line-height:1.2}
+ .rr-m-val{font-size:var(--fs-14);font-weight:var(--fw-b);color:var(--ink);margin-top:4px;white-space:nowrap}.rr-m-val small{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-m)}.rr-m-val.v-brand{color:var(--brand)}
+ .t-up{color:var(--ok);font-size:var(--fs-12)}.t-down{color:var(--bad);font-size:var(--fs-12)}.t-flat{color:var(--muted);font-size:var(--fs-11)}
+ .rr-activity{margin-top:10px;padding:8px 12px;background:linear-gradient(90deg,#fefce8,#fef9c3);border:1px solid #fef08a;border-radius:var(--r-sm);display:flex;align-items:center;gap:8px;font-size:var(--fs-12);color:#78350f;flex-wrap:wrap}
+ .rr-act-i{font-size:var(--fs-14)}.rr-act-item b{color:#451a03;font-weight:var(--fw-b);font-size:var(--fs-13)}.rr-act-sep{color:#a16207}
+ .rr-act-clickable{cursor:pointer;padding:3px 8px;border-radius:var(--r-xs);background:rgba(255,255,255,.4)}.rr-act-clickable:hover{background:#fff}.rr-act-arr{font-size:var(--fs-11);color:#a16207;margin-left:3px}
+ .risk-badge{font-size:var(--fs-11);font-weight:var(--fw-b);padding:3px 9px;border-radius:var(--r-pill)}
+ .rb-ok{background:var(--ok-bg);color:var(--ok)}.rb-noresult{background:var(--bad-bg);color:var(--bad)}.rb-irdown{background:var(--warn-bg);color:var(--warn)}
+ .rb-noenter{background:var(--bad-bg);color:var(--bad)}.rb-notask{background:var(--warn-bg);color:var(--warn)}.rb-nofc{background:#fecaca;color:#7f1d1d}
+ @media(max-width:1080px){.member-row-top{grid-template-columns:48px 1fr auto;gap:12px}.rr-coach-inline{grid-column:1/-1;margin-top:8px}}
+ @media(max-width:900px){.rr-metrics-grid{grid-template-columns:repeat(3,1fr)}}
+ @media(max-width:560px){.rr-metrics-grid{grid-template-columns:repeat(2,1fr)}}
 
  .ai-card{background:linear-gradient(135deg,#1e293b 0%,#2b3a52 100%);border-radius:var(--radius);padding:18px;margin-bottom:14px;color:#fff;box-shadow:var(--shadow)}
  .ai-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
@@ -210,6 +222,13 @@ const CTX={data:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
+function fmtNumber(n){ if(!Number.isFinite(n))return '—';
+  const a=Math.abs(n);
+  if(a>=1000000) return (n/1000000).toFixed(1).replace('.',',')+' млн';
+  if(a>=10000)   return Math.round(n/1000)+'к';
+  if(a>=1000)    return (n/1000).toFixed(1).replace('.',',')+' тыс';
+  return String(Math.round(n));
+}
 function fcHero(fc){ if(!fc || !((fc.current_month&&fc.current_month.revenue_total>0)||(fc.next_month&&fc.next_month.revenue_total>0))) return '';
  const dv=fc.delta_vs_yesterday;
  const dlt=dv&&dv.revenue_pct?` <span style="font-size:var(--fs-13);color:${dv.direction==='up'?'var(--ok)':'var(--bad)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
@@ -355,26 +374,46 @@ function renderPrognoz(d){
  document.getElementById('screen-prognoz').innerHTML=out.join('');
 }
 
-/* ─── ОТДЕЛЫ ─── */
-function deptCard(m){
- const mini=(m.mini_funnel||[]).map(s=>`<div class="mini-stage" style="background:${STC[s.status]||STC.no_data}"></div>`).join('');
- return `<div class="member-card ${m.is_at_risk?'at-risk':''}" onclick="openDept('${esc(m.code)}')">
- <div class="member-avatar" style="background:${m.avatar_color_bg};color:${m.avatar_color_text}">${esc(m.avatar_initials||'?')}</div>
- <div class="member-info">
- <div class="member-row-top"><span class="member-name">Отдел ${esc(m.short_name||m.name)}</span>
- <span class="member-ir" style="color:${STC[m.ir_status]||STC.no_data}">${m.ir_status==='no_data'?'—':m.ir_total+'%'}</span></div>
- ${m.department_size!=null?`<div class="member-sub">${m.department_size} партнёров</div>`:''}
- <div class="mini-funnel">${mini}</div></div>
- <span class="member-arrow">›</span></div>`;
+/* ─── ОТДЕЛЫ (member-row, TZ-A22 §5.5) ─── */
+function trendArrow(dir){ if(dir==='up')return '<span class="t-up">▲</span>'; if(dir==='down')return '<span class="t-down">▼</span>'; return '<span class="t-flat">▬</span>'; }
+function teamCardHTML(p){
+  const click=p.drill_url?`onclick="location.href='${esc(p.drill_url)}'"`:'';
+  const coach=p.coach_short?`<div class="rr-coach-inline"><span class="rr-ai-i">🎓</span><span class="rr-ai-t"><b>Тренер:</b> ${esc(p.coach_short)}</span></div>`:'<div></div>';
+  const actBits=[];
+  actBits.push(`<span class="rr-act-item rr-act-clickable" onclick="openAchievementsModal('${esc(p.code)}',${p.achievements_count_month||0})"><b>${p.achievements_count_month||0}</b> достижений <span class="rr-act-arr">↗</span></span>`);
+  const act=`<div class="rr-activity"><span class="rr-act-i">⚡</span>${actBits.join('')}</div>`;
+  return `<div class="member-row ${p.drill_url?'drill':''}">
+    <div class="member-row-top">
+      <div class="rr-ava" style="background:${p.avatar_color}">${esc(p.initials||'?')}</div>
+      <div class="rr-info">
+        <div class="rr-name" ${click}>${esc(p.name)}${p.drill_url?' <span class="rr-arr">›</span>':''}</div>
+        <div class="rr-meta">${esc(p.meta||'')}</div>
+        <span class="risk-badge ${p.risk_class||'rb-ok'}" style="margin-top:5px;display:inline-block">${esc(p.risk_label||'')} ${p.risk_animal||''}</span>
+      </div>
+      ${coach}
+      <button class="rr-task-btn" onclick="openCreateTaskFor('${esc(p.code)}');event.stopPropagation();">➕ Задача</button>
+    </div>
+    <div class="rr-metrics-grid">
+      <div class="rr-m"><div class="rr-m-lbl">ИР отдела</div><div class="rr-m-val v-brand">${p.ir_month}% ${trendArrow(p.ir_month_trend)}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">партнёров</div><div class="rr-m-val">${esc((p.meta.match(/\d+/)||[''])[0])}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">тек. вал · факт/прогноз</div><div class="rr-m-val">${fmtNumber(p.revenue_fact_current)} <small>/</small> ${fmtNumber(p.revenue_forecast_current)}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">тек. сделки · факт/прогноз</div><div class="rr-m-val">${p.deals_fact_current} <small>/</small> ${p.deals_forecast_current}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">след. вал · прогноз</div><div class="rr-m-val">${fmtNumber(p.revenue_forecast_next)}</div></div>
+      <div class="rr-m"><div class="rr-m-lbl">след. сделки · прогноз</div><div class="rr-m-val">${p.deals_forecast_next}</div></div>
+    </div>
+    ${act}
+  </div>`;
 }
+window.openCreateTaskFor=(code)=>{ window.openCreateTask(); const sel=document.getElementById('tkWho'); if(sel) sel.value=code; };
+window.openAchievementsModal=(code,n)=>{ alert('История достижений — скоро здесь будет.\nДостижений за месяц: '+(n||0)); };
 function renderDepts(d){
- const t=d.team; const out=[];
- if(t&&t.members&&t.members.length){
- out.push(`<div class="card"><div class="section-title">👥 Отделы · ${t.total_count}</div>
- ${t.members.map(deptCard).join('')}
- <div class="muted" style="margin-top:8px">Нажми на отдел — откроется кабинет управляющего партнёра.</div></div>`);
- } else out.push(`<div class="banner">Нет активных отделов.</div>`);
- document.getElementById('screen-depts').innerHTML=out.join('');
+  const tc=d.team_cards; const out=[];
+  if(tc&&tc.members&&tc.members.length){
+    out.push(`<div class="card"><div class="section-title">👥 Отделы · ${tc.total_count}</div>
+      ${tc.members.map(teamCardHTML).join('')}
+      <div class="muted" style="margin-top:8px">Нажми на имя — откроется кабинет управляющего партнёра. «➕ Задача» — поставить задачу РОПу.</div></div>`);
+  } else out.push(`<div class="banner">Нет активных отделов.</div>`);
+  document.getElementById('screen-depts').innerHTML=out.join('');
 }
 
 /* ─── ЗАДАЧИ ─── */
