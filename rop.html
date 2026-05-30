@@ -95,12 +95,12 @@
  .member-row{padding:16px 18px;background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
  .member-row.drill .rr-name{cursor:pointer}.member-row.drill .rr-name:hover{color:var(--brand)}
  .member-row:last-child{margin-bottom:0}
- .member-row-top{display:grid;grid-template-columns:48px 220px 1fr auto;gap:14px;align-items:center}
+ .member-row-top{display:grid;grid-template-columns:48px 1fr auto;gap:14px;align-items:start}
  .rr-ava{width:48px;height:48px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:var(--fs-14);font-weight:var(--fw-b)}
  .rr-info{min-width:0}.rr-name{font-size:var(--fs-14);font-weight:var(--fw-b);color:var(--ink)}
  .rr-arr{color:var(--muted);font-weight:var(--fw-r);font-size:var(--fs-16)}.rr-meta{font-size:var(--fs-12);color:var(--muted);margin-top:2px}
  .rr-task-btn{background:var(--brand);color:#fff;border:none;font-size:var(--fs-12);font-weight:var(--fw-b);padding:8px 14px;border-radius:8px;cursor:pointer;white-space:nowrap}
- .rr-coach-inline{padding:9px 12px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #ddd6fe;border-radius:8px;display:flex;gap:8px;align-items:flex-start;min-width:0}
+ .rr-coach-inline{padding:9px 12px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #ddd6fe;border-radius:8px;display:flex;gap:8px;align-items:flex-start;margin-top:10px}
  .rr-ai-i{font-size:var(--fs-13);flex-shrink:0}.rr-ai-t{font-size:var(--fs-12);color:#5b21b6;line-height:1.4;flex:1;min-width:0}.rr-ai-t b{color:#4c1d95}
  .rr-metrics-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:13px;padding:11px 12px;background:#fafbfc;border-radius:9px;border:1px solid var(--line)}
  .rr-m{text-align:center}.rr-m-lbl{font-size:var(--fs-11);color:var(--muted);text-transform:uppercase;letter-spacing:.3px;font-weight:var(--fw-sb);line-height:1.2}
@@ -112,7 +112,7 @@
  .risk-badge{font-size:var(--fs-11);font-weight:var(--fw-b);padding:3px 9px;border-radius:20px}
  .rb-ok{background:#dcfce7;color:#166534}.rb-noresult{background:#fee2e2;color:#991b1b}.rb-irdown{background:#fef3c7;color:#92400e}
  .rb-noenter{background:#fee2e2;color:#991b1b}.rb-notask{background:#fef3c7;color:#92400e}.rb-nofc{background:#fecaca;color:#7f1d1d}
- @media(max-width:1080px){.member-row-top{grid-template-columns:48px 1fr auto;gap:12px}.rr-coach-inline{grid-column:1/-1;margin-top:8px}}
+ @media(max-width:1080px){.member-row-top{gap:12px}}
  @media(max-width:900px){.rr-metrics-grid{grid-template-columns:repeat(3,1fr)}}
  @media(max-width:560px){.rr-metrics-grid{grid-template-columns:repeat(2,1fr)}}
  .screen{display:none} .screen.on{display:block}
@@ -144,7 +144,7 @@
  .member-card.at-risk{border-left:3px solid var(--bad)}
  .member-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-12);font-weight:var(--fw-b);flex-shrink:0}
  .member-info{flex:1;min-width:0}
- .member-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px}
+  .member-card .member-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px}
  .member-name{font-size:var(--fs-14);font-weight:var(--fw-sb);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .member-ir{font-size:var(--fs-14);font-weight:var(--fw-eb);flex-shrink:0}
  .member-sub{font-size:var(--fs-11);color:var(--muted);margin-bottom:5px}
@@ -466,9 +466,9 @@ function teamCardHTML(p){
  <div class="rr-meta">${esc(p.meta||'')}</div>
  <span class="risk-badge ${p.risk_class||'rb-ok'}" style="margin-top:5px;display:inline-block">${esc(p.risk_label||'')} ${p.risk_animal||''}</span>
  </div>
- ${coach}
- <button class="rr-task-btn" onclick="openCreateTaskFor('${esc(p.code)}');event.stopPropagation();">➕ Задача</button>
+  <button class="rr-task-btn" onclick="openCreateTaskFor('${esc(p.code)}');event.stopPropagation();">➕ Задача</button>
  </div>
+ ${coach}
  <div class="rr-metrics-grid">
  <div class="rr-m"><div class="rr-m-lbl">ИР месяц</div><div class="rr-m-val v-brand">${p.ir_month}% ${trendArrow(p.ir_month_trend)}</div></div>
  <div class="rr-m"><div class="rr-m-lbl">партнёров</div><div class="rr-m-val">${esc((p.meta.match(/\d+/)||[''])[0])}</div></div>
