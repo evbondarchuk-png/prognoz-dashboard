@@ -14,37 +14,47 @@
   }
   </script>
   <style>
+    /* TZ-A22 §2 — единые дизайн-токены */
+    :root{
+      --bg:#f4f5f7; --surface:#fff; --surface-2:#f1f3f7;
+      --line:#e6e8ee;
+      --shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);
+      --ink:#1a1f2e; --ink-soft:#3b4358; --muted:#7a8194; --muted-2:#a8aebd; --on-dark:#fff;
+      --brand:#2b6cb0; --brand-hover:#1f5288; --brand-soft:#eaf2fb;
+      --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --bad-bg:#fdeaea;
+      --r-xs:6px; --r-sm:8px; --r-md:10px; --r-lg:12px; --r-xl:14px; --r-pill:999px;
+      --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-7:32px;
+      --fs-11:11px; --fs-12:12px; --fs-13:13px; --fs-14:14px; --fs-16:16px; --fs-20:20px; --fs-22:22px; --fs-28:28px;
+      --fw-r:400; --fw-m:500; --fw-sb:600; --fw-b:700; --fw-eb:800;
+      --transition:0.15s ease;
+    }
     * { box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
       background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-      min-height: 100vh;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+      min-height: 100vh; margin: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: var(--sp-5); color: var(--ink);
     }
     .card {
-      background: white;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-      width: 100%;
-      max-width: 420px;
+      background: var(--surface);
+      padding: var(--sp-7);
+      border-radius: var(--r-xl);
+      box-shadow: var(--shadow);
+      width: 100%; max-width: 420px;
     }
     .logo {
       text-align: center;
       font-size:var(--fs-28);
-      font-weight:var(--fw-b);
-      color: #1a365d;
-      margin-bottom: 8px;
+      font-weight:var(--fw-eb);
+      color: var(--brand);
+      margin-bottom: var(--sp-2);
     }
     .subtitle {
       text-align: center;
-      color: #718096;
+      color: var(--muted);
       font-size:var(--fs-14);
-      margin-bottom: 32px;
+      margin-bottom: var(--sp-7);
     }
     .step { display: none; }
     .step.active { display: block; }
@@ -74,47 +84,46 @@
     }
     button {
       width: 100%;
-      padding: 14px;
-      margin-top: 16px;
+      padding: var(--sp-3) var(--sp-4);
+      margin-top: var(--sp-4);
       font-size:var(--fs-16);
       font-weight:var(--fw-sb);
-      color: white;
-      background: #2b6cb0;
+      color: var(--on-dark);
+      background: var(--brand);
       border: none;
-      border-radius: 8px;
+      border-radius: var(--r-sm);
       cursor: pointer;
-      transition: background 0.15s;
+      transition: var(--transition);
     }
-    button:hover:not(:disabled) { background: #2c5282; }
-    button:disabled { background: #a0aec0; cursor: not-allowed; }
+    button:hover:not(:disabled) { background: var(--brand-hover); }
+    button:disabled { background: var(--muted-2); cursor: not-allowed; }
     .link {
       display: block;
       text-align: center;
-      margin-top: 16px;
-      color: #4299e1;
+      margin-top: var(--sp-4);
+      color: var(--brand);
       text-decoration: none;
       font-size:var(--fs-14);
       cursor: pointer;
-      background: none;
-      border: none;
+      background: none; border: none;
     }
     .link:hover { text-decoration: underline; }
     .info {
-      background: #ebf8ff;
-      color: #2c5282;
-      padding: 12px 14px;
-      border-radius: 8px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      padding: var(--sp-3) var(--sp-3);
+      border-radius: var(--r-sm);
       font-size:var(--fs-14);
-      margin-bottom: 16px;
+      margin-bottom: var(--sp-4);
     }
     .info b { font-family: 'Courier New', monospace; }
     .error {
-      background: #fff5f5;
-      color: #c53030;
-      padding: 12px 14px;
-      border-radius: 8px;
+      background: var(--bad-bg);
+      color: var(--bad);
+      padding: var(--sp-3) var(--sp-3);
+      border-radius: var(--r-sm);
       font-size:var(--fs-14);
-      margin-bottom: 16px;
+      margin-bottom: var(--sp-4);
     }
     .spinner {
       display: inline-block;
