@@ -42,6 +42,19 @@
  /* Совместимость со старым кодом (этапы 2-8 уберут) */
  --radius:14px;
  }
+
+  /* TZ-A22 §3.3 — единый каркас .hero (алиасы существующих .card + .stat-grid + .stat) */
+  .hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:var(--sp-4);margin-bottom:var(--sp-4);box-shadow:var(--shadow)}
+  .hero-top{display:flex;align-items:flex-start;gap:var(--sp-3)}
+  .hero-avatar{width:48px;height:48px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:var(--fw-b);font-size:var(--fs-16);flex-shrink:0}
+  .hero-info{flex:1;min-width:0}
+  .hero-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-2);margin-top:var(--sp-3)}
+  @media(min-width:620px){.hero-stats{grid-template-columns:repeat(4,1fr)}}
+  .hero-stat{background:var(--surface-2);border-radius:var(--r-md);padding:var(--sp-3)}
+  .hero-stat-cap{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb);text-transform:uppercase;letter-spacing:.3px}
+  .hero-stat-val{font-size:var(--fs-22);font-weight:var(--fw-eb);line-height:1.2;display:block;margin-top:var(--sp-1)}
+  .hero-stat-sub{font-size:var(--fs-11);color:var(--muted);margin-top:2px}
+
  *{box-sizing:border-box;margin:0;padding:0}
  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:var(--fs-14);line-height:1.5;padding-bottom:24px}
  .app-header{background:var(--surface);border-bottom:1px solid var(--line);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
