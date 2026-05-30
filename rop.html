@@ -9,20 +9,45 @@
 </script>
 <style>
   :root{
-    --bg:#f4f5f7; --surface:#fff; --surface2:#f1f3f7;
-    --ink:#1a1f2e; --muted:#7a8194; --line:#e6e8ee;
-    --brand:#2b6cb0; --brand-soft:#eaf2fb;
+    /* Поверхности */
+    --bg:#f4f5f7; --surface:#fff; --surface-2:#f1f3f7; --surface-3:#eef0f4;
+    /* Линии и тени */
+    --line:#e6e8ee; --line-strong:#d1d5db;
+    --shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);
+    --shadow-hover:0 2px 6px rgba(20,30,55,.08),0 10px 32px rgba(20,30,55,.08);
+    /* Текст */
+    --ink:#1a1f2e; --ink-soft:#3b4358; --muted:#7a8194; --muted-2:#a8aebd; --on-dark:#ffffff;
+    /* Бренд */
+    --brand:#2b6cb0; --brand-hover:#1f5288; --brand-soft:#eaf2fb;
+    /* Семантика воронки */
     --buyer:#3b82f6; --seller:#10b981; --gold:#f59e0b;
-    --st-green:#16a34a; --st-yellow:#d97706; --st-red:#dc2626;
-    --green-bg:#e9f6ec; --yellow-bg:#fdf3e3; --red-bg:#fdeaea; --nd-bg:#eef0f4;
-    --radius:14px; --shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);
+    /* Статусы */
+    --ok:#16a34a; --ok-bg:#e9f6ec;
+    --warn:#d97706; --warn-bg:#fdf3e3;
+    --bad:#dc2626; --bad-bg:#fdeaea;
+    --nd:#7a8194; --nd-bg:#eef0f4;
+    /* ИИ-фиолетовый */
+    --ai-purple-bg-1:#f5f3ff; --ai-purple-bg-2:#ede9fe; --ai-purple-line:#ddd6fe;
+    --ai-purple-ink:#5b21b6; --ai-purple-ink-strong:#4c1d95;
+    /* Скругления */
+    --r-xs:6px; --r-sm:8px; --r-md:10px; --r-lg:12px; --r-xl:14px; --r-pill:999px;
+    /* Отступы */
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-7:32px;
+    /* Типографика */
+    --fs-11:11px; --fs-12:12px; --fs-13:13px; --fs-14:14px; --fs-16:16px;
+    --fs-20:20px; --fs-22:22px; --fs-28:28px;
+    --fw-r:400; --fw-m:500; --fw-sb:600; --fw-b:700; --fw-eb:800;
+    /* Прочее */
+    --transition:0.15s ease; --max-width:1180px; --header-h:56px;
+    /* Совместимость со старым кодом (этапы 2-8 уберут) */
+    --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;padding-bottom:24px}
   .header{background:var(--surface);border-bottom:1px solid var(--line);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
   .logo{font-size:16px;font-weight:800;color:var(--brand)} .logo span{color:var(--muted);font-weight:500}
   .header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-  .date-badge{font-size:12px;color:var(--muted);background:var(--surface2);padding:4px 10px;border-radius:20px}
+  .date-badge{font-size:12px;color:var(--muted);background:var(--surface-2);padding:4px 10px;border-radius:20px}
   .btn{font-size:12px;color:var(--muted);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--line);cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
   .btn:hover{border-color:var(--brand);color:var(--brand)}
   .container{max-width:1080px;margin:0 auto;padding:16px}
@@ -33,7 +58,7 @@
   .muted{color:var(--muted);font-size:12px}
   .section-title{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em}
   .banner{background:var(--brand-soft);border:1px solid #cfe1f5;border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:#1a4061}
-  .soon{background:var(--surface2);border:1px dashed #c9cedb;border-radius:10px;padding:24px 18px;text-align:center;color:var(--muted);font-size:13px}
+  .soon{background:var(--surface-2);border:1px dashed #c9cedb;border-radius:10px;padding:24px 18px;text-align:center;color:var(--muted);font-size:13px}
   .soon .soon-ic{font-size:34px;display:block;margin-bottom:8px}
 
   .profile{display:flex;align-items:flex-start;gap:14px}
@@ -43,11 +68,11 @@
   .hero-sub{font-size:12px;color:var(--muted);margin-top:3px}
   .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
   @media(min-width:620px){.stat-grid{grid-template-columns:repeat(4,1fr)}}
-  .stat{background:var(--surface2);border-radius:10px;padding:12px 14px}
+  .stat{background:var(--surface-2);border-radius:10px;padding:12px 14px}
   .stat .s-cap{font-size:11px;color:var(--muted);font-weight:600}
   .stat b{font-size:22px;font-weight:800;display:block;line-height:1.2;margin-top:2px}
   .groups-line{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-  .gchip{font-size:12px;background:var(--surface2);border-radius:20px;padding:5px 11px;font-weight:600}
+  .gchip{font-size:12px;background:var(--surface-2);border-radius:20px;padding:5px 11px;font-weight:600}
 
   .rtab-bar{display:flex;gap:8px;margin-bottom:18px;padding:7px;background:#f4f7fb;border:1px solid var(--line);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:56px;z-index:90}
   .rtab{font-size:14px;padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
@@ -86,8 +111,8 @@
   .bar-bg{height:8px;background:var(--nd-bg);border-radius:5px;overflow:hidden}
   .bar-fill{height:100%;border-radius:5px;transition:width .5s ease}
   .status-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700}
-  .sb-green{background:var(--green-bg);color:var(--st-green)} .sb-yellow{background:var(--yellow-bg);color:var(--st-yellow)}
-  .sb-red{background:var(--red-bg);color:var(--st-red)} .sb-no_data{background:var(--nd-bg);color:var(--muted)}
+  .sb-green{background:var(--ok-bg);color:var(--ok)} .sb-yellow{background:var(--warn-bg);color:var(--warn)}
+  .sb-red{background:var(--bad-bg);color:var(--bad)} .sb-no_data{background:var(--nd-bg);color:var(--muted)}
 
   .fs-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px}
   .fs-title{display:flex;align-items:center;gap:8px}
@@ -103,7 +128,7 @@
 
   .member-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:11px;cursor:pointer;min-height:48px;transition:box-shadow .15s}
   .member-card:hover{box-shadow:var(--shadow)}
-  .member-card.at-risk{border-left:3px solid var(--st-red)}
+  .member-card.at-risk{border-left:3px solid var(--bad)}
   .member-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
   .member-info{flex:1;min-width:0}
   .member-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px}
@@ -125,17 +150,17 @@
   .notif:last-child{border-bottom:none} .notif.unread .ni-title{font-weight:700}
   .ni-icon{font-size:18px} .ni-title{font-size:13px}
   .tg-title{font-size:12px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.03em}
-  .tg-red{color:var(--st-red)} .tg-amber{color:var(--st-yellow)} .tg-gray{color:var(--muted)} .tg-green{color:var(--st-green)}
+  .tg-red{color:var(--bad)} .tg-amber{color:var(--warn)} .tg-gray{color:var(--muted)} .tg-green{color:var(--ok)}
   .task{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
   .task:last-child{border-bottom:none} .task-main{flex:1;min-width:0} .task-title{font-size:13px;font-weight:600}
-  .task-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--st-green);background:transparent;color:var(--st-green);cursor:pointer;font-size:15px;flex-shrink:0}
-  .task-btn:hover{background:var(--green-bg)} .task-done{color:var(--st-green)}
+  .task-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--ok);background:transparent;color:var(--ok);cursor:pointer;font-size:15px;flex-shrink:0}
+  .task-btn:hover{background:var(--ok-bg)} .task-done{color:var(--ok)}
   .help-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px solid #fca5a5;background:#fef2f2;color:#b91c1c;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:14px}
   .help-btn:hover{background:#fee2e2}
-  .add-task-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px dashed #c9cedb;background:var(--surface2);color:var(--brand);border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:12px}
+  .add-task-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px dashed #c9cedb;background:var(--surface-2);color:var(--brand);border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:12px}
   .add-task-btn:hover{border-color:var(--brand)}
   .task-skip{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:inherit;padding:2px 6px}
-  .task-skip:hover{color:var(--st-red)}
+  .task-skip:hover{color:var(--bad)}
   .nt-markall{font-size:12px;color:var(--brand);font-weight:700;cursor:pointer}
   .f-label{font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.03em}
   .f-input,.f-area,.f-select{width:100%;font-size:14px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-family:inherit;background:var(--surface)}
@@ -150,7 +175,7 @@
   .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
   .modal-title{font-size:17px;font-weight:800}
   .modal-x{font-size:22px;color:var(--muted);cursor:pointer;line-height:1;background:none;border:none}
-  .mgr-card{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface2);border-radius:12px;margin-bottom:14px}
+  .mgr-card{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface-2);border-radius:12px;margin-bottom:14px}
   .mgr-ava{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2b6cb0);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0}
   .mgr-topic{padding:11px 2px;border-bottom:1px solid var(--line);font-size:13px;display:flex;justify-content:space-between;gap:8px}
   .mgr-topic:last-child{border-bottom:none}
@@ -198,11 +223,11 @@ const STC={green:'#16a34a',yellow:'#d97706',red:'#dc2626',no_data:'#cbd0db'};
 const SIDE_COLOR={buyer:'#3b82f6',seller:'#10b981'};
 const CTX={data:null,target:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--st-green)'; if(pct>=40) return 'var(--st-yellow)'; return 'var(--st-red)'; }
+function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
 function fcHero(fc){ if(!fc || !((fc.current_month&&fc.current_month.revenue_total>0)||(fc.next_month&&fc.next_month.revenue_total>0))) return '';
   const dv=fc.delta_vs_yesterday;
-  const dlt=dv&&dv.revenue_pct?` <span style="font-size:13px;color:${dv.direction==='up'?'var(--st-green)':'var(--st-red)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
+  const dlt=dv&&dv.revenue_pct?` <span style="font-size:13px;color:${dv.direction==='up'?'var(--ok)':'var(--bad)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
   return `<div class="stat-grid" style="margin-top:10px">
     <div class="stat"><div class="s-cap">прогноз вала (тек.)</div><b style="color:var(--brand)">${esc(fc.current_month.revenue_total_label)} ₽</b></div>
     <div class="stat"><div class="s-cap">прогноз вала (след.)</div><b style="color:var(--brand)">${esc(fc.next_month.revenue_total_label)} ₽</b>${dlt}</div>
@@ -288,15 +313,15 @@ function renderHero(d){
   if(a){ const subAll=totalP!==inIR?`<div class="muted" style="font-size:10px;margin-top:2px">в расчёте ИР: ${inIR}</div>`:'';
     stats=`<div class="stat-grid">
     <div class="stat"><div class="s-cap">ИР отдела</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
-    <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--st-green)">${a.scope.performers_count}</b></div>
-    <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--st-red)">${a.scope.underperformers_count}</b></div>
+    <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--ok)">${a.scope.performers_count}</b></div>
+    <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--bad)">${a.scope.underperformers_count}</b></div>
     <div class="stat"><div class="s-cap">всего</div><b>${totalP}</b>${subAll}</div>
   </div>`;
     fcStats=fcHero(a.forecast);
     const gs=a.groups_summary;
     if(gs) gline=`<div class="groups-line"><span class="gchip">Групп: <b>${gs.total}</b></span>
-      <span class="gchip" style="color:var(--st-green)">🟢 в зелёной: ${gs.in_green}</span>
-      <span class="gchip" style="color:var(--st-red)">🔴 ниже: ${gs.in_red}</span></div>`;
+      <span class="gchip" style="color:var(--ok)">🟢 в зелёной: ${gs.in_green}</span>
+      <span class="gchip" style="color:var(--bad)">🔴 ниже: ${gs.in_red}</span></div>`;
   }
   document.getElementById('hero').innerHTML=`<div class="card">
     <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
@@ -364,7 +389,7 @@ function renderPrognoz(d){
   const a=d.aggregates; const f=a&&a.forecast; const out=[];
   if(f && (f.current_month.revenue_total>0 || f.next_month.revenue_total>0)){
     const cm=f.current_month,nm=f.next_month,tm=f.two_mo,dv=f.delta_vs_yesterday;
-    const dlt=dv&&dv.revenue_pct?` <span style="font-size:14px;color:${dv.direction==='up'?'var(--st-green)':'var(--st-red)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
+    const dlt=dv&&dv.revenue_pct?` <span style="font-size:14px;color:${dv.direction==='up'?'var(--ok)':'var(--bad)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
     out.push(fcCard('📍 Текущий месяц',cm.revenue_total_label,`прогнозный вал отдела · ${cm.deals_closed} закрыто / ${cm.deals_forecast} в работе`));
     out.push(fcCard('📅 Следующий месяц',nm.revenue_total_label,`${nm.deals_forecast} сделок прогноз${f.at_risk_count?` · ⚠ ${f.at_risk_count} партнёров в риске`:''}`,dlt));
   } else out.push(`<div class="card"><div class="section-title">📈 Прогноз отдела</div><div class="soon"><span class="soon-ic">📈</span>Прогноз появится, когда у партнёров отдела будут горячие клиенты и задатки в работе.</div></div>`);
