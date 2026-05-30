@@ -59,7 +59,7 @@
  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:var(--fs-14);line-height:1.5;padding-bottom:24px}
  .app-header{background:var(--surface);border-bottom:1px solid var(--line);padding:0 16px;display:flex;align-items:center;gap:12px;height:56px;position:sticky;top:0;z-index:100}
  .logo{font-size:var(--fs-16);font-weight:var(--fw-eb);color:var(--brand)} .logo span{color:var(--muted);font-weight:var(--fw-m)}
- .app-app-header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+ .app-header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
  .date-badge{font-size:var(--fs-12);color:var(--muted);background:var(--surface-2);padding:4px 10px;border-radius:20px}
  .btn{font-size:var(--fs-12);color:var(--muted);background:transparent;padding:5px 12px;border-radius:20px;border:1px solid var(--line);cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
  .btn:hover{border-color:var(--brand);color:var(--brand)}
@@ -222,7 +222,7 @@
 
 <div class="app-header">
  <div class="logo">Прогноз<span> · отдел</span></div>
- <div class="app-app-header-right">
+ <div class="app-header-right">
  <a id="backBtn" class="btn" href="#" style="display:none" onclick="history.back();return false">← Назад</a>
  <span class="date-badge" id="dateBadge"></span>
  <button class="btn" id="logoutBtn">Выход</button>
