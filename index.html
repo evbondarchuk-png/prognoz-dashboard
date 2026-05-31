@@ -554,7 +554,7 @@ function stageCard(side,st){
    ? `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--ok)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`
    : `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
   // Втыкаем block раскрытия внутрь funnel-stage — делает его кликабельным
-  html=html.replace('</div>',`<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}</div></div>`);
+  html=html.replace(/<\/div>\s*$/, `<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}</div></div>`);
   // Добавим cursor и onclick на head
   html=html.replace('class="funnel-head"',`class="funnel-head" style="cursor:pointer" onclick="toggleStage(this)"`);
  }
