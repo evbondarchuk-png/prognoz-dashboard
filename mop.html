@@ -415,17 +415,16 @@ function renderHero(d){
 
 /* ─── воронка группы ─── */
 function aggStageCard(side,st){
- const segs=(st.segments||[]).map(sg=> st.is_revenue
- ? `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--ok)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`
- : `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
- const has=(st.segments||[]).length>0;
- const hint=st.hint_label?` <span style="font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-r)">· ${esc(st.hint_label)}</span>`:'';
- const facts=st.fact_label!=null&&st.plan_label!=null?`${esc(st.fact_label)} / ${esc(st.plan_label)}`:'';
- return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
- <div class="stage-head" onclick="toggleStage(this)"><span class="chev">${has?'›':''}</span><span class="stage-label">${esc(st.label)}${hint}</span>
- <span class="stage-numbers">${facts}<b style="color:${barColor(st.progress_pct,st.is_revenue)}"> ${st.progress_pct}%</b></span></div>
- <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
- ${has?`<div class="stage-seg hidden">${segs}</div>`:''}</div>`;
+ const stage={...st, hint: st.hint_label};
+ let html=renderStage(stage);
+ if(st.segments && st.segments.length){
+  const segs=st.segments.map(sg=> st.is_revenue
+   ? `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--ok)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`
+   : `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
+  html=html.replace('</div>',`<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}</div></div>`);
+  html=html.replace('class="funnel-head"',`class="funnel-head" style="cursor:pointer" onclick="toggleStage(this)"`);
+ }
+ return html;
 }
 window.toggleStage=window.toggleStage||((head)=>{ const c=head.closest('.stage-card'),s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); ch.classList.toggle('open'); });
 function aggSide(side,fs,icon){ if(!fs)return'';
