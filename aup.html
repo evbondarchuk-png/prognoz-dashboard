@@ -279,6 +279,24 @@ const CTX={data:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
+function heroRevenueBar(a){
+ if(!a||!a.buyer||!a.seller) return '';
+ const bs=(a.buyer.stages||[]).find(s=>s.key==='revenue')||{};
+ const ss=(a.seller.stages||[]).find(s=>s.key==='revenue')||{};
+ const fact=(bs.fact||0)+(ss.fact||0);
+ const plan=(bs.plan||0)+(ss.plan||0);
+ const fcB=bs.forecast!=null?bs.forecast:bs.fact||0;
+ const fcS=ss.forecast!=null?ss.forecast:ss.fact||0;
+ const forecast=(bs.forecast!=null||ss.forecast!=null)?(fcB+fcS):null;
+ if(!plan) return '';
+ const fmt=n=>{ const a=Math.abs(n); if(a>=1000000)return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=10000)return Math.round(n/1000)+'к'; if(a>=1000)return (n/1000).toFixed(1).replace('.',',')+' тыс'; return String(Math.round(n)); };
+ const stage={fact,plan,forecast,fact_label:fmt(fact)+' ₽',plan_label:fmt(plan)+' ₽',forecast_label:forecast!=null?fmt(forecast)+' ₽':null};
+ return `<div class="hero-stat" style="margin-top:12px"><div class="hero-stat-cap">Валовая выручка</div>
+   <div class="hero-stat-fpf-fact-wrap"><span class="hero-stat-fpf-fact-lbl">факт</span><span class="hero-stat-fpf-fact large">${fmt(fact)} ₽</span></div>
+   <div class="hero-stat-fpf-meta">${forecast!=null?`<span class="forecast">прогноз <b>${fmt(forecast)}</b></span><span>·</span>`:''}<span class="plan">план <b>${fmt(plan)}</b></span></div>
+   <div class="hero-stat-fpf-bar">${renderFpBar(stage,{compact:true})}</div>
+ </div>`;
+}
 function fmtNumber(n){ if(!Number.isFinite(n))return '—';
   const a=Math.abs(n);
   if(a>=1000000) return (n/1000000).toFixed(1).replace('.',',')+' млн';
@@ -369,7 +387,7 @@ function renderHero(d){
  <span class="role-tag">${esc(u.role_label||'АУП')}</span>
  <div class="hero-name">${esc(u.name)}</div>
  <div class="hero-sub">Компания «Этажи» · Тюмень</div></div></div>
- ${stats}${fcStats}</div>`;
+ ${stats}${heroRevenueBar(a)}${fcStats}</div>`;
 }
 
 /* ─── воронка компании ─── */
