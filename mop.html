@@ -227,6 +227,46 @@
 .badge-nd{background:var(--nd-bg);color:var(--nd)}
 .badge-info{background:var(--brand-soft);color:var(--brand)}
 
+
+/* ── TZ-A26: трёхчастная полоса факт/прогноз/план ─────────────────── */
+.funnel-stage{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:var(--r-lg);padding:var(--sp-3);margin-bottom:var(--sp-2)}
+.funnel-stage.s-done{border-left-color:var(--ok)}
+.funnel-stage.s-forecast{border-left-color:var(--gold)}
+.funnel-stage.s-pending{border-left-color:var(--line-strong)}
+.funnel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--sp-3);margin-bottom:var(--sp-2);flex-wrap:wrap}
+.funnel-label{font-size:var(--fs-14);font-weight:var(--fw-b);color:var(--ink);display:flex;align-items:baseline;gap:var(--sp-2)}
+.funnel-hint{font-size:var(--fs-12);font-weight:var(--fw-r);color:var(--muted)}
+.fp-numbers{display:flex;align-items:baseline;gap:var(--sp-2);font-size:var(--fs-13);flex-wrap:wrap}
+.fp-num-fact{color:var(--ok);font-weight:var(--fw-b)}
+.fp-num-forecast{color:var(--gold);font-weight:var(--fw-sb)}
+.fp-num-plan{color:var(--muted);font-weight:var(--fw-sb)}
+.fp-num-lbl{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb);text-transform:lowercase;margin-right:2px}
+.fp-num-sep{color:var(--muted-2)}
+.fp-bar{position:relative;height:20px;background:var(--surface-3);border-radius:var(--r-xs);overflow:visible;display:flex}
+.fp-bar.sm{height:16px;background:var(--line);border:1px solid var(--line-strong)}
+.fp-bar-fact{height:100%;background:var(--ok);display:flex;align-items:center;justify-content:center;color:var(--on-dark);font-size:var(--fs-11);font-weight:var(--fw-b);letter-spacing:.2px;transition:width .4s ease, filter .15s ease;white-space:nowrap;overflow:hidden;cursor:default}
+.fp-bar-forecast{height:100%;background:var(--gold);display:flex;align-items:center;justify-content:center;color:var(--on-dark);font-size:var(--fs-11);font-weight:var(--fw-b);letter-spacing:.2px;transition:width .4s ease, filter .15s ease;white-space:nowrap;overflow:hidden;cursor:default}
+.fp-bar-fact:hover, .fp-bar-forecast:hover{filter:brightness(.92)}
+.fp-bar-fact.narrow, .fp-bar-forecast.narrow{color:transparent}
+.fp-bar.zero-fact::after{content:'0% от плана';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:var(--fs-11);font-weight:var(--fw-b);color:var(--muted);letter-spacing:.2px;pointer-events:none;white-space:nowrap}
+.fp-bar-fact[data-tooltip]:hover::after, .fp-bar-forecast[data-tooltip]:hover::after, .fp-bar[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1f2e;color:#fff;font-size:var(--fs-12);font-weight:var(--fw-sb);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:50;pointer-events:none;letter-spacing:.2px}
+.fp-bar-wrap{display:grid;grid-template-columns:1fr auto;gap:var(--sp-3);align-items:center}
+.fp-bar-outside{display:flex;gap:var(--sp-2);align-items:baseline;font-size:var(--fs-12);white-space:nowrap}
+.fp-bar-outside .o-fact{color:var(--ok);font-weight:var(--fw-b)}
+.fp-bar-outside .o-forecast{color:var(--gold);font-weight:var(--fw-b)}
+.fp-bar-outside .o-lbl{color:var(--muted);font-weight:var(--fw-r);margin-left:2px}
+.fp-bar-outside .o-sep{color:var(--muted-2)}
+.fp-bar-outside .o-nd{color:var(--muted);font-weight:var(--fw-sb)}
+.hero-stat-fpf-fact-wrap{display:flex;align-items:baseline;gap:var(--sp-1)}
+.hero-stat-fpf-fact-lbl{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb)}
+.hero-stat-fpf-fact{font-size:var(--fs-22);font-weight:var(--fw-eb);color:var(--ok);line-height:1.2;display:block}
+.hero-stat-fpf-fact.large{font-size:var(--fs-28)}
+.hero-stat-fpf-meta{font-size:var(--fs-11);color:var(--muted);margin-top:2px;display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.hero-stat-fpf-meta b{font-weight:var(--fw-sb)}
+.hero-stat-fpf-meta .forecast{color:var(--gold)}
+.hero-stat-fpf-meta .plan{color:var(--ink-soft)}
+.hero-stat-fpf-bar{margin-top:var(--sp-2)}
+
 </style>
 </head>
 <body>
@@ -563,6 +603,53 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderTeam(d
  }catch(e){ document.getElementById('hero').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e); }
  document.getElementById('overlay').classList.add('hidden');
 })();
+
+/* TZ-A26: утилиты трёхчастной воронки */
+function calcStatus(fact,forecast,plan){ if(!plan||plan===0) return 's-pending'; const f=(fact/plan)*100; if(f>=100) return 's-done'; if(forecast!=null){ const fc=(forecast/plan)*100; if(fc>=100) return 's-forecast'; } return 's-pending'; }
+function calcBarPercents(fact,forecast,plan){ if(!plan||plan===0) return {factPct:0,forecastPctTotal:0,forecastDeltaPct:0}; const factPct=Math.round((fact/plan)*100); let forecastPctTotal=factPct, forecastDeltaPct=0; if(forecast!=null && forecast>fact){ forecastPctTotal=Math.round((forecast/plan)*100); forecastDeltaPct=forecastPctTotal-factPct; } return {factPct,forecastPctTotal,forecastDeltaPct}; }
+function tooltipFact(factLabel,factPct,planLabel){ return `факт ${factLabel} — ${factPct}% от плана ${planLabel}`; }
+function tooltipForecast(forecastLabel,forecastPctTotal,planLabel){ return `прогноз ${forecastLabel} — ${forecastPctTotal}% от плана ${planLabel}`; }
+function renderFpBar(stage,opts){
+  opts=opts||{};
+  const {fact,fact_label,forecast,forecast_label,plan,plan_label}=stage;
+  if(fact==null && plan==null){
+    return `<div class="fp-bar-wrap"><div class="fp-bar" data-tooltip="нет данных по этому этапу"></div><div class="fp-bar-outside"><span class="o-nd">— нет данных</span></div></div>`;
+  }
+  const {factPct,forecastPctTotal,forecastDeltaPct}=calcBarPercents(fact,forecast,plan);
+  const smClass=opts.compact?' sm':'';
+  if(factPct===0 && forecastDeltaPct===0){
+    const tt=tooltipFact(fact_label,0,plan_label);
+    return `<div class="fp-bar${smClass} zero-fact" data-tooltip="${esc(tt)}"><div class="fp-bar-fact" style="width:0%"></div></div>`;
+  }
+  const factNarrow=factPct>0 && factPct<12;
+  const forecastNarrow=forecastDeltaPct>0 && forecastDeltaPct<12;
+  const factTt=factPct>0?tooltipFact(fact_label,factPct,plan_label):null;
+  const forecastTt=forecastDeltaPct>0?tooltipForecast(forecast_label,forecastPctTotal,plan_label):null;
+  const factDiv=factPct>0?`<div data-tooltip="${esc(factTt)}" class="fp-bar-fact${factNarrow?' narrow':''}" style="width:${factPct}%">${factPct}%</div>`:'';
+  const forecastDiv=forecastDeltaPct>0?`<div data-tooltip="${esc(forecastTt)}" class="fp-bar-forecast${forecastNarrow?' narrow':''}" style="width:${forecastDeltaPct}%">${forecastPctTotal}%</div>`:'';
+  const containerTt=factTt||forecastTt||'нет данных';
+  const bar=`<div class="fp-bar${smClass}" data-tooltip="${esc(containerTt)}">${factDiv}${forecastDiv}</div>`;
+  if(factNarrow||forecastNarrow){
+    const parts=[];
+    if(factNarrow) parts.push(`<span class="o-fact">${factPct}%</span><span class="o-lbl">от плана</span>`);
+    if(forecastNarrow){ if(parts.length) parts.push('<span class="o-sep">·</span>'); parts.push(`<span class="o-forecast">${forecastPctTotal}%</span><span class="o-lbl">прогноз от плана</span>`); }
+    return `<div class="fp-bar-wrap">${bar}<div class="fp-bar-outside">${parts.join('')}</div></div>`;
+  }
+  return bar;
+}
+function renderStage(stage){
+  const {label,hint,fact_label,forecast,forecast_label,plan_label,fact,plan}=stage;
+  const status=calcStatus(fact,forecast,plan);
+  const hintHtml=hint?`<span class="funnel-hint">${esc(hint)}</span>`:'';
+  let numbers;
+  if(forecast!=null){
+    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(forecast_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+  } else {
+    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+  }
+  return `<div class="funnel-stage ${status}"><div class="funnel-head"><div class="funnel-label">${esc(label)} ${hintHtml}</div><div class="fp-numbers">${numbers}</div></div>${renderFpBar(stage)}</div>`;
+}
+
 </script>
 </body>
 </html>
