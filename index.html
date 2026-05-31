@@ -498,7 +498,7 @@ function renderHero(d){
  if(fc){
  valBar=`<div class="val-bar">
  <div class="val-cell"><div class="vb-cap">вал за ${esc(fc.current_month.label||'месяц')}</div><div class="vb-num">${esc(fc.current_month.revenue_label)} ₽</div><div class="vb-sub">факт ${esc(fc.current_month.fact_revenue_label)} + прогноз</div></div>
- <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-num">${esc(fc.next_month.revenue_label)} ₽</div><div class="vb-sub">по горячим и задаткам</div></div>
+ <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-num">${esc(fc.next_month.revenue_label)} ₽</div><div class="vb-sub">по прогнозу воронки n8n</div></div>
  </div>`;
  }
 
@@ -649,7 +649,7 @@ function renderPrognoz(d){
  out.push(`<div class="card"><div class="section-title">📅 Следующий месяц · ${esc(nm.label)}</div>
  <div class="fc-big">${esc(nm.revenue_label)} ₽<span style="font-size:var(--fs-14);color:var(--muted);font-weight:var(--fw-sb)"> вал</span></div>
  ${zp(nm.income_label)}
- <div class="muted" style="margin-top:6px">по горячим и задаткам · ${nm.deals_forecast} сделок прогноз · ЗП ≈ 48% от вала</div>
+ <div class="muted" style="margin-top:6px">по прогнозу воронки n8n · ${nm.deals_forecast} сделок прогноз · ЗП ≈ 48% от вала</div>
  ${tm.risk_label?`<div class="risk-alert ${rc}">${esc(tm.risk_label)}</div>`:''}</div>`);
  if(cp) out.push(`<div class="card"><div class="section-title">🎯 Шаг к цели</div>
  <div class="muted">факт и прогноз закрытий за цикл 6 месяцев</div>
