@@ -542,18 +542,23 @@ window.openNotifications=()=>{
  document.getElementById('modalNotif').classList.add('on');
 };
 
-/* ─── воронки ─── */
+/* ─── воронки (TZ-A26 трёхчастные) ─── */
 function stageCard(side,st){
- const segs=(st.segments||[]).map(sg=> st.is_revenue
- ? `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--ok)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`
- : `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
- const has=(st.segments||[]).length>0;
- const hint=st.hint_label?` <span style="font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-r)">· ${esc(st.hint_label)}</span>`:'';
- return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
- <div class="stage-head" onclick="toggleStage(this)"><span class="chev">${has?'›':''}</span><span class="stage-label">${esc(st.label)}${hint}</span>
- <span class="stage-numbers">${esc(st.fact_label)} / ${esc(st.plan_label)}<b style="color:${barColor(st.progress_pct,st.is_revenue)}">${st.progress_pct}%</b></span></div>
- <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
- ${has?`<div class="stage-seg hidden">${segs}</div>`:''}</div>`;
+ // Адаптируем поле hint_label → hint для renderStage
+ const stage={...st, hint: st.hint_label};
+ // Базовый рендер этапа (полоса + tooltip + статус-скобка)
+ let html=renderStage(stage);
+ // Сохраняем раскрытие сегментов (для income — список сделок по сегментам)
+ if(st.segments && st.segments.length){
+  const segs=st.segments.map(sg=> st.is_revenue
+   ? `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--ok)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`
+   : `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
+  // Втыкаем block раскрытия внутрь funnel-stage — делает его кликабельным
+  html=html.replace('</div>',`<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}</div></div>`);
+  // Добавим cursor и onclick на head
+  html=html.replace('class="funnel-head"',`class="funnel-head" style="cursor:pointer" onclick="toggleStage(this)"`);
+ }
+ return html;
 }
 function funnelSide(side,fs,icon){ if(!fs)return'';
  return `<div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
