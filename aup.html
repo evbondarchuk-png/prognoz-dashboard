@@ -588,7 +588,9 @@ function renderStage(stage){
   const status=calcStatus(fact,forecast,plan);
   const hintHtml=hint?`<span class="funnel-hint">${esc(hint)}</span>`:'';
   let numbers;
-  if(forecast!=null){
+  // TZ-A26 уточнение: если forecast == fact (приращения остатка нет, всё закрыто) — не показываем «прогноз»
+  const showForecast = forecast!=null && forecast > fact;
+  if(showForecast){
     numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(forecast_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   } else {
     numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
