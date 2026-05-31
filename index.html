@@ -408,7 +408,7 @@ window.markAllRead=async(silent)=>{
  }catch(e){ if(!silent) alert('Не удалось: '+(e.message||e)); }
 };
 window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
-window.toggleStage=(head)=>{ const c=head.closest('.stage-card'),s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); ch.classList.toggle('open'); };
+window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); };
 window.completeTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); const b=ev&&ev.target; if(b){b.disabled=true;b.textContent='…';}
  try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); if(b){b.disabled=false;b.textContent='✓';} } };
 window.skipTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); if(!confirm('Отказаться от задачи?'))return;
@@ -561,6 +561,7 @@ function stageCard(side,st){
   html=html.replace(/<\/div>\s*$/, `<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}</div></div>`);
   // Добавим cursor и onclick на head
   html=html.replace('class="funnel-head"',`class="funnel-head" style="cursor:pointer" onclick="toggleStage(this)"`);
+  html=html.replace('<div class="funnel-label">','<div class="funnel-label"><span class="chev" style="display:inline-block;width:14px;color:var(--muted);transition:transform .15s;font-weight:var(--fw-b)">›</span> ');
  }
  return html;
 }

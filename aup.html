@@ -404,6 +404,7 @@ function aggStageCard(side,st){
   }).join('');
   html=html.replace(/<\/div>\s*$/, `<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}</div></div>`);
   html=html.replace('class="funnel-head"',`class="funnel-head" style="cursor:pointer" onclick="toggleStage(this)"`);
+  html=html.replace('<div class="funnel-label">','<div class="funnel-label"><span class="chev" style="display:inline-block;width:14px;color:var(--muted);transition:transform .15s;font-weight:var(--fw-b)">›</span> ');
  }
  return html;
 }
