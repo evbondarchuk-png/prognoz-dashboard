@@ -131,7 +131,11 @@
  .fs-title{display:flex;align-items:center;gap:8px}
  .fs-dot{width:10px;height:10px;border-radius:3px}
  .stage-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--sc,var(--buyer));border-radius:12px;padding:12px 14px;margin-bottom:8px}
- .stage-head{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+ .stage-head{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;cursor:pointer}
+ .chev{color:var(--muted);font-size:var(--fs-12);transition:transform .2s} .chev.open{transform:rotate(90deg)}
+ .stage-seg{margin-top:11px;padding-top:11px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:8px}
+ .stage-seg.hidden{display:none}
+ .seg-row{display:grid;grid-template-columns:1fr auto 38px;gap:8px;font-size:var(--fs-11);align-items:center;color:var(--muted)} .seg-row .sv{color:var(--ink);font-weight:var(--fw-sb)}
  .stage-label{font-size:var(--fs-14);font-weight:var(--fw-b)}
  .stage-numbers b{font-weight:var(--fw-eb)}
  .stage-bar{height:10px;background:var(--nd-bg);border-radius:6px;overflow:hidden}
@@ -366,16 +370,24 @@ function renderHero(d){
 
 /* ─── воронка отдела ─── */
 function aggStageCard(side,st){
+ const segs=(st.segments||[]).map(sg=> st.is_revenue
+ ? `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)}</span><b style="color:${sg.progress_status==='green'?'var(--ok)':'var(--gold)'}">${esc(sg.plan_label)}</b></div>`
+ : `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span>${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span><b style="color:${barColor(sg.progress_pct)}">${sg.progress_pct}%</b></div>`).join('');
+ const has=(st.segments||[]).length>0;
+ const hint=st.hint_label?` <span style="font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-r)">· ${esc(st.hint_label)}</span>`:'';
+ const facts=st.fact_label!=null&&st.plan_label!=null?`${esc(st.fact_label)} / ${esc(st.plan_label)}`:'';
  return `<div class="stage-card" style="--sc:${st.is_revenue?'var(--gold)':SIDE_COLOR[side]}">
- <div class="stage-head"><span class="stage-label">${esc(st.label)}</span>
- <span class="stage-numbers"><b style="color:${barColor(st.progress_pct,st.is_revenue)}">${st.progress_pct}%</b></span></div>
- <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div></div>`;
+ <div class="stage-head" onclick="toggleStage(this)"><span class="chev">${has?'›':''}</span><span class="stage-label">${esc(st.label)}${hint}</span>
+ <span class="stage-numbers">${facts}<b style="color:${barColor(st.progress_pct,st.is_revenue)}"> ${st.progress_pct}%</b></span></div>
+ <div class="stage-bar"><div class="stage-bar-fill" style="width:${Math.min(st.progress_pct,100)}%;background:${barColor(st.progress_pct,st.is_revenue)}"></div></div>
+ ${has?`<div class="stage-seg hidden">${segs}</div>`:''}</div>`;
 }
+window.toggleStage=window.toggleStage||((head)=>{ const c=head.closest('.stage-card'),s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); ch.classList.toggle('open'); });
 function aggSide(side,fs,icon){ if(!fs)return'';
  return `<div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
  <div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>
  <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
- <div class="fs-legend">% — среднее выполнение плана партнёрами по этапу</div>
+ <div class="fs-legend"><span><b>факт</b> отдела</span><span>/ <b>план</b> отдела</span><span>· % выполнения</span></div>
  ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}`;
 }
 
