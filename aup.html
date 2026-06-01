@@ -317,13 +317,23 @@ function fmtNumber(n){ if(!Number.isFinite(n))return '—';
   if(a>=1000)    return (n/1000).toFixed(1).replace('.',',')+' тыс';
   return String(Math.round(n));
 }
-function fcHero(fc){ if(!fc || !((fc.current_month&&fc.current_month.revenue_total>0)||(fc.next_month&&fc.next_month.revenue_total>0))) return '';
+// Крупная hero-карта с прогнозом на след.мес — рядом с «Валовой выручкой (тек.)»
+function fcHero(fc){
+ if(!fc || !fc.next_month) return '';
+ const nm=fc.next_month;
  const dv=fc.delta_vs_yesterday;
- const dlt=dv&&dv.revenue_pct?` <span style="font-size:var(--fs-13);color:${dv.direction==='up'?'var(--ok)':'var(--bad)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
- return `<div class="stat-grid" style="margin-top:10px">
- <div class="stat"><div class="s-cap">прогноз вала (тек.)</div><b style="color:var(--brand)">${esc(fc.current_month.revenue_total_label)} ₽</b></div>
- <div class="stat"><div class="s-cap">прогноз вала (след.)</div><b style="color:var(--brand)">${esc(fc.next_month.revenue_total_label)} ₽</b>${dlt}</div>
- </div>`; }
+ const dlt=dv&&dv.revenue_pct?`<span style="font-size:var(--fs-12);color:${dv.direction==='up'?'var(--ok)':'var(--bad)'};margin-left:6px">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
+ // Метка месяца — динамическая (текущий мес + 1)
+ const now=new Date(); const next=new Date(now.getFullYear(), now.getMonth()+1, 1);
+ const monthNames=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+ const lbl=monthNames[next.getMonth()]+' '+next.getFullYear();
+ const val=nm.revenue_total>0?`${esc(nm.revenue_total_label)} ₽`:'—';
+ const dealsLine=nm.deals_forecast>0?`<div class="hero-stat-fpf-meta"><span>${Math.round(nm.deals_forecast*10)/10} прогноз сделок</span></div>`:`<div class="hero-stat-fpf-meta"><span style="color:var(--muted)">по горячим/задаткам на ${esc(lbl)}</span></div>`;
+ return `<div class="hero-stat" style="margin-top:12px"><div class="hero-stat-cap">Прогноз вала · ${esc(lbl)}${dlt}</div>
+   <div class="hero-stat-fpf-fact-wrap"><span class="hero-stat-fpf-fact-lbl">прогноз</span><span class="hero-stat-fpf-fact large" style="color:var(--gold)">${val}</span></div>
+   ${dealsLine}
+ </div>`;
+}
 
 window.showTab=(id,btn)=>{
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
