@@ -454,7 +454,7 @@ function aggStageCard(side,st){
  }
  return html;
 }
-window.toggleStage=window.toggleStage||((head)=>{ const c=head.closest('.stage-card'),s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); ch.classList.toggle('open'); });
+window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); };
 function aggSide(side,fs,icon){ if(!fs)return'';
  return `<div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
  <div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>
@@ -648,7 +648,7 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderTeam(d
 function calcStatus(fact,forecast,plan){ if(!plan||plan===0){ return fact>0?'s-done':'s-pending'; } const f=(fact/plan)*100; if(f>=100) return 's-done'; if(forecast!=null){ const fc=(forecast/plan)*100; if(fc>=100) return 's-forecast'; } return 's-pending'; }
 function calcBarPercents(fact,forecast,plan){ if(!plan||plan===0){ if(fact>0) return {factPct:100,forecastPctTotal:100,forecastDeltaPct:0,noPlan:true}; return {factPct:0,forecastPctTotal:0,forecastDeltaPct:0}; } const factPct=Math.round((fact/plan)*100); let forecastPctTotal=factPct, forecastDeltaPct=0; if(forecast!=null && forecast>fact){ forecastPctTotal=Math.round((forecast/plan)*100); forecastDeltaPct=forecastPctTotal-factPct; } return {factPct,forecastPctTotal,forecastDeltaPct}; }
 function tooltipFact(factLabel,factPct,planLabel){ return `факт ${factLabel} — ${factPct}% от плана ${planLabel}`; }
-function tooltipForecast(forecastLabel,forecastPctTotal,planLabel){ return `прогноз ${forecastLabel} — ${forecastPctTotal}% от плана ${planLabel}`; }
+function tooltipForecast(forecastLabel,forecastPctTotal,planLabel,forecastDeltaPct){ return `прогноз ${forecastLabel} — +${forecastDeltaPct}% к плану ${planLabel} (итого ${forecastPctTotal}%)`; }
 function renderFpBar(stage,opts){
   opts=opts||{};
   const {fact,fact_label,forecast,forecast_label,plan,plan_label}=stage;
@@ -665,15 +665,15 @@ function renderFpBar(stage,opts){
   const factNarrow=factPct>0 && factPct<12;
   const forecastNarrow=forecastDeltaPct>0 && forecastDeltaPct<12;
   const factTt=factPct>0?tooltipFact(fact_label,factPct,plan_label):null;
-  const forecastTt=forecastDeltaPct>0?tooltipForecast(forecast_label,forecastPctTotal,plan_label):null;
+  const forecastTt=forecastDeltaPct>0?tooltipForecast(forecast_label,forecastPctTotal,plan_label,forecastDeltaPct):null;
   const factDiv=factPct>0?`<div data-tooltip="${esc(factTt)}" class="fp-bar-fact${factNarrow?' narrow':''}" style="width:${factPct}%">${factPct}%</div>`:'';
-  const forecastDiv=forecastDeltaPct>0?`<div data-tooltip="${esc(forecastTt)}" class="fp-bar-forecast${forecastNarrow?' narrow':''}" style="width:${forecastDeltaPct}%">${forecastPctTotal}%</div>`:'';
+  const forecastDiv=forecastDeltaPct>0?`<div data-tooltip="${esc(forecastTt)}" class="fp-bar-forecast${forecastNarrow?' narrow':''}" style="width:${forecastDeltaPct}%">+${forecastDeltaPct}%</div>`:'';
   const containerTt=factTt||forecastTt||'нет данных';
   const bar=`<div class="fp-bar${smClass}" data-tooltip="${esc(containerTt)}">${factDiv}${forecastDiv}</div>`;
   if(factNarrow||forecastNarrow){
     const parts=[];
     if(factNarrow) parts.push(`<span class="o-fact">${factPct}%</span><span class="o-lbl">от плана</span>`);
-    if(forecastNarrow){ if(parts.length) parts.push('<span class="o-sep">·</span>'); parts.push(`<span class="o-forecast">${forecastPctTotal}%</span><span class="o-lbl">прогноз от плана</span>`); }
+    if(forecastNarrow){ if(parts.length) parts.push('<span class="o-sep">·</span>'); parts.push(`<span class="o-forecast">+${forecastDeltaPct}%</span><span class="o-lbl">прогноз</span>`); }
     return `<div class="fp-bar-wrap">${bar}<div class="fp-bar-outside">${parts.join('')}</div></div>`;
   }
   return bar;
