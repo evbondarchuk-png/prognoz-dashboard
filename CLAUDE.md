@@ -94,9 +94,14 @@ activity, autocele, labels, dates) — гоняется локально, све
 - **Задачи:** createTask, updateTaskStatus, updateTaskProgress, expireTasks,
   markNotificationsRead, backfillTaskAuthors.
 - **Сценарии:** runScenariosDaily(+Admin), cleanupScenarioTasksAdmin.
-- **ИИ-тренер (YandexGPT):** generateAiCoachBatch (onCall admin/aup),
-  generateAiCoachNightly (onSchedule, по умолчанию пропуск). `aiCoach.js` +
-  `lib/yandexgpt.js`. Секреты `YANDEX_API_KEY`/`YANDEX_FOLDER_ID`.
+- **ИИ-тренер (YandexGPT / OpenRouter):** `generateAiCoachBatch` (onCall admin/aup,
+  ручной запуск), `aiCoachStatus` (диагностика). Авто-прогон `generateAiCoachNightly`
+  **УДАЛЁН 2026-06-01** (код закомментирован в `aiCoach.js`, легко вернуть).
+  Провайдеры: openrouter (deepseek-v4-pro дефолт) / yandex / synthetic.
+  Секреты `YANDEX_API_KEY`/`YANDEX_FOLDER_ID`/`OPENROUTER_API_KEY`.
+- **Архив (разовые):** `zeroizeArchiveCurAdmin`, `restoreArchivePartialAdmin` —
+  обнуление/восстановление cur-полей в архиве конкретной даты. **Не использовать
+  на 1-м числе месяца** (см. §10 — мы наступили на эти грабли).
 - **Разовые/демо:** backfillHistoryAdmin, recomputeSvetoforZonesAdmin.
 
 Все `*Admin` — onCall, `cors:true`, только admin/aup, вызываются из консоли
@@ -118,7 +123,7 @@ activity, autocele, labels, dates) — гоняется локально, све
   ✅ С 2026-05-28 архив наполняется **автоматически каждую ночь** (Apps Script
   `archiveToday`, 03:30 МСK) — см. раздел 7. Ручные заливки CSV больше не нужны.
 - `/plans/{код}/{plan_id}` — months[1..6] (norms+income), target_zone_id,
-  plan_formula_version (`a8v5_stretch`), stretch{}.
+  plan_formula_version (`a8v6_buyermult1` — с 2026-05-31), stretch{}.
 - `/goals/{код}/active` — target_revenue_month, is_auto.
 - `/forecast/{код}/current` — current_month/next_month/two_mo + seg_* + cycle_progress.
 - `/snapshots/{код}/{дата}` — ir_*, funnels-мин, position, svetofor_pool;
@@ -128,8 +133,9 @@ activity, autocele, labels, dates) — гоняется локально, све
 - `/ai_coach/{код}/current` — {coach_text, motivator_text,
   coach_brief_for_manager, mode, generated_at, model}; `/prev` — предыдущая
   версия. Пишет generateAiCoachBatch.
-- `/config/ai_coach/pilot_rop` — если задан, ночной generateAiCoachNightly
-  гонит ИИ-тексты по этому отделу. Не задан = ночью ничего не тратится.
+- `/config/ai_coach/enabled` — kill-switch для будущего автопрогона (сейчас
+  `false`, крон удалён 2026-06-01). Если когда-нибудь вернём `generateAiCoachNightly`,
+  этот флаг + `pilot_rop` / `scope` / `provider` / `model` управляют им без передеплоя.
 - `/tasks/{id}` (author_label!), `/notifications/{код}/items` + `/meta`.
 - `/data_division/cities/tyumen/` — zones (24, с range_start/end + конверсии +
   доход), avg_commission_by_segment, benchmark_conversions.
@@ -143,9 +149,10 @@ activity, autocele, labels, dates) — гоняется локально, све
 - **ИР:** 4 этапа/сторону, 3 вида метрик — `act` (поток/горячие покупателя,
   ÷план×2), `snapshot` (объекты/горячие продавца = **ОСТАТОК** в работе,
   ÷план), `cur` (задатки/доход, ÷план×дни/всего).
-- **План (a8v5):** дельта (B−A)×коэф+A. Покупатель ×10/3 (план=норма зоны).
-  Объекты продавца = целевой ОСТАТОК. Округление целое (0.5→1).
-  Задатки ≥ сделок в показе.
+- **План (a8v6, с 2026-05-31):** дельта (B−A)×коэф+A. Покупатель ×1 (как у
+  продавца — раньше было ×10/3, решение Егора «не раздувать»). Объекты продавца
+  = целевой ОСТАТОК. Округление целое (0.5→1). Задатки ≥ сделок в показе.
+  Версия в `calculatePlan.js`: `PLAN_VERSION = 'a8v6_buyermult1'`.
 - **Вал/доход:** факт-вал = реальные комиссии (`commFact`); прогноз =
   прогнозные сделки × чек. **Чек личный** (commAvg), городской если
   отклонение >30% или нет данных (План А). **Доход = вал × 0.48.**
@@ -243,15 +250,25 @@ Departments. **Планы a8v5 ночью НЕ трогаем** — пересч
 - **Прогноз — только для денег.** Этапы Сделки + Валовая выручка
   трёхчастные (fact+forecast+plan). Поток/Горячие/Задатки/Объекты —
   двухчастные (fact+plan).
+- **Прогноз = ПРИРАЩЕНИЕ остатка месяца** («+X к», 2026-06-01), не итог.
+  Если `forecast > fact` — в подписи «прогноз +86к», в оранжевой полосе
+  «+30%». Если `forecast == fact` (всё закрыто) или null — показываем
+  только «факт / план» без прогноза. Полный вал всё равно виден по полосе.
 - **Цвет скобки этапа = статус выполнения:** `s-done` (зелёная,
   fact≥100%), `s-forecast` (оранжевая, fact<100% но fact+forecast≥100%),
   `s-pending` (серая, иначе). Старая логика «синий покупатель / зелёный
   продавец / золотой доход» удалена.
-- **Полоса** = зелёная (fact) + оранжевая (forecast-fact) + серый
-  остаток. Проценты внутри зон, при узких (<12%) выносятся справа.
+- **Полоса** = зелёная (fact, подпись «N%») + оранжевая (forecast-fact,
+  подпись «+N%») + серый остаток. Проценты внутри зон, при узких (<12%)
+  выносятся справа.
 - **План — полный месячный** (не пропорциональный к дате). Старая
   пропорция к дате осталась в `progress_pct` для совместимости с ИР.
-- **Tooltip** на каждой зоне («факт N — % от плана M»).
+- **Tooltip:** зелёная — «факт N — N% от плана M»; оранжевая —
+  «прогноз X — +D% к плану M (итого K%)».
+- **Парная сетка покуп ↔ прод** (2026-06-01): этапы рендерятся через
+  `funnel-grid-paired` (2 кол. × N рядов), каждый i-й этап покупателя
+  выровнен с i-м этапом продавца через `align-items:stretch`.
+  `renderFunnelsPaired` (партнёр) / `renderAggFunnelsPaired` (МОП/РОП/АУП).
 
 Где живёт логика:
 - CSS `.funnel-stage`/`.fp-bar`/`.hero-stat-fpf-*` — во всех 4 файлах.
@@ -290,12 +307,13 @@ secondary/danger/icon`, `.badge + .badge-ok/warn/bad/nd/info`, `.hero +
 
 ## 9. Открытые задачи / на потом
 
-- **ИИ-тренер (TZ-6.2/6.3):** ✅ развёрнут на проде. Пилот прогнан на группе
-  МОП Колмогоров Евгений `10633` (24 чел, ~84₽). Прогон **по запросу**
-  (`generateAiCoachBatch({mop_code|rop_code|user_codes, dryRun?})` из консоли
-  под АУП). ⚠️ dryRun ТОЖЕ тратит токены. Ночной автопрогон отключён,
-  включается через `/config/ai_coach/pilot_rop` (но крон сейчас на rop-уровень).
-  Подробнее — auto-memory `reference_yandexgpt_ai_coach.md`.
+- **ИИ-тренер (TZ-6.2/6.3):** ✅ развёрнут. **Только ручной запуск** через
+  `generateAiCoachBatch({mop_code|rop_code|user_codes, provider?, dryRun?})`
+  из консоли под АУП. Авто-прогон `generateAiCoachNightly` **удалён 2026-06-01**.
+  ⚠️ dryRun ТОЖЕ тратит токены у LLM-провайдеров; провайдер `synthetic` бесплатный.
+  Статус OpenRouter-ключа на 2026-06-01: **исчерпан** (`Key limit exceeded`),
+  обновляем 03.06 перед слётом. Подробнее — auto-memory
+  `reference_yandexgpt_ai_coach.md` и `project_ai_tokens_status.md`.
 - **Тестовые задачи** (`related_scenario_id: test_seed`) — убрать перед демо
   (висят у всех для проверки отображения; чистка — отдельной командой).
 - **Сценарии задач** (ir_dropped_2w/objects_below_norm/no_deals_30d) —
@@ -303,3 +321,31 @@ secondary/danger/icon`, `.badge + .badge-ok/warn/bad/nd/info`, `.hero +
 - **Прогноз на 2 месяца** — виджет убран (формула не готова).
 - **Клиенты/CRM** — анонс-заглушка (запуск 01.07.2026).
 - В источнике n8n/таблице починить поле `conv_flow_to_hot` зон.
+
+---
+
+## 10. Месячный переход — НЕ лечить архив руками
+
+**Проблема (2026-06-01):** на 1-е число месяца n8n не обнуляет `cur`-поля в листе
+`data` — архиватор записывает в `/archive/2026-06-01/` те же майские значения.
+Кабинет показывает май целиком под подписью «за июнь».
+
+**Что я попробовал и почему НЕ повторять:** обнулил все `cur`-поля через
+`zeroizeArchiveCurAdmin`. Поломалось:
+- «Мой средний доход» = 0 (UI читает `income`, обнулили).
+- Прогноз на след.месяц (июль) = `—` (обнулили `bL/sL.fcstNext`).
+- Темп потока 2 мес обнулился (обнулили `flowAct`).
+Откатили через `restoreArchivePartialAdmin({to_date,from_date})`.
+
+**Причина:** в `bL/sL` смешаны поля разной семантики:
+- «Сделки месяца» (`closedCur, depCur, growCur, commFact, income`) — обнулять
+  на 1-м числе семантически ОК.
+- «Снимки / прогнозы / темп» (`fcstCur, fcstNext, flowAct, hotAct, hotONCur,
+  actONCur`) — НЕ обнулять.
+
+**Правильная стратегия:** на 1-м числе **ничего не делать**. Кабинет покажет
+«как на конец предыдущего» — это нормально. Ночью n8n обновит, утром 2-го
+числа всё станет правильным. Если UX-критично — переименовать UI-лейблы.
+
+Функции `zeroizeArchiveCurAdmin` / `restoreArchivePartialAdmin` остаются
+развёрнутыми как kill-switch (`functions/zeroizeArchive.js`).
