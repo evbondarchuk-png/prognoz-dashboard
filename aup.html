@@ -615,7 +615,10 @@ function calcBarPercents(fact,forecast,plan,isRev){
   }
   return {factPct,factPctVisual,forecastPctTotal,forecastDeltaPct,forecastDeltaPctVisual};
 }
-function tooltipFact(factLabel,factPct,planLabel){ return `факт ${factLabel} — ${factPct}% от плана ${planLabel}`; }
+function tooltipFact(factLabel,factPct,planLabel,isRev){
+  if(!isRev && factPct>=100){ return `факт ${factLabel} — план ${planLabel} выполнен на 100%`; }
+  return `факт ${factLabel} — ${factPct}% от плана ${planLabel}`;
+}
 function tooltipForecast(forecastLabel,forecastPctTotal,planLabel,forecastDeltaPct){ return `прогноз ${forecastLabel} — +${forecastDeltaPct}% к плану ${planLabel} (итого ${forecastPctTotal}%)`; }
 function renderFpBar(stage,opts){
   opts=opts||{};
@@ -633,7 +636,7 @@ function renderFpBar(stage,opts){
   // Узкая зона = по визуальной ширине, иначе число «153%» в маленьком блоке не вылезает за границу.
   const factNarrow=factPctVisual>0 && factPctVisual<12;
   const forecastNarrow=forecastDeltaPctVisual>0 && forecastDeltaPctVisual<12;
-  const factTt=factPct>0?tooltipFact(fact_label,factPct,plan_label):null;
+  const factTt=factPct>0?tooltipFact(fact_label,factPct,plan_label,is_revenue):null;
   const forecastTt=forecastDeltaPct>0?tooltipForecast(forecast_label,forecastPctTotal,plan_label,forecastDeltaPct):null;
   // Подпись внутри блока: для revenue — реальный % (даже 259%), для остальных — cap 100%.
   const factLbl=is_revenue?factPct:factPctVisual;
