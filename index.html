@@ -299,6 +299,11 @@
 
 /* ── TZ-A26: трёхчастная полоса факт/прогноз/план ─────────────────── */
 .funnel-stage{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:var(--r-lg);padding:var(--sp-3);margin-bottom:var(--sp-2)}
+/* Парная сетка: каждая строка покупателя выровнена со строкой продавца */
+.funnel-grid-paired{display:grid;grid-template-columns:1fr;gap:8px 14px;align-items:stretch;margin-top:8px}
+@media(min-width:860px){.funnel-grid-paired{grid-template-columns:1fr 1fr}}
+.funnel-grid-paired .row-stage{display:flex;flex-direction:column}
+.funnel-grid-paired .row-stage>.funnel-stage{flex:1;margin-bottom:0}
 .funnel-stage.s-done{border-left-color:var(--ok)}
 .funnel-stage.s-forecast{border-left-color:var(--gold)}
 .funnel-stage.s-pending{border-left-color:var(--line-strong)}
@@ -572,6 +577,19 @@ function funnelSide(side,fs,icon){ if(!fs)return'';
  <div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div>
  ${(fs.stages||[]).map(st=>stageCard(side,st)).join('')}</div>`;
 }
+/* Парная сетка: каждый i-й этап покупателя в одной строке grid с i-м этапом продавца → align-items:stretch выровняет высоту автоматически */
+function renderFunnelsPaired(buyer,seller){
+ const head=(fs,icon,side)=>`<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div><div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div></div>`;
+ const bs=(buyer.stages||[]).map(st=>stageCard('buyer',st));
+ const ss=(seller.stages||[]).map(st=>stageCard('seller',st));
+ const rows=Math.max(bs.length,ss.length);
+ const cells=[head(buyer,'🛒','buyer'),head(seller,'🏘','seller')];
+ for(let i=0;i<rows;i++){
+  cells.push(`<div class="row-stage">${bs[i]||''}</div>`);
+  cells.push(`<div class="row-stage">${ss[i]||''}</div>`);
+ }
+ return `<div class="funnel-grid-paired">${cells.join('')}</div>`;
+}
 
 /* превью задач (сегодня + на неделе) для Главной */
 function tasksPreview(d){
@@ -623,7 +641,7 @@ function renderMain(d){
  <div class="ir-sides"><div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${f.ir_buyer}%</b></div>
  <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${f.ir_seller}%</b></div></div></div>
  <div class="muted" style="margin-top:8px">Индекс развития · ${esc(f.period_label)} · насколько ты на пути к цели</div></div>`);
- out.push(`<div class="grid-2"><div class="card">${funnelSide('buyer',f.buyer,'🛒')}</div><div class="card">${funnelSide('seller',f.seller,'🏘')}</div></div>`);
+ out.push(`<div class="card">${renderFunnelsPaired(f.buyer,f.seller)}</div>`);
  if(!(d.ai_coach&&d.ai_coach.motivator_text)){
  const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
  if(rec) out.push(`<div class="card"><div class="section-title">💡 Совет дня</div><div class="tip">${esc(rec)}</div></div>`);
@@ -954,10 +972,13 @@ function renderStage(stage){
   const status=calcStatus(fact,forecast,plan);
   const hintHtml=hint?`<span class="funnel-hint">${esc(hint)}</span>`:'';
   let numbers;
-  // TZ-A26 уточнение: если forecast == fact (приращения остатка нет, всё закрыто) — не показываем «прогноз»
+  // TZ-A26 уточнение: прогноз = ПРИРАЩЕНИЕ (forecast - fact, «+X к»), не итог.
+  // Если приращения нет (forecast == fact или null) — показываем только факт и план.
   const showForecast = forecast!=null && forecast > fact;
   if(showForecast){
-    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(forecast_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+    const fmtDelta=(d)=>{ const a=Math.abs(d); if(a>=1000000) return (d/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=10000) return Math.round(d/1000)+'к'; if(a>=1000) return (d/1000).toFixed(1).replace('.',',')+' тыс'; return String(Math.round(d)); };
+    const deltaLabel='+'+fmtDelta(forecast - fact);
+    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   } else {
     numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   }
