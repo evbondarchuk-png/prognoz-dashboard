@@ -146,6 +146,32 @@
  .ir-big{font-size:var(--fs-28);font-weight:var(--fw-eb);line-height:1}
  .ir-sides{flex:1;display:flex;flex-direction:column;gap:9px}
  .ir-side{display:grid;grid-template-columns:84px 1fr 38px;gap:8px;align-items:center;font-size:var(--fs-12);font-weight:var(--fw-sb)}
+ /* TZ-A27: блок ИР с табами Сейчас/Неделя/Месяц */
+ .ir-card-head{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3);flex-wrap:wrap}
+ .ir-card-title{font-size:var(--fs-13);color:var(--muted);font-weight:var(--fw-r)}
+ .ir-tabs{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);overflow:hidden}
+ .ir-tab{padding:4px var(--sp-3);background:transparent;border:none;border-right:1px solid var(--line);font-size:var(--fs-12);font-weight:var(--fw-sb);color:var(--muted);cursor:pointer;transition:.15s ease}
+ .ir-tab:last-child{border-right:none}
+ .ir-tab:hover{color:var(--ink-soft,var(--ink))}
+ .ir-tab.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(20,30,55,.08)}
+ .ir-body{display:grid;grid-template-columns:auto 1fr;gap:var(--sp-4);align-items:center}
+ .ir-total{font-size:var(--fs-28);font-weight:var(--fw-eb);color:var(--ok);line-height:1;min-width:80px}
+ .ir-total-delta{display:block;font-size:var(--fs-12);font-weight:var(--fw-sb);margin-top:2px;height:14px}
+ .ir-total-delta.up{color:var(--ok)} .ir-total-delta.down{color:var(--bad)} .ir-total-delta.flat{color:var(--muted)}
+ .ir-total-delta.hidden{visibility:hidden}
+ .ir-channels{display:flex;flex-direction:column;gap:var(--sp-2)}
+ .ir-channel-row{display:grid;grid-template-columns:90px 1fr 50px 30px 70px;gap:var(--sp-2);align-items:center;font-size:var(--fs-12)}
+ .ir-channel-name{font-weight:var(--fw-sb);color:var(--ink)}
+ .ir-channel-bar{position:relative;height:10px;background:var(--surface-3,var(--line));border-radius:var(--r-pill);overflow:hidden}
+ .ir-channel-fill{height:100%;border-radius:var(--r-pill);transition:width .4s ease}
+ .ir-channel-fill.buyer{background:var(--buyer,#3b82f6)} .ir-channel-fill.seller{background:var(--seller,#10b981)}
+ .ir-channel-pct{text-align:right;font-weight:var(--fw-b);color:var(--ink)}
+ .ir-channel-delta{text-align:center;font-size:var(--fs-11);font-weight:var(--fw-sb);white-space:nowrap}
+ .ir-channel-delta.up{color:var(--ok)} .ir-channel-delta.down{color:var(--bad)} .ir-channel-delta.flat{color:var(--muted-2)}
+ .ir-channel-delta.hidden{visibility:hidden}
+ .ir-channel-spark{height:18px;display:block;width:70px}
+ .ir-channel-spark.hidden{visibility:hidden}
+ .ir-card-foot{margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--surface-3,var(--line));font-size:var(--fs-12);color:var(--muted)}
  .bar-bg{height:8px;background:var(--nd-bg);border-radius:5px;overflow:hidden}
  .bar-fill{height:100%;border-radius:5px;transition:width .5s ease}
  .status-badge{font-size:var(--fs-11);padding:3px 10px;border-radius:20px;font-weight:var(--fw-b)}
@@ -651,10 +677,8 @@ window.openManager=()=>{
 function renderMain(d){
  const f=d.funnel; const out=[];
  if(f&&f.buyer){
- out.push(`<div class="card"><div class="ir-top"><div class="ir-big" style="color:${barColor(f.ir_total)}">${f.ir_total}<span style="font-size:var(--fs-20)">%</span></div>
- <div class="ir-sides"><div class="ir-side"><span>Покупатель</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_buyer,100)}%;background:${SIDE_COLOR.buyer}"></div></div><b>${f.ir_buyer}%</b></div>
- <div class="ir-side"><span>Продавец</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.min(f.ir_seller,100)}%;background:${SIDE_COLOR.seller}"></div></div><b>${f.ir_seller}%</b></div></div></div>
- <div class="muted" style="margin-top:8px">Индекс развития · ${esc(f.period_label)} · насколько ты на пути к цели</div></div>`);
+ const irHist=d.ir_history||{now:{total:f.ir_total,buyer:f.ir_buyer,seller:f.ir_seller},week_history:{buyer:[],seller:[],total:[]},month_history:{buyer:[],seller:[],total:[]}};
+ out.push(renderIrCard({ir_history:irHist, isPartner:true, periodLabel:f.period_label}));
  out.push(`<div class="card">${renderFunnelsPaired(f.buyer,f.seller)}</div>`);
  if(!(d.ai_coach&&d.ai_coach.motivator_text)){
  const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
@@ -929,7 +953,7 @@ window.openHof=()=>{
  document.getElementById('modalHof').classList.add('on');
 };
 
-function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); }
+function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); }
 
 (async ()=>{
  const me=await requireAuth();
@@ -1036,6 +1060,138 @@ function renderStage(stage){
   }
   return `<div class="funnel-stage ${status}"><div class="funnel-head"><div class="funnel-label">${esc(label)} ${hintHtml}</div><div class="fp-numbers">${numbers}</div></div>${renderFpBar(stage)}</div>`;
 }
+
+/* TZ-A27: блок ИР с табами Сейчас/Неделя/Месяц */
+function _irDelta(d){ d=Math.round(d); if(d>=1)return {text:'▲+'+d,cls:'up'}; if(d<=-1)return {text:'▼'+d,cls:'down'}; return {text:'≈',cls:'flat'}; }
+function _irSpark(values,color){
+  const arr=(values||[]).filter(v=>v!=null);
+  if(arr.length<2) return null;
+  const N=arr.length;
+  // X-координаты: равномерно по 4 или 6
+  const baseX={4:[3,22,41,67], 6:[3,16,29,42,55,67]};
+  const xs = baseX[N] || Array.from({length:N},(_,i)=>3+i*(64/(N-1)));
+  const points = arr.map((v,i)=>{ const y=18-(v/100)*16; return `${xs[i]},${y.toFixed(1)}`; }).join(' ');
+  const dots = arr.slice(0,-1).map((v,i)=>[xs[i], 18-(v/100)*16]);
+  const last = [xs[xs.length-1], 18-(arr[arr.length-1]/100)*16];
+  return { points, color, dots, last };
+}
+function _renderSparkSvg(spark){
+  if(!spark) return '';
+  const dots = spark.dots.map(([x,y])=>`<circle cx="${x}" cy="${y.toFixed(1)}" r="1.3" fill="${spark.color}" opacity=".4"/>`).join('');
+  return `<polyline points="${spark.points}" fill="none" stroke="${spark.color}" stroke-width="1.5"/>${dots}<circle cx="${spark.last[0]}" cy="${spark.last[1].toFixed(1)}" r="2" fill="${spark.color}"/>`;
+}
+function _monthLabel(){ const d=new Date(); const m=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']; return m[d.getMonth()]+' '+d.getFullYear(); }
+function _monthsAgoLabel(dateStr){
+  if(!dateStr) return null;
+  const d=new Date(dateStr); if(isNaN(d)) return null;
+  const today=new Date(); const ms=today-d;
+  const months = Math.max(1, Math.round(ms/(30*24*3600*1000)));
+  const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}, ${months} мес назад`;
+}
+function renderIrCard(opts){
+  // opts: { ir_history, isPartner, periodLabel }
+  const h=opts.ir_history;
+  if(!h || !h.now) return ''; // нет данных
+  const periodLabel=opts.periodLabel||_monthLabel();
+  const dataAttr = encodeURIComponent(JSON.stringify({h, isPartner:!!opts.isPartner, periodLabel}));
+  return `<div class="card ir-card" data-ir="${dataAttr}">
+    <div class="ir-card-head">
+      <div class="ir-card-title">Индекс развития · ${esc(periodLabel)}</div>
+      <div class="ir-tabs">
+        <button class="ir-tab active" data-mode="now">Сейчас</button>
+        <button class="ir-tab" data-mode="week">Неделя</button>
+        <button class="ir-tab" data-mode="month">Месяц</button>
+      </div>
+    </div>
+    <div class="ir-body">
+      <div>
+        <div class="ir-total" style="color:${barColor(h.now.total)}">${h.now.total}%</div>
+        <span class="ir-total-delta hidden">·</span>
+      </div>
+      <div class="ir-channels">
+        <div class="ir-channel-row">
+          <div class="ir-channel-name">🛒 Покупатель</div>
+          <div class="ir-channel-bar"><div class="ir-channel-fill buyer" style="width:${Math.min(h.now.buyer,100)}%"></div></div>
+          <div class="ir-channel-pct">${h.now.buyer}%</div>
+          <div class="ir-channel-delta hidden">·</div>
+          <svg class="ir-channel-spark hidden" viewBox="0 0 70 18" preserveAspectRatio="none" data-channel="buyer"></svg>
+        </div>
+        <div class="ir-channel-row">
+          <div class="ir-channel-name">🏘 Продавец</div>
+          <div class="ir-channel-bar"><div class="ir-channel-fill seller" style="width:${Math.min(h.now.seller,100)}%"></div></div>
+          <div class="ir-channel-pct">${h.now.seller}%</div>
+          <div class="ir-channel-delta hidden">·</div>
+          <svg class="ir-channel-spark hidden" viewBox="0 0 70 18" preserveAspectRatio="none" data-channel="seller"></svg>
+        </div>
+      </div>
+    </div>
+    <div class="ir-card-foot">Индекс развития · ${esc(periodLabel)} · насколько ты на пути к цели</div>
+  </div>`;
+}
+window.applyIrMode=function(card, mode){
+  const raw=card.getAttribute('data-ir'); if(!raw) return;
+  const {h, isPartner, periodLabel} = JSON.parse(decodeURIComponent(raw));
+  const elTotal = card.querySelector('.ir-total');
+  const elTotalDelta = card.querySelector('.ir-total-delta');
+  const rows = card.querySelectorAll('.ir-channel-row');
+  const setChan = (row, sideKey, color) => {
+    const pct = h.now[sideKey];
+    row.querySelector('.ir-channel-fill').style.width = Math.min(pct,100)+'%';
+    row.querySelector('.ir-channel-pct').textContent = pct+'%';
+    const dEl = row.querySelector('.ir-channel-delta');
+    const sEl = row.querySelector('.ir-channel-spark');
+    if (mode==='now'){
+      dEl.classList.add('hidden'); sEl.classList.add('hidden');
+    } else {
+      const prev = (mode==='week' ? h.week_prev : h.month_prev) || {};
+      const d = pct - (prev[sideKey]||0);
+      const dObj = _irDelta(d);
+      dEl.className = 'ir-channel-delta '+dObj.cls;
+      dEl.textContent = dObj.text;
+      const hist = (mode==='week' ? h.week_history : h.month_history)[sideKey] || [];
+      const spark = _irSpark(hist, color);
+      if (spark){ sEl.classList.remove('hidden'); sEl.innerHTML = _renderSparkSvg(spark); }
+      else { sEl.classList.add('hidden'); }
+    }
+  };
+  setChan(rows[0], 'buyer', '#3b82f6');
+  setChan(rows[1], 'seller', '#10b981');
+  // Общий ИР + дельта
+  elTotal.textContent = h.now.total+'%';
+  if (mode==='now'){
+    elTotalDelta.classList.add('hidden');
+  } else {
+    const prev = (mode==='week' ? h.week_prev : h.month_prev) || {};
+    const d = h.now.total - (prev.total||0);
+    const dObj = _irDelta(d);
+    elTotalDelta.className = 'ir-total-delta '+dObj.cls;
+    elTotalDelta.textContent = dObj.text;
+    elTotalDelta.classList.remove('hidden');
+  }
+  // Подпись
+  const foot = card.querySelector('.ir-card-foot');
+  if (mode==='now') foot.textContent = `Индекс развития · ${periodLabel} · насколько ты на пути к цели`;
+  else if (mode==='week') foot.textContent = `Динамика по неделям · последние 4 точки (сегодня — справа)`;
+  else {
+    if (isPartner && h.salary_review_at){
+      const lbl = _monthsAgoLabel(h.salary_review_at);
+      foot.textContent = lbl ? `Динамика помесячно · с момента утверждения целей (${lbl})` : `Динамика помесячно · последние 6 месяцев`;
+    } else {
+      foot.textContent = `Динамика помесячно · последние 6 месяцев`;
+    }
+  }
+};
+window.initIrCards=function(root){
+  (root||document).querySelectorAll('.ir-card').forEach(card=>{
+    if(card._irInited) return; card._irInited=true;
+    const tabs=card.querySelectorAll('.ir-tab');
+    tabs.forEach(t=>{
+      t.addEventListener('click',()=>{ tabs.forEach(x=>x.classList.toggle('active', x===t)); window.applyIrMode(card, t.dataset.mode); });
+    });
+    window.applyIrMode(card, 'now');
+  });
+};
 
 </script>
 </body>
