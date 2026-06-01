@@ -661,29 +661,50 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderTeam(d
 })();
 
 /* TZ-A26: утилиты трёхчастной воронки */
-function calcStatus(fact,forecast,plan){ if(!plan||plan===0){ return fact>0?'s-done':'s-pending'; } const f=(fact/plan)*100; if(f>=100) return 's-done'; if(forecast!=null){ const fc=(forecast/plan)*100; if(fc>=100) return 's-forecast'; } return 's-pending'; }
-function calcBarPercents(fact,forecast,plan){ if(!plan||plan===0){ if(fact>0) return {factPct:100,forecastPctTotal:100,forecastDeltaPct:0,noPlan:true}; return {factPct:0,forecastPctTotal:0,forecastDeltaPct:0}; } const factPct=Math.round((fact/plan)*100); let forecastPctTotal=factPct, forecastDeltaPct=0; if(forecast!=null && forecast>fact){ forecastPctTotal=Math.round((forecast/plan)*100); forecastDeltaPct=forecastPctTotal-factPct; } return {factPct,forecastPctTotal,forecastDeltaPct}; }
+// Нормализация: для не-revenue этапов (целочисленные fact/plan) округляем до целых,
+// чтобы % считался по тем же числам, что в подписи (не 1/1.886=53%, а 1/2=50%).
+function _normNum(v,isInt){ if(v==null) return v; return isInt?Math.round(v):v; }
+function calcStatus(fact,forecast,plan,isRev){
+  const isInt=!isRev; fact=_normNum(fact,isInt); plan=_normNum(plan,isInt); forecast=_normNum(forecast,isInt);
+  if(!plan||plan===0){ return fact>0?'s-done':'s-pending'; }
+  const f=(fact/plan)*100; if(f>=100) return 's-done';
+  if(forecast!=null){ const fc=(forecast/plan)*100; if(fc>=100) return 's-forecast'; }
+  return 's-pending';
+}
+function calcBarPercents(fact,forecast,plan,isRev){
+  const isInt=!isRev; fact=_normNum(fact,isInt); plan=_normNum(plan,isInt); forecast=_normNum(forecast,isInt);
+  if(!plan||plan===0){ if(fact>0) return {factPct:100,factPctVisual:100,forecastPctTotal:100,forecastDeltaPct:0,forecastDeltaPctVisual:0,noPlan:true}; return {factPct:0,factPctVisual:0,forecastPctTotal:0,forecastDeltaPct:0,forecastDeltaPctVisual:0}; }
+  const factPct=Math.round((fact/plan)*100);
+  let forecastPctTotal=factPct, forecastDeltaPct=0;
+  if(forecast!=null && forecast>fact){ forecastPctTotal=Math.round((forecast/plan)*100); forecastDeltaPct=forecastPctTotal-factPct; }
+  // Полоса визуально cap'ится на 100% — зелёная max 100, оранжевая берёт остаток до 100.
+  const factPctVisual=Math.min(factPct,100);
+  const forecastDeltaPctVisual=Math.max(0, Math.min(forecastDeltaPct, 100-factPctVisual));
+  return {factPct,factPctVisual,forecastPctTotal,forecastDeltaPct,forecastDeltaPctVisual};
+}
 function tooltipFact(factLabel,factPct,planLabel){ return `факт ${factLabel} — ${factPct}% от плана ${planLabel}`; }
 function tooltipForecast(forecastLabel,forecastPctTotal,planLabel,forecastDeltaPct){ return `прогноз ${forecastLabel} — +${forecastDeltaPct}% к плану ${planLabel} (итого ${forecastPctTotal}%)`; }
 function renderFpBar(stage,opts){
   opts=opts||{};
-  const {fact,fact_label,forecast,forecast_label,plan,plan_label}=stage;
+  const {fact,fact_label,forecast,forecast_label,plan,plan_label,is_revenue}=stage;
   if(fact==null && plan==null){
     return `<div class="fp-bar-wrap"><div class="fp-bar" data-tooltip="нет данных по этому этапу"></div><div class="fp-bar-outside"><span class="o-nd">— нет данных</span></div></div>`;
   }
-  const _p=calcBarPercents(fact,forecast,plan); const {factPct,forecastPctTotal,forecastDeltaPct}=_p;
+  const _p=calcBarPercents(fact,forecast,plan,is_revenue); const {factPct,factPctVisual,forecastPctTotal,forecastDeltaPct,forecastDeltaPctVisual}=_p;
   if(_p.noPlan){ const tt=`факт ${fact_label} — плана нет`; return `<div class="fp-bar${opts.compact?' sm':''}" data-tooltip="${esc(tt)}"><div class="fp-bar-fact" style="width:100%">факт ${fact_label}</div></div>`; }
   const smClass=opts.compact?' sm':'';
   if(factPct===0 && forecastDeltaPct===0){
     const tt=tooltipFact(fact_label,0,plan_label);
     return `<div class="fp-bar${smClass} zero-fact" data-tooltip="${esc(tt)}"><div class="fp-bar-fact" style="width:0%"></div></div>`;
   }
-  const factNarrow=factPct>0 && factPct<12;
-  const forecastNarrow=forecastDeltaPct>0 && forecastDeltaPct<12;
+  // Узкая зона = по визуальной ширине, иначе число «153%» в маленьком блоке не вылезает за границу.
+  const factNarrow=factPctVisual>0 && factPctVisual<12;
+  const forecastNarrow=forecastDeltaPctVisual>0 && forecastDeltaPctVisual<12;
   const factTt=factPct>0?tooltipFact(fact_label,factPct,plan_label):null;
   const forecastTt=forecastDeltaPct>0?tooltipForecast(forecast_label,forecastPctTotal,plan_label,forecastDeltaPct):null;
-  const factDiv=factPct>0?`<div data-tooltip="${esc(factTt)}" class="fp-bar-fact${factNarrow?' narrow':''}" style="width:${factPct}%">${factPct}%</div>`:'';
-  const forecastDiv=forecastDeltaPct>0?`<div data-tooltip="${esc(forecastTt)}" class="fp-bar-forecast${forecastNarrow?' narrow':''}" style="width:${forecastDeltaPct}%">+${forecastDeltaPct}%</div>`:'';
+  // Внутри блока — реальный %, ширина — обрезанная.
+  const factDiv=factPctVisual>0?`<div data-tooltip="${esc(factTt)}" class="fp-bar-fact${factNarrow?' narrow':''}" style="width:${factPctVisual}%">${factPct}%</div>`:'';
+  const forecastDiv=forecastDeltaPctVisual>0?`<div data-tooltip="${esc(forecastTt)}" class="fp-bar-forecast${forecastNarrow?' narrow':''}" style="width:${forecastDeltaPctVisual}%">+${forecastDeltaPct}%</div>`:'';
   const containerTt=factTt||forecastTt||'нет данных';
   const bar=`<div class="fp-bar${smClass}" data-tooltip="${esc(containerTt)}">${factDiv}${forecastDiv}</div>`;
   if(factNarrow||forecastNarrow){
@@ -695,8 +716,8 @@ function renderFpBar(stage,opts){
   return bar;
 }
 function renderStage(stage){
-  const {label,hint,fact_label,forecast,forecast_label,plan_label,fact,plan}=stage;
-  const status=calcStatus(fact,forecast,plan);
+  const {label,hint,fact_label,forecast,forecast_label,plan_label,fact,plan,is_revenue}=stage;
+  const status=calcStatus(fact,forecast,plan,is_revenue);
   const hintHtml=hint?`<span class="funnel-hint">${esc(hint)}</span>`:'';
   let numbers;
   // TZ-A26 уточнение: прогноз = ПРИРАЩЕНИЕ (forecast - fact, «+X к»), не итог.
