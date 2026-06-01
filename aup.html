@@ -303,12 +303,9 @@ function heroRevenueBar(a){
  const forecast=(bs.forecast!=null||ss.forecast!=null)?(fcB+fcS):null;
  if(!plan) return '';
  const fmt=n=>{ const a=Math.abs(n); if(a>=1000000)return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=10000)return Math.round(n/1000)+'к'; if(a>=1000)return (n/1000).toFixed(1).replace('.',',')+' тыс'; return String(Math.round(n)); };
- const stage={fact,plan,forecast,fact_label:fmt(fact)+' ₽',plan_label:fmt(plan)+' ₽',forecast_label:forecast!=null?fmt(forecast)+' ₽':null};
- return `<div class="hero-stat" style="margin-top:12px"><div class="hero-stat-cap">Валовая выручка</div>
-   <div class="hero-stat-fpf-fact-wrap"><span class="hero-stat-fpf-fact-lbl">факт</span><span class="hero-stat-fpf-fact large">${fmt(fact)} ₽</span></div>
-   <div class="hero-stat-fpf-meta">${forecast!=null?`<span class="forecast">прогноз <b>${fmt(forecast)}</b></span><span>·</span>`:''}<span class="plan">план <b>${fmt(plan)}</b></span></div>
-   <div class="hero-stat-fpf-bar">${renderFpBar(stage,{compact:true})}</div>
- </div>`;
+ const stage={label:'Валовая выручка',hint:'за месяц',fact,plan,forecast,fact_label:fmt(fact)+' ₽',plan_label:fmt(plan)+' ₽',forecast_label:forecast!=null?fmt(forecast)+' ₽':null};
+ // renderStage уже отрисует: заголовок слева, факт/прогноз/план справа сверху, полосу ниже.
+ return `<div style="margin-top:12px">${renderStage(stage)}</div>`;
 }
 function fmtNumber(n){ if(!Number.isFinite(n))return '—';
   const a=Math.abs(n);
@@ -317,22 +314,19 @@ function fmtNumber(n){ if(!Number.isFinite(n))return '—';
   if(a>=1000)    return (n/1000).toFixed(1).replace('.',',')+' тыс';
   return String(Math.round(n));
 }
-// Крупная hero-карта с прогнозом на след.мес — рядом с «Валовой выручкой (тек.)»
+// Прогноз вала на следующий месяц — в стиле плашки этапа воронки.
 function fcHero(fc){
  if(!fc || !fc.next_month) return '';
  const nm=fc.next_month;
- const dv=fc.delta_vs_yesterday;
- const dlt=dv&&dv.revenue_pct?`<span style="font-size:var(--fs-12);color:${dv.direction==='up'?'var(--ok)':'var(--bad)'};margin-left:6px">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
- // Метка месяца — динамическая (текущий мес + 1)
  const now=new Date(); const next=new Date(now.getFullYear(), now.getMonth()+1, 1);
  const monthNames=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
  const lbl=monthNames[next.getMonth()]+' '+next.getFullYear();
- const val=nm.revenue_total>0?`${esc(nm.revenue_total_label)} ₽`:'—';
- const dealsLine=nm.deals_forecast>0?`<div class="hero-stat-fpf-meta"><span>${Math.round(nm.deals_forecast*10)/10} прогноз сделок</span></div>`:`<div class="hero-stat-fpf-meta"><span style="color:var(--muted)">по горячим/задаткам на ${esc(lbl)}</span></div>`;
- return `<div class="hero-stat" style="margin-top:12px"><div class="hero-stat-cap">Прогноз вала · ${esc(lbl)}${dlt}</div>
-   <div class="hero-stat-fpf-fact-wrap"><span class="hero-stat-fpf-fact-lbl">прогноз</span><span class="hero-stat-fpf-fact large" style="color:var(--gold)">${val}</span></div>
-   ${dealsLine}
- </div>`;
+ const target=Number(nm.target_revenue)||0;
+ const fcst=Number(nm.revenue_total)||0;
+ const fmt=n=>{ const a=Math.abs(n); if(a>=1000000)return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=10000)return Math.round(n/1000)+'к'; if(a>=1000)return (n/1000).toFixed(1).replace('.',',')+' тыс'; return String(Math.round(n)); };
+ // В прогнозе след.мес факта ещё нет (новый месяц не наступил). fact=0, forecast=полный прогноз, plan=target.
+ const stage={label:'Прогноз вала',hint:lbl,fact:0,plan:target,forecast:fcst,fact_label:'0 ₽',plan_label:target>0?fmt(target)+' ₽':'—',forecast_label:fcst>0?fmt(fcst)+' ₽':'—'};
+ return `<div style="margin-top:12px">${renderStage(stage)}</div>`;
 }
 
 window.showTab=(id,btn)=>{

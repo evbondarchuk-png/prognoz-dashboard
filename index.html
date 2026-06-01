@@ -511,7 +511,7 @@ function renderHero(d){
  if(fc){
  valBar=`<div class="val-bar">
  <div class="val-cell"><div class="vb-cap">вал за ${esc(fc.current_month.label||'месяц')}</div><div class="vb-num">${esc(fc.current_month.revenue_label)} ₽</div><div class="vb-sub">факт ${esc(fc.current_month.fact_revenue_label)} + прогноз</div></div>
- <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-num">${fc.next_month.revenue>0?esc(fc.next_month.revenue_label)+' ₽':'—'}</div><div class="vb-sub">${fc.next_month.revenue>0?'по прогнозу воронки n8n':'нет горячих/задатков на следующий месяц'}</div></div>
+ <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-num">${fc.next_month.revenue>0?esc(fc.next_month.revenue_label)+' ₽':'—'}</div><div class="vb-sub">${fc.next_month.target_revenue>0?`план ${esc(fc.next_month.target_revenue_label)} ₽ · ${fc.next_month.progress_pct}% выполнения`:(fc.next_month.revenue>0?'по прогнозу воронки n8n':'нет горячих/задатков на следующий месяц')}</div></div>
  </div>`;
  }
 
@@ -675,9 +675,11 @@ function renderPrognoz(d){
  ${zp(cm.income_label)}
  <div class="muted" style="margin-top:6px">факт ${esc(cm.fact_revenue_label)} + прогноз ${esc(cm.forecast_revenue_label)} · ${cm.deals_total} сделок (${cm.deals_closed} закрыто)</div></div>`);
  const rc=tm.risk_flag==='deep_drop'?'deep':(tm.risk_flag==='next_month_surge'?'surge':'');
+ const nmPlanLine = nm.target_revenue>0?`<div class="muted" style="margin-top:4px">план месяца ${esc(nm.target_revenue_label)} ₽ · <b style="color:${nm.progress_pct>=100?'var(--ok)':nm.progress_pct>=70?'var(--warn)':'var(--bad)'}">${nm.progress_pct}%</b> выполнения</div>`:'';
  out.push(`<div class="card"><div class="section-title">📅 Следующий месяц · ${esc(nm.label)}</div>
  <div class="fc-big">${esc(nm.revenue_label)} ₽<span style="font-size:var(--fs-14);color:var(--muted);font-weight:var(--fw-sb)"> вал</span></div>
  ${zp(nm.income_label)}
+ ${nmPlanLine}
  <div class="muted" style="margin-top:6px">по прогнозу воронки n8n · ${nm.deals_forecast} сделок прогноз · ЗП ≈ 48% от вала</div>
  ${tm.risk_label?`<div class="risk-alert ${rc}">${esc(tm.risk_label)}</div>`:''}</div>`);
  if(cp) out.push(`<div class="card"><div class="section-title">🎯 Шаг к цели</div>
