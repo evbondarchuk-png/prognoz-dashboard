@@ -989,9 +989,11 @@ function renderFpBar(stage,opts){
   const forecastNarrow=forecastDeltaPctVisual>0 && forecastDeltaPctVisual<12;
   const factTt=factPct>0?tooltipFact(fact_label,factPct,plan_label):null;
   const forecastTt=forecastDeltaPct>0?tooltipForecast(forecast_label,forecastPctTotal,plan_label,forecastDeltaPct):null;
-  // Внутри блока — реальный %, ширина — обрезанная.
-  const factDiv=factPctVisual>0?`<div data-tooltip="${esc(factTt)}" class="fp-bar-fact${factNarrow?' narrow':''}" style="width:${factPctVisual}%">${factPct}%</div>`:'';
-  const forecastDiv=forecastDeltaPctVisual>0?`<div data-tooltip="${esc(forecastTt)}" class="fp-bar-forecast${forecastNarrow?' narrow':''}" style="width:${forecastDeltaPctVisual}%">+${forecastDeltaPct}%</div>`:'';
+  // Подпись внутри блока: для revenue — реальный % (даже 259%), для остальных — cap 100%.
+  const factLbl=is_revenue?factPct:factPctVisual;
+  const fcDeltaLbl=is_revenue?forecastDeltaPct:forecastDeltaPctVisual;
+  const factDiv=factPctVisual>0?`<div data-tooltip="${esc(factTt)}" class="fp-bar-fact${factNarrow?' narrow':''}" style="width:${factPctVisual}%">${factLbl}%</div>`:'';
+  const forecastDiv=forecastDeltaPctVisual>0?`<div data-tooltip="${esc(forecastTt)}" class="fp-bar-forecast${forecastNarrow?' narrow':''}" style="width:${forecastDeltaPctVisual}%">+${fcDeltaLbl}%</div>`:'';
   const containerTt=factTt||forecastTt||'нет данных';
   const bar=`<div class="fp-bar${smClass}" data-tooltip="${esc(containerTt)}">${factDiv}${forecastDiv}</div>`;
   if(factNarrow||forecastNarrow){
