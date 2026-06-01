@@ -127,6 +127,7 @@
  .val-cell{flex:1;background:var(--brand-soft);border-radius:10px;padding:10px 12px}
  .vb-cap{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb);text-transform:uppercase;letter-spacing:.03em}
  .vb-num{font-size:var(--fs-20);font-weight:var(--fw-eb);color:var(--brand);margin:2px 0}
+ .vb-zp{font-size:var(--fs-12);color:var(--ok);font-weight:var(--fw-sb);margin-bottom:2px}
  .vb-sub{font-size:var(--fs-11);color:var(--muted)}
  /* легенда факт/план */
  .fs-legend{font-size:var(--fs-11);color:var(--muted);margin:-4px 2px 10px;display:flex;gap:14px}
@@ -511,8 +512,8 @@ function renderHero(d){
  const fc=d.forecast; let valBar='';
  if(fc){
  valBar=`<div class="val-bar">
- <div class="val-cell"><div class="vb-cap">вал за ${esc(fc.current_month.label||'месяц')}</div><div class="vb-num">${esc(fc.current_month.revenue_label)} ₽</div><div class="vb-sub">факт ${esc(fc.current_month.fact_revenue_label)} + прогноз</div></div>
- <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-num">${fc.next_month.revenue>0?esc(fc.next_month.revenue_label)+' ₽':'—'}</div><div class="vb-sub">${fc.next_month.target_revenue>0?`план ${esc(fc.next_month.target_revenue_label)} ₽ · ${fc.next_month.progress_pct}% выполнения`:(fc.next_month.revenue>0?'по прогнозу воронки n8n':'нет горячих/задатков на следующий месяц')}</div></div>
+ <div class="val-cell"><div class="vb-cap">вал за ${esc(fc.current_month.label||'месяц')}</div><div class="vb-num">${esc(fc.current_month.revenue_label)} ₽</div>${fc.current_month.income>0?`<div class="vb-zp">≈ ЗП ${esc(fc.current_month.income_label)} ₽</div>`:''}<div class="vb-sub">факт ${esc(fc.current_month.fact_revenue_label)} + прогноз</div></div>
+ <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-num">${fc.next_month.revenue>0?esc(fc.next_month.revenue_label)+' ₽':'—'}</div>${fc.next_month.income>0?`<div class="vb-zp">≈ ЗП ${esc(fc.next_month.income_label)} ₽</div>`:''}<div class="vb-sub">${fc.next_month.target_revenue>0?`план ${esc(fc.next_month.target_revenue_label)} ₽ · ${fc.next_month.progress_pct}% выполнения`:(fc.next_month.revenue>0?'по прогнозу воронки n8n':'нет горячих/задатков на следующий месяц')}</div></div>
  </div>`;
  }
 
