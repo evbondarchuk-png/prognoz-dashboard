@@ -677,9 +677,19 @@ function calcBarPercents(fact,forecast,plan,isRev){
   const factPct=Math.round((fact/plan)*100);
   let forecastPctTotal=factPct, forecastDeltaPct=0;
   if(forecast!=null && forecast>fact){ forecastPctTotal=Math.round((forecast/plan)*100); forecastDeltaPct=forecastPctTotal-factPct; }
-  // Полоса визуально cap'ится на 100% — зелёная max 100, оранжевая берёт остаток до 100.
-  const factPctVisual=Math.min(factPct,100);
-  const forecastDeltaPctVisual=Math.max(0, Math.min(forecastDeltaPct, 100-factPctVisual));
+  // Полоса визуально cap'ится на 100%.
+  // Особый случай для revenue: если факт+прогноз > 100% плана (перевыполнение с прогнозом),
+  // то полосу делим пропорционально fact:forecastDelta — чтобы оранжевая зона была видна
+  // соизмеримо своему размеру (а не зажата в остатке от 100).
+  let factPctVisual,forecastDeltaPctVisual;
+  const totalPct=factPct+forecastDeltaPct;
+  if(isRev && totalPct>100 && forecastDeltaPct>0){
+    factPctVisual=Math.round(factPct/totalPct*100);
+    forecastDeltaPctVisual=100-factPctVisual;
+  } else {
+    factPctVisual=Math.min(factPct,100);
+    forecastDeltaPctVisual=Math.max(0, Math.min(forecastDeltaPct, 100-factPctVisual));
+  }
   return {factPct,factPctVisual,forecastPctTotal,forecastDeltaPct,forecastDeltaPctVisual};
 }
 function tooltipFact(factLabel,factPct,planLabel){ return `факт ${factLabel} — ${factPct}% от плана ${planLabel}`; }
