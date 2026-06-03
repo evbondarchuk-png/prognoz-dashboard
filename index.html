@@ -79,12 +79,42 @@
  .cli-grid{display:grid;gap:8px;grid-template-columns:1fr}
  @media(min-width:560px){.cli-grid{grid-template-columns:1fr 1fr}}
  @media(min-width:900px){.cli-grid{grid-template-columns:1fr 1fr 1fr}}
- .cli-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-3)}
+ .cli-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-3);cursor:pointer;transition:.15s}
+ .cli-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
  .cli-card.hot{border-left-color:var(--bad)}
- .cli-name{font-weight:var(--fw-b);color:var(--ink);font-size:var(--fs-13);margin-bottom:4px}
+ .cli-card.open{cursor:default}
+ .cli-name{font-weight:var(--fw-b);color:var(--ink);font-size:var(--fs-13);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+ .cli-chev{color:var(--muted);font-size:var(--fs-14);transition:transform .15s}
+ .cli-card.open .cli-chev{transform:rotate(90deg)}
  .cli-meta{font-size:var(--fs-11);color:var(--muted);margin-bottom:6px}
  .cli-sigs{display:flex;flex-wrap:wrap;gap:4px}
  .cli-sig{background:var(--brand-soft);color:var(--brand);font-size:var(--fs-11);padding:2px 8px;border-radius:var(--r-pill);font-weight:var(--fw-sb)}
+ .cli-detail{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);display:none}
+ .cli-card.open .cli-detail{display:block}
+ .cli-section-h{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb);text-transform:uppercase;letter-spacing:.3px;margin:10px 0 6px}
+ .cli-section-h:first-child{margin-top:0}
+ .cli-ai{background:linear-gradient(135deg,rgba(124,58,237,.06),rgba(59,130,246,.06));border:1px solid rgba(124,58,237,.15);border-radius:var(--r-md);padding:10px 12px}
+ .cli-ai-sum{font-size:var(--fs-13);color:var(--ink);line-height:1.5;margin-bottom:8px}
+ .cli-ai-block{margin-top:6px}
+ .cli-ai-block-h{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb);margin-bottom:2px}
+ .cli-ai-list{margin:0;padding-left:18px;font-size:var(--fs-12);color:var(--ink)}
+ .cli-ai-list li{margin-bottom:2px}
+ .cli-timeline{display:flex;flex-direction:column;gap:6px}
+ .cli-tl-row{display:grid;grid-template-columns:60px 24px 1fr;gap:8px;font-size:var(--fs-12);align-items:start}
+ .cli-tl-date{color:var(--muted);font-size:var(--fs-11)}
+ .cli-tl-ic{text-align:center;font-size:var(--fs-14)}
+ .cli-tl-txt{color:var(--ink)}
+ .cli-tl-row.trigger .cli-tl-txt{color:var(--warn);font-weight:var(--fw-sb)}
+ .cli-history{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-12);color:var(--ink)}
+ .cli-history-row{padding:6px 8px;background:var(--surface-2);border-radius:var(--r-sm)}
+ .cli-history-row b{color:var(--brand)}
+ .cli-scripts{display:flex;flex-direction:column;gap:6px}
+ .cli-script{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;cursor:pointer;transition:.15s}
+ .cli-script:hover{border-color:var(--brand);background:var(--brand-soft)}
+ .cli-script-title{font-weight:var(--fw-sb);color:var(--ink);font-size:var(--fs-12)}
+ .cli-script-short{font-size:var(--fs-11);color:var(--muted);margin-top:2px}
+ .cli-script-full{display:none;margin-top:8px;padding:8px;background:var(--surface-2);border-radius:var(--r-sm);font-size:var(--fs-12);color:var(--ink);white-space:pre-line;line-height:1.5}
+ .cli-script.open .cli-script-full{display:block}
  /* анонс «Coming Soon» (Клиенты/CRM) */
  .acs{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:24px 18px;box-shadow:var(--shadow);text-align:center}
  .acs-badge{display:inline-block;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:var(--fs-12);font-weight:var(--fw-b);padding:6px 14px;border-radius:20px;box-shadow:0 4px 14px rgba(124,58,237,.4);margin-bottom:14px}
@@ -806,15 +836,51 @@ function renderCoach(d){
 const STAGE_LABELS = { hot:'🔥 Горячие', deposit:'📑 На задатке', deal:'🤝 Сделки', work:'📋 В работе', flow:'📥 Входящий поток', cooling:'❄️ Остывают' };
 const STAGE_ORDER = ['hot','deposit','deal','work','flow','cooling'];
 const SEG_LABEL = { vtorichka:'вторичка', novostroyka:'новостройка', zagorod:'загородная', commerce:'коммерческая', garage:'гараж' };
-function clientCard(c){
+const TOUCH_ICONS = { call_in:'📞', call_out:'📞', chat:'💬', show:'👀', meeting:'🤝', selection:'📋', trigger:'⏰' };
+const TOUCH_LABELS = { call_in:'вход. звонок', call_out:'исх. звонок', chat:'еЧат', show:'показ', meeting:'встреча', selection:'подборка', trigger:'триггер' };
+function clientCard(c, idx){
   const sig=(c.signals||[]).map(s=>`<span class="cli-sig">${esc(s)}</span>`).join('');
   const meta=[c.role==='buyer'?'покупатель':'продавец', SEG_LABEL[c.segment]||c.segment, c.budget?(Math.round(c.budget/100000)/10).toString().replace('.',',')+' млн ₽':null, c.last_touch?'касание '+c.last_touch:null].filter(Boolean).join(' · ');
-  return `<div class="cli-card${c.hot_flag?' hot':''}">
-    <div class="cli-name">${esc(c.name||'')}</div>
+  // Расширенный блок
+  const ai=c.ai||null;
+  const touches=c.touches||[];
+  const history=c.history||[];
+  const scripts=(ai&&ai.script_refs)||[];
+  const tlHtml = touches.length ? touches.slice().reverse().map(t=>`<div class="cli-tl-row ${t.type==='trigger'?'trigger':''}"><span class="cli-tl-date">${esc((t.date||'').slice(5))}</span><span class="cli-tl-ic">${TOUCH_ICONS[t.type]||'•'}</span><span class="cli-tl-txt"><b style="font-size:var(--fs-11);color:var(--muted)">${esc(TOUCH_LABELS[t.type]||t.type)}:</b> ${esc(t.summary||'')}</span></div>`).join('') : '<div class="muted" style="font-size:var(--fs-12)">Касаний пока нет.</div>';
+  const histHtml = history.length ? history.map(h=>`<div class="cli-history-row"><b>${esc(h.year)}</b> · ${esc(h.role==='buyer'?'покупка':'продажа')} · ${esc(h.object_label||'')} · ${(h.price/1000000).toFixed(1).replace('.',',')} млн ${h.was_my_deal?'<span class="cli-sig" style="margin-left:6px">моя сделка</span>':''}</div>`).join('') : '<div class="muted" style="font-size:var(--fs-12)">Первое обращение — истории сделок нет.</div>';
+  const aiHtml = ai ? `<div class="cli-ai">
+    <div class="cli-ai-sum">${esc(ai.summary||'')}</div>
+    ${ai.blockers&&ai.blockers.length?`<div class="cli-ai-block"><div class="cli-ai-block-h">⛔ Блокеры</div><ul class="cli-ai-list">${ai.blockers.map(b=>`<li>${esc(b)}</li>`).join('')}</ul></div>`:''}
+    ${ai.next_actions&&ai.next_actions.length?`<div class="cli-ai-block"><div class="cli-ai-block-h">▶ Что сделать дальше</div><ul class="cli-ai-list">${ai.next_actions.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`:''}
+  </div>` : '<div class="muted" style="font-size:var(--fs-12)">ИИ-выжимка появится после ночной генерации.</div>';
+  const scriptsHtml = scripts.length ? `<div class="cli-scripts">${scripts.map(sid=>{
+    const s=(CTX.data&&CTX.data.scripts&&CTX.data.scripts[sid])||null;
+    if(!s) return `<div class="cli-script muted">script <code>${esc(sid)}</code></div>`;
+    return `<div class="cli-script" onclick="this.classList.toggle('open')"><div class="cli-script-title">📜 ${esc(s.title||sid)}</div><div class="cli-script-short">${esc(s.short||'')}</div><div class="cli-script-full">${esc(s.full||'')}</div></div>`;
+  }).join('')}</div>` : '<div class="muted" style="font-size:var(--fs-12)">Скрипты подберутся после ИИ-анализа.</div>';
+
+  return `<div class="cli-card${c.hot_flag?' hot':''}" onclick="window.toggleCli&&window.toggleCli(event,this)">
+    <div class="cli-name"><span>${esc(c.name||'')}</span><span class="cli-chev">›</span></div>
     <div class="cli-meta">${esc(meta)}</div>
     ${sig?`<div class="cli-sigs">${sig}</div>`:''}
+    <div class="cli-detail">
+      <div class="cli-section-h">🤖 ИИ-выжимка</div>
+      ${aiHtml}
+      <div class="cli-section-h">📜 Скрипты под ситуацию</div>
+      ${scriptsHtml}
+      <div class="cli-section-h">📍 Точки касания · ${touches.length}</div>
+      <div class="cli-timeline">${tlHtml}</div>
+      <div class="cli-section-h">📑 История сделок</div>
+      <div class="cli-history">${histHtml}</div>
+    </div>
   </div>`;
 }
+window.toggleCli=(ev,card)=>{
+  // Не раскрывать, если клик пришёл из самой расширенной зоны (скрипты и т.д.)
+  if(ev.target.closest('.cli-script')) return;
+  if(ev.target.closest('.cli-detail')&&!ev.target.classList.contains('cli-section-h')) return;
+  card.classList.toggle('open');
+};
 function renderClients(){
  const data=CTX.data||{};
  const clients=data.clients||{};
