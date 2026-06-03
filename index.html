@@ -74,6 +74,17 @@
  .banner{background:var(--brand-soft);border:1px solid #cfe1f5;border-radius:var(--r-xl);padding:14px 16px;margin-bottom:14px;font-size:var(--fs-13);color:#1a4061}
  .soon{background:var(--surface-2);border:1px dashed #c9cedb;border-radius:10px;padding:24px 18px;text-align:center;color:var(--muted);font-size:var(--fs-13)}
  .soon .soon-ic{font-size:var(--fs-28);display:block;margin-bottom:8px}
+ /* Карточки клиентов (TZ-SEED) */
+ .cli-section{margin-bottom:14px}
+ .cli-grid{display:grid;gap:8px;grid-template-columns:1fr}
+ @media(min-width:560px){.cli-grid{grid-template-columns:1fr 1fr}}
+ @media(min-width:900px){.cli-grid{grid-template-columns:1fr 1fr 1fr}}
+ .cli-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-3)}
+ .cli-card.hot{border-left-color:var(--bad)}
+ .cli-name{font-weight:var(--fw-b);color:var(--ink);font-size:var(--fs-13);margin-bottom:4px}
+ .cli-meta{font-size:var(--fs-11);color:var(--muted);margin-bottom:6px}
+ .cli-sigs{display:flex;flex-wrap:wrap;gap:4px}
+ .cli-sig{background:var(--brand-soft);color:var(--brand);font-size:var(--fs-11);padding:2px 8px;border-radius:var(--r-pill);font-weight:var(--fw-sb)}
  /* анонс «Coming Soon» (Клиенты/CRM) */
  .acs{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:24px 18px;box-shadow:var(--shadow);text-align:center}
  .acs-badge{display:inline-block;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:var(--fs-12);font-weight:var(--fw-b);padding:6px 14px;border-radius:20px;box-shadow:0 4px 14px rgba(124,58,237,.4);margin-bottom:14px}
@@ -791,24 +802,54 @@ function renderCoach(d){
  document.getElementById('screen-coach').innerHTML=out.join('');
 }
 
-/* ─── КЛИЕНТЫ (анонс «Coming Soon», как в макете) ─── */
+/* ─── КЛИЕНТЫ ─── */
+const STAGE_LABELS = { hot:'🔥 Горячие', deposit:'📑 На задатке', deal:'🤝 Сделки', work:'📋 В работе', flow:'📥 Входящий поток', cooling:'❄️ Остывают' };
+const STAGE_ORDER = ['hot','deposit','deal','work','flow','cooling'];
+const SEG_LABEL = { vtorichka:'вторичка', novostroyka:'новостройка', zagorod:'загородная', commerce:'коммерческая', garage:'гараж' };
+function clientCard(c){
+  const sig=(c.signals||[]).map(s=>`<span class="cli-sig">${esc(s)}</span>`).join('');
+  const meta=[c.role==='buyer'?'покупатель':'продавец', SEG_LABEL[c.segment]||c.segment, c.budget?(Math.round(c.budget/100000)/10).toString().replace('.',',')+' млн ₽':null, c.last_touch?'касание '+c.last_touch:null].filter(Boolean).join(' · ');
+  return `<div class="cli-card${c.hot_flag?' hot':''}">
+    <div class="cli-name">${esc(c.name||'')}</div>
+    <div class="cli-meta">${esc(meta)}</div>
+    ${sig?`<div class="cli-sigs">${sig}</div>`:''}
+  </div>`;
+}
 function renderClients(){
- document.getElementById('screen-clients').innerHTML=`<div class="acs">
- <div class="acs-badge">✨ Coming Soon · 01.07.2026</div>
- <div class="acs-title">👥 База клиентов</div>
- <div class="acs-desc"><b>Полный список твоих клиентов — с историей, статусами и подсказками ИИ.</b>
- Подтянем данные из CRM «Этажей»: кто на каком этапе, последнее касание, сделки в работе,
- объекты в продаже. Каждый клиент — со своей карточкой и историей касаний.</div>
- <div class="acs-features">
- <div class="acs-f" style="background:rgba(124,58,237,.06);border-color:rgba(124,58,237,.2)"><b style="color:#7c3aed">✨ Сегментация по статусу</b>горячие · в работе · остывают · покупатели · продавцы</div>
- <div class="acs-f" style="background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2)"><b style="color:#16a34a">✨ ИИ-совет по каждому</b>что обещал, что ждёт, как двигаться дальше</div>
- <div class="acs-f" style="background:rgba(59,130,246,.06);border-color:rgba(59,130,246,.2)"><b style="color:#1e63d9">📋 Сделки на задатке</b>документы, юрист, статусы, сроки — всё в одном месте</div>
- </div>
- <div class="acs-tags">
- <span class="acs-tag">📅 запуск 01 июля 2026</span>
- <span class="acs-tag">✨ интеграция с CRM «Этажей»</span>
- <span class="acs-tag">✨️ ИИ-юрист по сделкам</span>
- </div></div>`;
+ const data=CTX.data||{};
+ const clients=data.clients||{};
+ const codes=Object.keys(clients);
+ if(!codes.length){
+  // Если клиентов нет — заглушка «Coming Soon»
+  document.getElementById('screen-clients').innerHTML=`<div class="acs">
+   <div class="acs-badge">✨ Coming Soon · 01.07.2026</div>
+   <div class="acs-title">👥 База клиентов</div>
+   <div class="acs-desc"><b>Полный список твоих клиентов — с историей, статусами и подсказками ИИ.</b>
+   Подтянем данные из CRM «Этажей»: кто на каком этапе, последнее касание, сделки в работе, объекты в продаже.</div>
+   <div class="acs-features">
+   <div class="acs-f" style="background:rgba(124,58,237,.06);border-color:rgba(124,58,237,.2)"><b style="color:#7c3aed">✨ Сегментация по статусу</b>горячие · в работе · остывают · покупатели · продавцы</div>
+   <div class="acs-f" style="background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2)"><b style="color:#16a34a">✨ ИИ-совет по каждому</b>что обещал, что ждёт, как двигаться дальше</div>
+   </div>
+   <div class="acs-tags"><span class="acs-tag">📅 запуск 01 июля 2026</span></div></div>`;
+  return;
+ }
+ // Группировка по этапу воронки
+ const grouped={}; for(const k of STAGE_ORDER) grouped[k]=[];
+ for(const id of codes){
+  const c=Object.assign({id},clients[id]);
+  const st=STAGE_ORDER.includes(c.stage)?c.stage:'work';
+  grouped[st].push(c);
+ }
+ const sections=STAGE_ORDER.map(st=>{
+  const list=grouped[st]; if(!list.length) return '';
+  return `<div class="card cli-section"><div class="section-title">${STAGE_LABELS[st]} · ${list.length}</div>
+   <div class="cli-grid">${list.map(clientCard).join('')}</div></div>`;
+ }).join('');
+ const buyers=codes.filter(id=>clients[id].role==='buyer').length;
+ const sellers=codes.filter(id=>clients[id].role==='seller').length;
+ const header=`<div class="card"><div class="section-title">👥 Клиенты · ${codes.length}</div>
+  <div class="muted">${buyers} покупателей · ${sellers} продавцов. Сегментировано по этапу воронки. Цифры в заголовках — кол-во клиентов на этапе.</div></div>`;
+ document.getElementById('screen-clients').innerHTML=header+sections;
 }
 
 /* ─── ЗАДАЧИ ─── */
