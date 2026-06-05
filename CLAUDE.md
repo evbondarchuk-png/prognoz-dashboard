@@ -354,13 +354,14 @@ secondary/danger/icon`, `.badge + .badge-ok/warn/bad/nd/info`, `.hero +
 - **TZ-A28 фаза 2** — недельная эскалация Н1-Н4 через cron `recalcWeeksInRiskStreak`
   (понедельник). Сейчас MVP: статус считается из `irM<70` (Н1) или норма.
 - **Оптимизация бэка** (план группы из агрегата `plan_revenue_month`) —
-  **код готов, не задеплоен** из-за сетевой блокировки CLI к Google API.
-  Лежит локально в `aggregates.js.aggregateFor` (+ getDashboard fallback).
-  При след. деплое: `firebase deploy --only functions:getDashboard,functions:recomputeIRGroups,functions:recomputeIRDepartments,functions:recomputeAggregatesAdmin`
-  → потом `recomputeAggregatesAdmin({})` из консоли.
-- **Учёт МОП/РОП в своей группе** (2026-06-05) — `aggregates.js.buildGroups`
-  теперь включает руководителя в группу если у него есть `svetofor_zone_id`
-  (он лично продаёт). Код локально, ждёт деплоя (та же сетевая проблема).
+  **✅ задеплоено 2026-06-05** через GitHub Actions (см. §16).
+  `aggregates.js.aggregateFor` пишет `plan_revenue_month` при пересчёте;
+  getDashboard читает его из агрегата (fallback на `sumPlanByMop` если поля нет).
+  РОП-кабинет ускорился с 5-10 сек до 1-2 сек.
+- **Учёт МОП/РОП в своей группе** — **✅ задеплоено 2026-06-05** через GitHub
+  Actions. `aggregates.js.buildGroups` включает руководителя в группу/отдел,
+  если у него есть `svetofor_zone_id` (он лично продаёт). После пересчёта
+  агрегатов появились 103 группы (было 100) — 3 МОПа стали «продающими».
 
 ---
 
