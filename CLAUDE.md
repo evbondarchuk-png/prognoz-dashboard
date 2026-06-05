@@ -350,8 +350,17 @@ secondary/danger/icon`, `.badge + .badge-ok/warn/bad/nd/info`, `.hero +
 - **Сценарии задач** (ir_dropped_2w/objects_below_norm/no_deals_30d) —
   развёрнуты, заработают по мере накопления дневных снапшотов (нужна история d7/d14/d30).
 - **Прогноз на 2 месяца** — виджет убран (формула не готова).
-- **Клиенты/CRM** — анонс-заглушка (запуск 01.07.2026).
 - В источнике n8n/таблице починить поле `conv_flow_to_hot` зон.
+- **TZ-A28 фаза 2** — недельная эскалация Н1-Н4 через cron `recalcWeeksInRiskStreak`
+  (понедельник). Сейчас MVP: статус считается из `irM<70` (Н1) или норма.
+- **Оптимизация бэка** (план группы из агрегата `plan_revenue_month`) —
+  **код готов, не задеплоен** из-за сетевой блокировки CLI к Google API.
+  Лежит локально в `aggregates.js.aggregateFor` (+ getDashboard fallback).
+  При след. деплое: `firebase deploy --only functions:getDashboard,functions:recomputeIRGroups,functions:recomputeIRDepartments,functions:recomputeAggregatesAdmin`
+  → потом `recomputeAggregatesAdmin({})` из консоли.
+- **Учёт МОП/РОП в своей группе** (2026-06-05) — `aggregates.js.buildGroups`
+  теперь включает руководителя в группу если у него есть `svetofor_zone_id`
+  (он лично продаёт). Код локально, ждёт деплоя (та же сетевая проблема).
 
 ---
 
@@ -380,3 +389,180 @@ secondary/danger/icon`, `.badge + .badge-ok/warn/bad/nd/info`, `.hero +
 
 Функции `zeroizeArchiveCurAdmin` / `restoreArchivePartialAdmin` остаются
 развёрнутыми как kill-switch (`functions/zeroizeArchive.js`).
+
+---
+
+## 11. n8n столбцы 222-232 — flowCur (входной поток за тек.мес)
+
+С 2026-06-02 архиватор `archive.gs` (v3.2) пишет новые поля:
+- **222-227** → `bL.{all,new,sec,out,com,gar}.flowCur` — вход.поток покупателя за тек.мес
+- **228-232** → `sL.{all,sec,out,com,gar}.flowCur` — вход.поток продавца за тек.мес
+
+`lib/funnels.js.buyerFromBL`: поле `flow` теперь берётся из `flowCur` (за тек.мес).
+Fallback на `flowAct` (темп 2 мес) — только если `flowCur === undefined`
+(0 — валидное значение в начале месяца).
+
+`lib/ir.js.STAGE_KIND.buyer.flow` сменился с `'act'` (×2 план) на `'cur'`
+(× дни/всего). ИР покупателя по потоку стал точнее.
+
+Подпись этапа «Поток» теперь «за месяц» вместо «темп 2 мес».
+
+Файл архиватора v3.2: `~/Downloads/archive-v3.2.gs` (вставлять в Apps Script
+проекта `prognoz-archive` вручную, см. [[reference-archiver-apps-script]]).
+
+---
+
+## 12. TZ-A27 — блок ИР с табами Сейчас/Неделя/Месяц
+
+Сверху над воронкой во всех 4 кабинетах — карточка ИР с табами:
+- **Сейчас** (по умолч.) — общий % + 2 полосы Покуп/Прод (как было)
+- **Неделя** — + дельта vs прошлой недели + спарклайн 4 точки (-21/-14/-7/сегодня)
+- **Месяц** — + дельта vs прошлого месяца + спарклайн 6 точек (1-е числа)
+
+Бэк `getDashboard.buildIrHistory(db, kind, code, date)` — kind = partner/group/
+department/company. Возвращает `{now, week_history, week_prev, month_history, month_prev}`.
+Источники: snapshots для партнёра, среднее по членам команды для МОП/РОП
+(на лету через `buildIrHistoryFromMembers`), среднее по департаментам для АУПа.
+
+Фронт: общие `renderIrCard()` + `window.applyIrMode` + `window.initIrCards()`
+во всех 4 файлах. Дельты с цветом (▲+N зел., ▼−N крас., ≈ серый). Спарклайн —
+полилиния SVG с точками.
+
+---
+
+## 13. TZ-A28 — таб «Команда» (МОП/РОП/АУП)
+
+Таблица членов команды с подтабами:
+- **📊 Общее** — ФИО, ИР, план/факт/прогноз вала, статус Н1-Н4, бейдж зоны
+  светофора, drill-down на профиль
+- **📅 В риске (неделя)** — заглушка (нужен cron `recalcWeeksInRiskStreak`)
+- **📆 В риске (месяц)** — таблица N×6 мес с цветными ячейками + SVG-спарклайн
+
+Статус считается из `weeks_in_risk_streak`:
+- 0 → «норма» (если `_completedWeeks < 1` — всегда норма, в начале месяца не
+  ставим риск)
+- 1 → «Н1», 2 → «Н2», 3 → «Н3», 4+ → «Н4»
+
+В бэке `team_cards.members[]` для group/department/company расширен полями:
+`plan_month`, `fact_month`, `forecast_month`, `weeks_in_risk_streak`,
+`stazh_months`, `traffic_position{place,pool_size,pool_type,zone}`,
+`ir_history[6]`.
+
+5 цветовых зон светофора по %-рангу в пуле:
+`dark_green` ≤11% / `green` 11-33% / `yellow` 33-55% / `orange` 55-83% / `red` 83-100%.
+
+---
+
+## 14. TZ-SEED — клиенты + задачи для группы Колмогорова
+
+Тестовые данные для демо группы старшего партнёра Колмогорова Евгения
+(`mop_id=10633`, 23 партнёра). Функция `seedKolmogorovGroupAdmin` создаёт:
+
+**Клиенты** `/clients/{partner_id}/{client_id}`:
+- 5-9 на партнёра (155 всего) по профилю A/B/C/D (норма/Н1/Н2/новичок)
+- Этапы воронки: hot/deposit/work/flow/cooling
+- `touches[]` — 4-8 точек касания (звонки/чат/показы/подборки/триггеры от системы)
+- `history[]` — у 30% есть прошлая сделка (год/роль/объект/цена/моя/чужая)
+- `ai{summary, blockers[], next_actions[], script_refs[]}` — синтетическая
+  выжимка без LLM, по правилам под этап/роль/сегмент
+
+**Задачи** `/tasks/{task_id}`:
+- 3-4 today + 5-6 week на партнёра (267 всего)
+- 3 типа: 👤 client / 🎓 skill / 👔 manager
+- `related_scenario_id: "test_seed_kolmogorov"` для чистки
+- `visible_to_mop: "10633"` — для будущей фичи «менеджер видит задачи команды»
+- Дополнительно 20 manager-задач для самого Колмогорова
+
+**Скрипты** `/scripts/{script_id}` — библиотека из 13 скриптов
+(возражения по цене / реактивация / закрытие / первая подборка / темп касаний и т.д.).
+
+Фронт `index.html`:
+- Таб «👥 Клиенты» — если есть `clients` → список с группировкой по этапам,
+  клик раскрывает детальную карточку (ИИ-блок + скрипты + таймлайн + история).
+  Если клиентов нет — старая заглушка «Coming Soon».
+
+Чистка: `cleanupKolmogorovSeedAdmin()`.
+
+Код в `functions/seedClients.js`.
+
+---
+
+## 15. Оптимизация загрузки сайта (2026-06-05)
+
+**Состояние:** SSL prognoz.info починен (Let's Encrypt, срок до 03.09.2026,
+после ручной пересборки в GitHub Pages Settings).
+
+**Что осталось задеплоить** (код локально, ждёт деплоя из-за блокировки сети):
+- `aggregates.js.aggregateFor` — добавляет `plan_revenue_month` в агрегат группы
+- `getDashboard.js` — для group-блока в team_cards читает готовый
+  `agg.plan_revenue_month` (1 запрос) вместо суммирования планов 12-30
+  партнёров (30+ запросов на лету). Fallback на `sumPlanByMop` если поля нет.
+- `aggregates.js.buildGroups` — включает руководителя (МОП/РОП) в группу,
+  если у него есть `svetofor_zone_id` (он лично продаёт).
+
+**Ожидаемый эффект:** РОП-кабинет с 5-10 сек до 1-2 сек.
+
+**Деплой:**
+```
+cd /Users/egor/prognoz-functions/functions && firebase deploy --only \
+  functions:getDashboard,functions:recomputeIRGroups,functions:recomputeIRDepartments,functions:recomputeAggregatesAdmin \
+  --project=prognoz-archive
+```
+После — из консоли prognoz.info под АУПом: `recomputeAggregatesAdmin({})`.
+
+**Сетевая проблема CLI:** корпсеть «Этажей» (и в этой сессии у Коли-кода)
+плавающе режет соединения CLI к `firebase.googleapis.com` /
+`secretmanager.googleapis.com` / `cloudresourcemanager.googleapis.com`.
+Браузер работает (другой роут). **РЕШЕНО 2026-06-05 через GitHub Actions** —
+см. §16.
+
+---
+
+## 16. CI/CD деплой функций через GitHub Actions (2026-06-05)
+
+**Зачем:** локальный `firebase deploy` падает из-за корпсети «Этажей»
+(плавающие SSL_SYSCALL к Google API). GitHub Actions исполняется на серверах
+GitHub в США → корпсеть в трассе не участвует, деплой проходит за 3 минуты.
+
+### Архитектура
+
+- Репозиторий **`evbondarchuk-png/prognoz-functions`** (Private) — туда залит весь
+  `/Users/egor/prognoz-functions/` (50 файлов, без `node_modules`).
+- Workflow: `.github/workflows/deploy-functions.yml`.
+- Сервисный аккаунт Google: `github-actions-deploy@prognoz-archive.iam.gserviceaccount.com`
+  с ролью **Owner** на проекте (для CI это нормально, ключ в Secrets).
+- JSON-ключ сервисного аккаунта лежит в GitHub Secret `GCP_SA_KEY`.
+
+### Как пользоваться
+
+**1. Правки бэка (любая функция):**
+```
+cd /Users/egor/prognoz-functions/functions
+# редактируешь нужный файл
+git add . && git commit -m "..." && git push
+```
+GitHub Actions ловит push → автодеплой всех функций ~3 минуты.
+
+**2. Ручной запуск с фильтром** (быстрее, деплоит только нужное):
+- https://github.com/evbondarchuk-png/prognoz-functions/actions
+- **Deploy Firebase Functions** → **Run workflow**
+- Поле «Какие функции деплоить» — например `functions:getDashboard`
+- **Run workflow**
+
+**3. После деплоя бэка с изменениями в агрегатах** (важно):
+- Дёрни `recomputeAggregatesAdmin({})` из консоли prognoz.info под АУПом.
+
+### Что было сделано на этапе настройки
+
+1. **Установка прав сервисному аккаунту** — финальный путь Owner (Editor + конкретные
+   роли не сработали — упирались в Secret Manager и Cloud Billing).
+2. **Включение Cloud Billing API** — был отключён (`PROJECT_NUMBER=47892435250`).
+3. **Workflow на Node.js 24** (опт-ин через env `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`),
+   actions обновлены: `checkout@v5`, `setup-node@v5`, `auth@v3`, `setup-gcloud@v3`.
+
+### Что НЕ делать
+
+- ❌ Не комитить JSON-ключ в репозиторий (даже Private).
+- ❌ Не делать репозиторий публичным.
+- ❌ Не использовать локальный `firebase deploy` пока корпсеть не починена —
+  через GitHub Actions всегда работает.
