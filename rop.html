@@ -501,10 +501,14 @@ function renderHero(d){
  const meta=[]; if(a){meta.push(totalP+' партнёров'); if(a.groups_summary)meta.push(a.groups_summary.total+' групп');}
  let stats='',gline='',fcStats='';
  if(a){ const subAll=totalP!==inIR?`<div class="muted" style="font-size:var(--fs-11);margin-top:2px">в расчёте ИР: ${inIR}</div>`:'';
+ // TZ-A29: новый ИР отдела (avg ir_v2_week_total) + performers_v2
+ const irDept = (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : a.ir_total;
+ const perf = (typeof a.scope.performers_v2_count === 'number' && a.scope.performers_v2_count > 0) ? a.scope.performers_v2_count : a.scope.performers_count;
+ const under = (typeof a.scope.underperformers_v2_count === 'number' && a.scope.underperformers_v2_count > 0) ? a.scope.underperformers_v2_count : a.scope.underperformers_count;
  stats=`<div class="stat-grid">
- <div class="stat"><div class="s-cap">ИР отдела</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
- <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--ok)">${a.scope.performers_count}</b></div>
- <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--bad)">${a.scope.underperformers_count}</b></div>
+ <div class="stat"><div class="s-cap">ИР отдела</div><b style="color:${barColor(irDept)}">${irDept}%</b></div>
+ <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--ok)">${perf}</b></div>
+ <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--bad)">${under}</b></div>
  <div class="stat"><div class="s-cap">всего</div><b>${totalP}</b>${subAll}</div>
  </div>`;
  fcStats=fcHero(a.forecast);

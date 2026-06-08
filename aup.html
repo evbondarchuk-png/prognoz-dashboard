@@ -470,8 +470,10 @@ function renderHero(d){
  const total=a.scope.active_count!=null?a.scope.active_count:a.scope.members_count;
  const inIR=a.scope.members_count;
  const subPart=total!==inIR?`<div class="muted" style="font-size:var(--fs-11);margin-top:2px">в расчёте ИР: ${inIR}</div>`:'';
+ // TZ-A29: ir_v2_week_total приоритетно (если посчитан в агрегате компании)
+ const irCo = (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : a.ir_total;
  stats=`<div class="stat-grid">
- <div class="stat"><div class="s-cap">ИР компании</div><b style="color:${barColor(a.ir_total)}">${a.ir_total}%</b></div>
+ <div class="stat"><div class="s-cap">ИР компании</div><b style="color:${barColor(irCo)}">${irCo}%</b></div>
  <div class="stat"><div class="s-cap">отделов</div><b>${depts}</b></div>
  <div class="stat"><div class="s-cap">партнёров</div><b>${total}</b>${subPart}</div>
  <div class="stat"><div class="s-cap">выполнение</div><b style="color:var(--ok)">${a.scope.performance_pct}%</b></div>

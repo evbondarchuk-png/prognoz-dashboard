@@ -718,7 +718,13 @@ window.openManager=()=>{
 function renderMain(d){
  const f=d.funnel; const out=[];
  if(f&&f.buyer){
+ // TZ-A29: главное число — новый ir_v2_week (4 составляющих + взаимозаменяемость).
+ // Покуп/Прод по-прежнему из старой 8-этапной модели — для подсказки «где провал».
+ const irTotalNew = d.ir_v2?.week?.ir_total;
  const irHist=d.ir_history||{now:{total:f.ir_total,buyer:f.ir_buyer,seller:f.ir_seller},week_history:{buyer:[],seller:[],total:[]},month_history:{buyer:[],seller:[],total:[]}};
+ if (typeof irTotalNew === 'number') {
+   irHist.now = { ...irHist.now, total: irTotalNew };
+ }
  out.push(renderIrCard({ir_history:irHist, isPartner:true, periodLabel:f.period_label}));
  out.push(`<div class="card">${renderFunnelsPaired(f.buyer,f.seller)}</div>`);
  if(!(d.ai_coach&&d.ai_coach.motivator_text)){
