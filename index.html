@@ -718,14 +718,33 @@ window.openManager=()=>{
 function renderMain(d){
  const f=d.funnel; const out=[];
  if(f&&f.buyer){
- // TZ-A29: главное число — новый ir_v2_week (4 составляющих + взаимозаменяемость).
- // Покуп/Прод по-прежнему из старой 8-этапной модели — для подсказки «где провал».
- const irTotalNew = d.ir_v2?.week?.ir_total;
+ // TZ-A29: общий ИР и полосы Покуп/Прод — все три числа из новой 4-составляющей модели,
+ // чтобы шапка не расходилась со скобками. Fallback на старую модель если ir_v2 пуст.
+ const v2 = d.ir_v2?.week;
  const irHist=d.ir_history||{now:{total:f.ir_total,buyer:f.ir_buyer,seller:f.ir_seller},week_history:{buyer:[],seller:[],total:[]},month_history:{buyer:[],seller:[],total:[]}};
- if (typeof irTotalNew === 'number') {
-   irHist.now = { ...irHist.now, total: irTotalNew };
+ if (v2 && typeof v2.ir_total === 'number') {
+   irHist.now = { ...irHist.now,
+     total: v2.ir_total,
+     buyer: typeof v2.buyer_pct === 'number' ? v2.buyer_pct : irHist.now.buyer,
+     seller: typeof v2.seller_pct === 'number' ? v2.seller_pct : irHist.now.seller,
+   };
  }
  out.push(renderIrCard({ir_history:irHist, isPartner:true, periodLabel:f.period_label}));
+ // Скобки «ИР X% · …» у каждой стороны тоже из ir_v2, чтобы цифры совпадали с шапкой.
+ if (v2) {
+   const sideSt = (p) => p >= 70 ? 'green' : (p >= 50 ? 'yellow' : 'red');
+   const sideLbl = { green: 'в норме', yellow: 'в риске', red: 'провал' };
+   if (typeof v2.buyer_pct === 'number') {
+     f.buyer.ir = v2.buyer_pct;
+     f.buyer.ir_status = sideSt(v2.buyer_pct);
+     f.buyer.ir_status_label = sideLbl[f.buyer.ir_status];
+   }
+   if (typeof v2.seller_pct === 'number') {
+     f.seller.ir = v2.seller_pct;
+     f.seller.ir_status = sideSt(v2.seller_pct);
+     f.seller.ir_status_label = sideLbl[f.seller.ir_status];
+   }
+ }
  out.push(`<div class="card">${renderFunnelsPaired(f.buyer,f.seller)}</div>`);
  if(!(d.ai_coach&&d.ai_coach.motivator_text)){
  const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
