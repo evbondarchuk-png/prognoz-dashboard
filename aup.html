@@ -477,8 +477,8 @@ function renderHero(d){
  const subPart=total!==inIR?`<div class="muted" style="font-size:var(--fs-11);margin-top:2px">в расчёте ИР: ${inIR}</div>`:'';
  // TZ-A29: ir_v2_week_total приоритетно (если посчитан в агрегате компании)
  const irCo = (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : a.ir_total;
- const TIP_CO = 'ИР компании = среднее ИР v2 недельный по всем партнёрам компании (ТЗ-A29). У каждого ИР = 4 составляющих × 25%: C1 поток · C2 горячие в работе · C3 задатки в работе · C4 вал. Для C1 и C4 учитывается прошедшая часть месяца (pace). Цвет: ≥70% зелёный · 50–69% жёлтый · <50% красный.';
- const TIP_PERFC = 'Доля партнёров компании с недельным ИР v2 ≥ 70% (старая формула учитывала ir_total, осталась как fallback).';
+ const TIP_CO = 'недельный ИР v2: avg(ir_v2_week.ir_total) по отделам.';
+ const TIP_PERFC = 'count(ir_v2_week ≥ 70%) / total по партнёрам компании × 100.';
  stats=`<div class="stat-grid">
  <div class="stat"><div class="s-cap">ИР компании<span class="ir-info" data-tip="${esc(TIP_CO)}">i</span></div><b style="color:${barColor(irCo)}">${irCo}%</b></div>
  <div class="stat"><div class="s-cap">отделов</div><b>${depts}</b></div>
@@ -887,9 +887,9 @@ function _monthsAgoLabel(dateStr){
   const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
   return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}, ${months} мес назад`;
 }
-const IR_TIP_MAIN_AGG = 'Среднее ИР v2 недельный по всем партнёрам компании (ТЗ-A29). У каждого ИР = 4 составляющих × 25%: C1 поток · C2 горячие в работе · C3 задатки в работе · C4 вал. Покупатель/Продавец 50/50 внутри C1·C2; C3 и C4 общие. Для C1 и C4 учитывается прошедшая часть месяца (pace). Цвет: ≥70% зелёный · 50–69% жёлтый · <50% красный. Табы: Сейчас — недельный темп, Неделя — динамика 4 недель, Месяц — суммарно с cap по каждой составляющей.';
-const IR_TIP_SIDE_AGG = 'Среднее ИР покупательской / продавческой стороны по партнёрам компании. Сторона = (C1 этой стороны + C2 этой стороны + C3 + C4) / 4. C3 (задатки) и C4 (вал) — общие, считаются в каждой стороне целиком.';
-const IR_TIP_TABLE = 'Колонка ИР = средний недельный ИР v2 каждого отдела (ТЗ-A29). Внутри отдела — среднее ИР v2 партнёров. Цвет числа: ≥70% зелёный · 50–69% жёлтый · <50% красный.';
+const IR_TIP_MAIN_AGG = 'недельный ИР v2 компании: avg(ir_v2_week.ir_total) по отделам (агрегат по партнёрам). Таб Месяц: avg(ir_v2_month).';
+const IR_TIP_SIDE_AGG = 'недельный ИР стороны: avg((C1.side + C2.side + C3 + C4)/4) по партнёрам компании.';
+const IR_TIP_TABLE = 'недельный ИР v2 отдела: agg.ir_v2_week_total (avg по партнёрам отдела).';
 function renderIrCard(opts){
   // opts: { ir_history, isPartner, periodLabel }
   const h=opts.ir_history;
