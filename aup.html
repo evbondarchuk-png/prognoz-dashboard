@@ -478,12 +478,13 @@ function renderHero(d){
  // TZ-A29: ir_v2_week_total приоритетно (если посчитан в агрегате компании)
  const irCo = (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : a.ir_total;
  const TIP_CO = 'недельный ИР v2: avg(ir_v2_week.ir_total) по отделам.';
- const TIP_PERFC = 'count(ir_v2_week ≥ 70%) / total по партнёрам компании × 100.';
+ const TIP_PERFC = 'count(ir_v2_week ≥ 70%) / count(в расчёте ИР) × 100. Доля партнёров с недельным ИР v2 ≥ 70% — не % выполнения плана вала.';
+ const perfPct = (typeof a.scope.performance_pct_v2 === 'number' && (a.scope.performers_v2_count || a.scope.underperformers_v2_count)) ? a.scope.performance_pct_v2 : a.scope.performance_pct;
  stats=`<div class="stat-grid">
  <div class="stat"><div class="s-cap">ИР компании<span class="ir-info" data-tip="${esc(TIP_CO)}">i</span></div><b style="color:${barColor(irCo)}">${irCo}%</b></div>
  <div class="stat"><div class="s-cap">отделов</div><b>${depts}</b></div>
  <div class="stat"><div class="s-cap">партнёров</div><b>${total}</b>${subPart}</div>
- <div class="stat"><div class="s-cap">выполнение<span class="ir-info" data-tip="${esc(TIP_PERFC)}">i</span></div><b style="color:var(--ok)">${a.scope.performance_pct}%</b></div>
+ <div class="stat"><div class="s-cap">в норме ≥70%<span class="ir-info" data-tip="${esc(TIP_PERFC)}">i</span></div><b style="color:var(--ok)">${perfPct}%</b></div>
  </div>`;
  fcStats=fcHero(a.forecast); }
  document.getElementById('hero').innerHTML=`<div class="card">
