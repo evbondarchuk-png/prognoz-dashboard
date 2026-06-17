@@ -270,7 +270,7 @@
 .team-tab.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(20,30,55,.08)}
 .team-panel{display:none} .team-panel.active{display:block}
 .scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.team-table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--fs-13)}
+.team-table{width:100%;min-width:760px;border-collapse:separate;border-spacing:0;font-size:var(--fs-13)}
 .team-table th{text-align:right;padding:var(--sp-2) var(--sp-3);font-size:var(--fs-11);font-weight:var(--fw-sb);color:var(--muted);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--line);white-space:nowrap}
 .team-table th:first-child{text-align:left} .team-table th.center{text-align:center}
 .team-table td{padding:var(--sp-3);border-bottom:1px solid var(--surface-3,var(--line));vertical-align:middle;text-align:right;white-space:nowrap}
@@ -531,9 +531,9 @@ function renderHero(d){
  const TIP_PERF = 'count(ir_v2_week ≥ 70%) по партнёрам группы.';
  const TIP_UNDER = 'count(ir_v2_week < 70%) по партнёрам группы.';
  stats=`<div class="stat-grid">
- <div class="stat"><div class="s-cap">ИР группы<span class="ir-info" data-tip="${esc(TIP_GROUP)}">i</span></div><b style="color:${barColor(irGroup)}">${irGroup}%</b></div>
- <div class="stat"><div class="s-cap">выполняют ≥70%<span class="ir-info" data-tip="${esc(TIP_PERF)}">i</span></div><b style="color:var(--ok)">${perf}</b></div>
- <div class="stat"><div class="s-cap">в зоне риска<span class="ir-info" data-tip="${esc(TIP_UNDER)}">i</span></div><b style="color:var(--bad)">${under}</b></div>
+ <div class="stat"><div class="s-cap">ИР группы</div><b style="color:${barColor(irGroup)}">${irGroup}%</b></div>
+ <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--ok)">${perf}</b></div>
+ <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--bad)">${under}</b></div>
  <div class="stat"><div class="s-cap">всего</div><b>${totalP}</b>${subAll}</div>
  </div>`;
  fcStats=fcHero(a.forecast); }
@@ -570,13 +570,13 @@ window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage');
 function aggSide(side,fs,icon){ if(!fs)return'';
  return `<div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
  <div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>
- <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}" data-tip="${esc(IR_TIP_SIDE_AGG)}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
+ <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
  <div class="fs-legend"><span><b>факт</b> группы</span><span>/ <b>план</b> группы</span><span>· % выполнения</span></div>
  ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}`;
 }
 /* Парная сетка для агрегатов: i-й этап покуп ↔ i-й этап прод выровнены по высоте */
 function renderAggFunnelsPaired(buyer,seller,factLbl){
- const head=(fs,icon,side)=>`<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}" data-tip="${esc(IR_TIP_SIDE_AGG)}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div><div class="fs-legend"><span><b>факт</b> ${factLbl}</span><span>/ <b>план</b> ${factLbl}</span><span>· % выполнения</span></div></div>`;
+ const head=(fs,icon,side)=>`<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div><div class="fs-legend"><span><b>факт</b> ${factLbl}</span><span>/ <b>план</b> ${factLbl}</span><span>· % выполнения</span></div></div>`;
  const bs=(buyer.stages||[]).map(st=>aggStageCard('buyer',st));
  const ss=(seller.stages||[]).map(st=>aggStageCard('seller',st));
  const rows=Math.max(bs.length,ss.length);
@@ -794,7 +794,7 @@ function renderTeam(d){
    </div>
    <div class="team-panel active" data-team-panel="common">
      <div class="scroll-wrap"><table class="team-table">
-       <thead><tr><th>Партнёр</th><th>ИР <span class="ir-info" data-tip="${esc(IR_TIP_TABLE)}">i</span> ↓</th><th>План вала</th><th>Факт вала</th><th>Прогноз</th><th class="center">Статус</th><th></th></tr></thead>
+       <thead><tr><th>Партнёр</th><th>ИР  ↓</th><th>План вала</th><th>Факт вала</th><th>Прогноз</th><th class="center">Статус</th><th></th></tr></thead>
        <tbody>${sorted.map(teamRowCommon).join('')}</tbody>
      </table></div>
    </div>
@@ -986,7 +986,7 @@ function _monthsAgoLabel(dateStr){
   const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
   return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}, ${months} мес назад`;
 }
-const IR_TIP_MAIN_AGG = 'недельный ИР v2 группы: avg(ir_v2_week.ir_total) по партнёрам. Таб Месяц: avg(ir_v2_month.ir_total).';
+const IR_TIP_MAIN_AGG = 'Индекс развития группы — насколько команда выполняет план. 100% = все четыре направления работы (поток, горячие, задатки, валовая выручка) на плане. Среднее по партнёрам.';
 const IR_TIP_SIDE_AGG = 'недельный ИР стороны: avg((C1.side + C2.side + C3 + C4)/4) по партнёрам.';
 const IR_TIP_TABLE = 'недельный ИР v2 партнёра: (C1+C2+C3+C4)/4, cap 100%.';
 function renderIrCard(opts){
@@ -997,7 +997,7 @@ function renderIrCard(opts){
   const dataAttr = encodeURIComponent(JSON.stringify({h, isPartner:!!opts.isPartner, periodLabel}));
   return `<div class="card ir-card" data-ir="${dataAttr}">
     <div class="ir-card-head">
-      <div class="ir-card-title">Индекс развития · ${esc(periodLabel)}<span class="ir-info" data-tip="${esc(IR_TIP_MAIN_AGG)}">i</span></div>
+      <div class="ir-card-title">Индекс развития · ${esc(periodLabel)}<span class="ir-info" data-tip="${esc(IR_TIP_MAIN_AGG)}">?</span></div>
       <div class="ir-tabs">
         <button class="ir-tab active" data-mode="now">Сейчас</button>
         <button class="ir-tab" data-mode="week">Неделя</button>
@@ -1011,14 +1011,14 @@ function renderIrCard(opts){
       </div>
       <div class="ir-channels">
         <div class="ir-channel-row">
-          <div class="ir-channel-name">🛒 Покупатель<span class="ir-info" data-tip="${esc(IR_TIP_SIDE_AGG)}">i</span></div>
+          <div class="ir-channel-name">🛒 Покупатель</div>
           <div class="ir-channel-bar"><div class="ir-channel-fill buyer" style="width:${Math.min(h.now.buyer,100)}%"></div></div>
           <div class="ir-channel-pct">${h.now.buyer}%</div>
           <div class="ir-channel-delta hidden">·</div>
           <svg class="ir-channel-spark hidden" viewBox="0 0 70 18" preserveAspectRatio="none" data-channel="buyer"></svg>
         </div>
         <div class="ir-channel-row">
-          <div class="ir-channel-name">🏘 Продавец<span class="ir-info" data-tip="${esc(IR_TIP_SIDE_AGG)}">i</span></div>
+          <div class="ir-channel-name">🏘 Продавец</div>
           <div class="ir-channel-bar"><div class="ir-channel-fill seller" style="width:${Math.min(h.now.seller,100)}%"></div></div>
           <div class="ir-channel-pct">${h.now.seller}%</div>
           <div class="ir-channel-delta hidden">·</div>

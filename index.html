@@ -659,13 +659,13 @@ function stageCard(side,st){
 function funnelSide(side,fs,icon){ if(!fs)return'';
  return `<div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
  <div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>
- <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}" data-tip="${esc(IR_TIP_SIDE)}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
+ <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
  <div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div>
  ${(fs.stages||[]).map(st=>stageCard(side,st)).join('')}</div>`;
 }
 /* Парная сетка: каждый i-й этап покупателя в одной строке grid с i-м этапом продавца → align-items:stretch выровняет высоту автоматически */
 function renderFunnelsPaired(buyer,seller){
- const head=(fs,icon,side)=>`<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}" data-tip="${esc(IR_TIP_SIDE)}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div><div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div></div>`;
+ const head=(fs,icon,side)=>`<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div><div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div></div>`;
  const bs=(buyer.stages||[]).map(st=>stageCard('buyer',st));
  const ss=(seller.stages||[]).map(st=>stageCard('seller',st));
  const rows=Math.max(bs.length,ss.length);
@@ -1184,16 +1184,21 @@ function renderStage(stage){
   const {label,hint,fact_label,forecast,forecast_label,plan_label,fact,plan,is_revenue}=stage;
   const status=calcStatus(fact,forecast,plan,is_revenue);
   const hintHtml=hint?`<span class="funnel-hint">${esc(hint)}</span>`:'';
+  // TZ-A30 §2.2: для денежного этапа (Валовая выручка) добавляем ₽ ко всем числам,
+  // чтобы не путалось «257.8» = рубли с «прогноз +259к» = тысячи.
+  const u = is_revenue ? ' ₽' : '';
+  const labFact = esc(fact_label) + u;
+  const labPlan = esc(plan_label) + u;
   let numbers;
   // TZ-A26 уточнение: прогноз = ПРИРАЩЕНИЕ (forecast - fact, «+X к»), не итог.
   // Если приращения нет (forecast == fact или null) — показываем только факт и план.
   const showForecast = forecast!=null && forecast > fact;
   if(showForecast){
     const fmtDelta=(d)=>{ const a=Math.abs(d); if(a>=1000000) return (d/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=10000) return Math.round(d/1000)+'к'; if(a>=1000) return (d/1000).toFixed(1).replace('.',',')+' тыс'; return String(Math.round(d)); };
-    const deltaLabel='+'+fmtDelta(forecast - fact);
-    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+    const deltaLabel='+'+fmtDelta(forecast - fact) + u;
+    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${labFact}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${labPlan}</span></span>`;
   } else {
-    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${labFact}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${labPlan}</span></span>`;
   }
   return `<div class="funnel-stage ${status}"><div class="funnel-head"><div class="funnel-label">${esc(label)} ${hintHtml}</div><div class="fp-numbers">${numbers}</div></div>${renderFpBar(stage)}</div>`;
 }
@@ -1226,8 +1231,8 @@ function _monthsAgoLabel(dateStr){
   const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
   return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}, ${months} мес назад`;
 }
-const IR_TIP_MAIN = 'Сейчас/Неделя — недельный ИР v2: (C1+C2+C3+C4)/4, cap общий 100%. C1,C4 = факт/(план×pace), C2,C3 = факт/план(остаток). Месяц — месячный ИР v2: те же 4 компонента, каждый cap 100%, без pace.';
-const IR_TIP_SIDE = 'недельный ИР стороны: (C1.side + C2.side + C3 + C4) / 4. C3,C4 общие.';
+// TZ-A30 §2.3: один «?» на блоке ИР с человеческим текстом, поформульные ⓘ убраны.
+const IR_TIP_MAIN = 'Индекс развития — насколько ты на пути к плану. 100% = выполнил всё, что нужно за этот период. Считается по 4 направлениям работы: поток клиентов, горячие, задатки, валовая выручка.';
 function renderIrCard(opts){
   // opts: { ir_history, isPartner, periodLabel }
   const h=opts.ir_history;
@@ -1236,7 +1241,7 @@ function renderIrCard(opts){
   const dataAttr = encodeURIComponent(JSON.stringify({h, isPartner:!!opts.isPartner, periodLabel}));
   return `<div class="card ir-card" data-ir="${dataAttr}">
     <div class="ir-card-head">
-      <div class="ir-card-title">Индекс развития · ${esc(periodLabel)}<span class="ir-info" data-tip="${esc(IR_TIP_MAIN)}">i</span></div>
+      <div class="ir-card-title">Индекс развития · ${esc(periodLabel)}<span class="ir-info" data-tip="${esc(IR_TIP_MAIN)}">?</span></div>
       <div class="ir-tabs">
         <button class="ir-tab active" data-mode="now">Сейчас</button>
         <button class="ir-tab" data-mode="week">Неделя</button>
@@ -1250,14 +1255,14 @@ function renderIrCard(opts){
       </div>
       <div class="ir-channels">
         <div class="ir-channel-row">
-          <div class="ir-channel-name">🛒 Покупатель<span class="ir-info" data-tip="${esc(IR_TIP_SIDE)}">i</span></div>
+          <div class="ir-channel-name">🛒 Покупатель</div>
           <div class="ir-channel-bar"><div class="ir-channel-fill buyer" style="width:${Math.min(h.now.buyer,100)}%"></div></div>
           <div class="ir-channel-pct">${h.now.buyer}%</div>
           <div class="ir-channel-delta hidden">·</div>
           <svg class="ir-channel-spark hidden" viewBox="0 0 70 18" preserveAspectRatio="none" data-channel="buyer"></svg>
         </div>
         <div class="ir-channel-row">
-          <div class="ir-channel-name">🏘 Продавец<span class="ir-info" data-tip="${esc(IR_TIP_SIDE)}">i</span></div>
+          <div class="ir-channel-name">🏘 Продавец</div>
           <div class="ir-channel-bar"><div class="ir-channel-fill seller" style="width:${Math.min(h.now.seller,100)}%"></div></div>
           <div class="ir-channel-pct">${h.now.seller}%</div>
           <div class="ir-channel-delta hidden">·</div>
