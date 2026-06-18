@@ -913,16 +913,20 @@ function _statusBadge(m){
   // Новички (stazh<1) и Группа 0 не входят в стрик по правилу.
   if(m.is_group_zero) return '<span class="status-badge-team g0" title="Группа 0: ИР и план не учитываются в группе, факт-вал суммируется (болезнь / декрет / отпуск).">🛌 группа 0</span>';
   if(typeof m.stazh_months==='number' && m.stazh_months<1) return '<span class="status-badge-team newbie" title="Новичок: стаж < 1 мес. Стрики Н начнут считаться с 1-го числа первого полного месяца.">🌱 новичок</span>';
-  // Эскалация по weeks_in_risk_streak (Н1–Н4). 0 = норма. Тултип — детализация по плохим неделям.
+  // TZ-A30 ред.3 (Егор 18.06): «плохая неделя» = накопительный месячный ИР < target × tolerance.
+  // Тултип показывает накопительный факт vs целевая доля (нед N: факт X% / нужно ≥ Y%).
   const w=m.weeks_in_risk_streak||0;
   const monRu=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-  const bad=(m.weeks_in_risk_examined||[]).filter(x=>x&&x.isRisk).map(x=>{const dt=x.date.split('-');return 'нед '+parseInt(dt[2])+' '+monRu[parseInt(dt[1])-1]+': '+x.ir+'%';});
-  const detail=bad.length?'  '+bad.join(' · ')+'. Текущая неделя в стрик не входит.':'';
+  const bad=(m.weeks_in_risk_examined||[]).filter(x=>x&&x.isRisk).map(x=>{
+    const dt=x.date.split('-');
+    return `нед ${x.weekN} (${parseInt(dt[2])} ${monRu[parseInt(dt[1])-1]}): ${x.irMonth}% / нужно ≥${x.threshold}%`;
+  });
+  const detail=bad.length?'  '+bad.join(' · ')+'. Текущий день в стрик не входит — учитываются только границы недель.':'';
   if(w===0) return '<span class="status-badge-team ok">норма</span>';
-  if(w===1) return `<span class="status-badge-team w1" title="1 неделя ниже нормы — флаг.${esc(detail)}">Н1</span>`;
-  if(w===2) return `<span class="status-badge-team w2" title="2 недели подряд ниже нормы — встреча с менеджером.${esc(detail)}">Н2</span>`;
-  if(w===3) return `<span class="status-badge-team w3" title="3 недели подряд ниже нормы — нужен план выхода.${esc(detail)}">Н3</span>`;
-  return `<span class="status-badge-team w4" title="4+ недель подряд ниже нормы — эскалация РОПу.${esc(detail)}">Н4</span>`;
+  if(w===1) return `<span class="status-badge-team w1" title="1 неделя ниже целевого темпа — флаг.${esc(detail)}">Н1</span>`;
+  if(w===2) return `<span class="status-badge-team w2" title="2 недели подряд ниже целевого темпа — встреча с менеджером.${esc(detail)}">Н2</span>`;
+  if(w===3) return `<span class="status-badge-team w3" title="3 недели подряд ниже целевого темпа — нужен план выхода.${esc(detail)}">Н3</span>`;
+  return `<span class="status-badge-team w4" title="4+ недель подряд ниже целевого темпа — эскалация РОПу.${esc(detail)}">Н4</span>`;
 }
 function _statusBarCls(m){
   const w=m.weeks_in_risk_streak||0;
@@ -931,10 +935,13 @@ function _statusBarCls(m){
   return 'bad';
 }
 function weekRiskRow(m){
-  // Строка для таба «В риске (неделя)»: ФИО, бейдж стрика, список плохих недель, прогноз
+  // TZ-A30 ред.3: каждая pill показывает накопительный факт vs целевую долю.
   const w=m.weeks_in_risk_streak||0;
   const monRu=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-  const bad=(m.weeks_in_risk_examined||[]).filter(x=>x&&x.isRisk).map(x=>{const dt=x.date.split('-');return `<span class="wk-pill bad">${parseInt(dt[2])} ${monRu[parseInt(dt[1])-1]}: ${x.ir}%</span>`;});
+  const bad=(m.weeks_in_risk_examined||[]).filter(x=>x&&x.isRisk).map(x=>{
+    const dt=x.date.split('-');
+    return `<span class="wk-pill bad" title="на ${parseInt(dt[2])} ${monRu[parseInt(dt[1])-1]} (нед ${x.weekN}): выполнено ${x.irMonth}% месячного плана, нужно ≥${x.threshold}%">нед ${x.weekN}: ${x.irMonth}% / ${x.target}%</span>`;
+  });
   const forecast=m.forecast_month||0;
   return `<tr class="t-row" onclick="location.href='${esc(m.drill_url||'#')}'">
     <td><div class="t-group-cell">
