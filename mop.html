@@ -110,6 +110,12 @@
  .tile-modal-close{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:0 4px}
  .tile-modal-close:hover{color:var(--ink)}
 
+ /* TZ-A30: Группа 0 — отдельный блок внизу таба «Команда» */
+ .g0-block{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px dashed var(--line)}
+ .g0-head{font-size:var(--fs-13);font-weight:var(--fw-eb);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+ .g0-note{font-size:var(--fs-11);color:var(--muted);background:var(--surface-2);border-radius:var(--r-md);padding:8px 12px;border-left:3px solid #cbd5e1}
+ .g0-pill{display:inline-block;font-size:10px;font-weight:var(--fw-eb);background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;padding:1px 7px;margin-left:6px;cursor:help;vertical-align:middle}
+
  /* верхние табы */
  .rtab-bar{display:flex;gap:8px;margin-bottom:18px;padding:7px;background:#f4f7fb;border:1px solid var(--line);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:56px;z-index:90}
  .rtab{font-size:var(--fs-14);padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:var(--fw-sb);white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
@@ -864,6 +870,20 @@ function _statusBarCls(m){
   if(w<=1) return 'warn';
   return 'bad';
 }
+function g0Row(m){
+  // Строка для блока «Группа 0»: ИР, факт-вал, прогноз. Без плана/статуса — их у g0 нет.
+  const ir=m.ir_month||0; const fact=m.fact_month||0; const forecast=m.forecast_month||0;
+  return `<tr class="t-row" onclick="location.href='${esc(m.drill_url||'#')}'">
+    <td><div class="t-group-cell">
+      <span class="t-status-bar" style="background:#cbd5e1"></span>
+      <div class="t-group-avatar">${esc(_avatar(m.name))}</div>
+      <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')} <span class="g0-pill" title="Не учитывается в ИР и плане группы (болезнь / декрет / длительный отпуск). Факт-вал суммируется.">🛌 группа 0</span></div>
+        <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}</div></div></div></td>
+    <td><span class="t-ir ${_irStatus(ir)}">${ir}%</span></td>
+    <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span></div></td>
+    <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span></div></td>
+    <td class="center"><span class="t-arrow">›</span></td></tr>`;
+}
 function teamRowCommon(m,idx){
   const ir=m.ir_month||0;
   const plan=m.plan_month||0;
@@ -925,8 +945,12 @@ function teamRowMonth(m){
 function renderTeam(d){
  const tc=d.team_cards; const members=(tc&&tc.members)||[];
  if(!members.length){ document.getElementById('screen-team').innerHTML='<div class="banner">В группе нет активных партнёров.</div>'; return; }
- // Сортировка по ИР убывающе
- const sorted=[...members].sort((a,b)=>(b.ir_month||0)-(a.ir_month||0));
+ // TZ-A30 §4 + правило «Группа 0»: разделяем основную команду и блок «Группа 0»
+ const main=members.filter(m=>!m.is_group_zero);
+ const g0=members.filter(m=>m.is_group_zero);
+ // Сортировка по ИР убывающе (для основного), по имени (для g0)
+ const sorted=[...main].sort((a,b)=>(b.ir_month||0)-(a.ir_month||0));
+ const g0sorted=[...g0].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
  // Месячные заголовки: 5 прошлых + текущий
  const now=new Date(); const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
  const monthHdrs=[];
@@ -948,6 +972,15 @@ function renderTeam(d){
        <thead><tr><th>Партнёр</th><th>ИР  ↓</th><th>План вала</th><th>Факт вала</th><th>Прогноз</th><th class="center">Статус</th><th></th></tr></thead>
        <tbody>${sorted.map(teamRowCommon).join('')}</tbody>
      </table></div>
+     ${g0sorted.length?`
+     <div class="g0-block">
+       <div class="g0-head">🛌 Группа 0 · ${g0sorted.length} ${g0sorted.length===1?'партнёр':(g0sorted.length<5?'партнёра':'партнёров')}</div>
+       <div class="g0-note">Не в счёте ИР и плана группы (болезнь / декрет / длительный отпуск). Их факт-вал и сделки суммируются в общую выручку группы.</div>
+       <div class="scroll-wrap" style="margin-top:10px"><table class="team-table">
+         <thead><tr><th>Партнёр</th><th>ИР  ↓</th><th>Факт вала</th><th>Прогноз</th><th></th></tr></thead>
+         <tbody>${g0sorted.map(g0Row).join('')}</tbody>
+       </table></div>
+     </div>`:''}
    </div>
    <div class="team-panel" data-team-panel="weeks">
      <div class="muted" style="padding:var(--sp-5);text-align:center">Эскалация Н1–Н4 появится после пересчёта недельных снимков. Пока — смотри статус «в риске/провал» в табе «Общее».</div>
