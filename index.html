@@ -142,6 +142,14 @@
  .profile{display:flex;align-items:flex-start;gap:14px}
  .ava{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2b6cb0);display:flex;align-items:center;justify-content:center;font-size:var(--fs-22);font-weight:var(--fw-eb);color:#fff;flex-shrink:0}
  .role-tag{display:inline-block;font-size:var(--fs-11);font-weight:var(--fw-b);padding:2px 8px;border-radius:6px;background:var(--brand-soft);color:var(--brand);margin-bottom:4px}
+ /* TZ-A30 §3: бейджи Н1-Н4 и Группа 0 в шапке партнёра */
+ .n-risk-badge{display:inline-block;font-size:var(--fs-11);font-weight:var(--fw-eb);padding:2px 8px;border-radius:6px;margin-left:6px;cursor:help;vertical-align:middle}
+ .n-risk-1{background:#fef3c7;color:#92500e;border:1px solid #fcd34d}
+ .n-risk-2{background:#fed7aa;color:#9a3412;border:1px solid #fb923c}
+ .n-risk-3{background:#fecaca;color:#991b1b;border:1px solid #f87171}
+ .n-risk-4{background:#fee2e2;color:#7f1d1d;border:1px solid #dc2626;animation:n4-pulse 1.8s infinite}
+ @keyframes n4-pulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.45)}50%{box-shadow:0 0 0 5px rgba(220,38,38,0)}}
+ .g0-pill{display:inline-block;font-size:10px;font-weight:var(--fw-eb);background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;padding:1px 7px;margin-left:6px;cursor:help;vertical-align:middle}
  .hero-name{font-size:var(--fs-20);font-weight:var(--fw-eb);line-height:1.15}
  .hero-sub{font-size:var(--fs-12);color:var(--muted);margin-top:3px}
  .sf-mini{margin-top:10px;display:inline-flex;align-items:baseline;gap:8px;background:var(--surface-2);border-radius:10px;padding:8px 14px;cursor:pointer}
@@ -597,6 +605,8 @@ function renderHero(d){
  </div>
  <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
  <span class="role-tag">${esc(u.role_label||'Партнёр')}</span>
+ ${(()=>{const s=d.n_risk&&d.n_risk.streak; if(!s||s<1) return ''; const lvl='Н'+Math.min(s,4); const tip=s>=4?'4 недели подряд ниже нормы — эскалация РОПу':s===3?'3 недели подряд ниже нормы — нужен план выхода':s===2?'2 недели подряд ниже нормы — встреча с менеджером':'1 неделя ниже нормы — флаг';return `<span class="n-risk-badge n-risk-${Math.min(s,4)}" title="${esc(tip)}">${lvl}</span>`;})()}
+ ${u.is_group_zero?`<span class="g0-pill" title="Группа 0: твой ИР и план не учитываются в группе/отделе/компании. Факт-вал суммируется. Обычно — болезнь / декрет / длительный отпуск.">🛌 группа 0</span>`:''}
  <div class="hero-name">${esc(u.name)}</div>
  <div class="hero-sub">${meta.join(' · ')}</div>
  ${sfMini}</div></div>
