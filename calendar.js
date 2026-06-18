@@ -197,6 +197,7 @@ export async function mountCalendar(rootEl, opts) {
 
   rootEl.innerHTML = '<div class="cal-root"><div class="cal-mount">Загрузка задач…</div></div>';
   const mount = rootEl.querySelector('.cal-mount');
+  console.log('[calendar] mountCalendar called', { ownerCode, mode });
 
   const state = {
     view: 'week',
@@ -216,11 +217,21 @@ export async function mountCalendar(rootEl, opts) {
 
   // подписка на /tasks
   const tref = query(ref(db, '/tasks'), orderByChild('assignee_code'), equalTo(ownerCode));
+  console.log('[calendar] subscribing to /tasks where assignee_code=' + ownerCode);
   onValue(tref, (snap) => {
     const v = snap.val() || {};
     state.tasks = {};
     for (const id of Object.keys(v)) state.tasks[id] = adaptTaskFromRtdb(id, v[id]);
-    render(state, mount);
+    console.log('[calendar] tasks loaded:', Object.keys(state.tasks).length);
+    try {
+      render(state, mount);
+    } catch (e) {
+      console.error('[calendar] render failed', e);
+      mount.innerHTML = '<div style="padding:20px;color:#dc2626">Ошибка рендера: ' + escHtml(e.message || String(e)) + '</div>';
+    }
+  }, (err) => {
+    console.error('[calendar] onValue error', err);
+    mount.innerHTML = '<div style="padding:20px;color:#dc2626">Не удалось загрузить задачи: <code>' + escHtml(err.message || String(err)) + '</code><br><small>Возможно RTDB rules не разрешают чтение /tasks с фильтром. Проверь правила базы.</small></div>';
   });
 }
 
