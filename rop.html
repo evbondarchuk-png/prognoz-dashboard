@@ -440,6 +440,8 @@
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+import { mountCalendar } from './calendar.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
@@ -1001,24 +1003,16 @@ function taskItem(t){
  <div style="display:flex;align-items:center;gap:4px">${actions}</div></div>`;
 }
 function renderTasks(d){
- const out=[]; const tb=d.tasks, nb=d.notifications;
- if(nb&&nb.recent&&nb.recent.length){
- const items=nb.recent.slice(0,5).map(n=>`<div class="notif ${n.is_read?'':'unread'}"><span class="ni-icon">${esc(n.icon||'🔔')}</span>
- <div><div class="ni-title">${esc(n.title)}</div><div class="muted">${esc(n.created_at_label||'')}</div></div></div>`).join('');
- const ma=nb.unread_count?`<span class="nt-markall" id="notifMarkAll" onclick="markAllRead(false)">✓ отметить все</span>`:'';
- out.push(`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
- <div class="section-title" style="margin:0">🔔 Уведомления<span id="notifMeta">${nb.unread_count?` · ${nb.unread_count} новых`:''}</span></div>${ma}</div>${items}</div>`);
+ const root = document.getElementById('screen-tasks');
+ if (root && !root.dataset.calMounted) {
+   root.dataset.calMounted = '1';
+   try {
+     const db = getDatabase(getApp());
+     mountCalendar(root, { db, ownerCode: CTX.target, mode: 'rop' });
+   } catch (e) { console.error('mountCalendar failed', e); root.innerHTML = '<div class="banner">Календарь не запустился: '+esc(e.message||e)+'</div>'; }
  }
- const grp=(arr,title,cls)=>(arr&&arr.length)?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
- const g=(tb&&tb.groups)||{};
- const body=grp(g.expired,'⚠ Просрочено','tg-red')+grp(g.today,'Срочно сегодня','tg-red')+grp(g.week,'На этой неделе','tg-amber')+grp(g.later,'Позже','tg-gray')+grp(g.done_recent,'Сделано за 14 дней','tg-green');
- out.push(`<div class="card"><div class="section-title">📋 Задачи</div>
- <button class="add-task-btn" onclick="openCreateTask()">➕ Поставить задачу</button>
- ${body||'<div class="muted">Нет активных задач.</div>'}</div>`);
- out.push(helpCard());
- document.getElementById('screen-tasks').innerHTML=out.join('');
  const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
- document.getElementById('taskDot').textContent = cnt?' '+cnt:'';
+ const dot = document.getElementById('taskDot'); if (dot) dot.textContent = cnt?' '+cnt:'';
 }
 
 function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups(d); renderTasks(d); window.initIrCards&&window.initIrCards(); }
