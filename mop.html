@@ -86,6 +86,30 @@
  .stat .s-cap{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb)}
  .stat b{font-size:var(--fs-22);font-weight:var(--fw-eb);display:block;line-height:1.2;margin-top:2px}
 
+ /* TZ-A30 §1: шапка-плитки в кабинетах руководителей */
+ .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+ @media(min-width:620px){.tiles{grid-template-columns:repeat(4,1fr)}}
+ .tile{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 13px;cursor:pointer;transition:.15s;position:relative;display:flex;flex-direction:column;min-height:122px}
+ .tile:hover{border-color:var(--brand);box-shadow:0 4px 12px rgba(20,30,55,.08);transform:translateY(-1px)}
+ .tile-cap{font-size:var(--fs-11);color:var(--muted);font-weight:600}
+ .tile-val{font-size:var(--fs-22);font-weight:var(--fw-eb);line-height:1.1;margin-top:6px}
+ .tile-val .tile-sub-num{font-size:var(--fs-13);color:var(--muted);font-weight:600}
+ .tile-sub{font-size:var(--fs-11);color:var(--muted);margin-top:auto;padding-top:8px}
+ .tile .chev{position:absolute;top:11px;right:11px;color:var(--muted-2);font-size:12px}
+ .tile-spark{margin-top:8px;height:26px;width:100%}
+ .tile-bars{display:flex;gap:3px;align-items:flex-end;height:30px;margin-top:8px}
+ .tile-bars span{flex:1;border-radius:3px 3px 0 0;min-height:3px}
+ .tile-seg{display:flex;height:8px;border-radius:6px;overflow:hidden;margin-top:9px;background:#eef0f4}
+ .tile-seg i{display:block;height:100%}
+ /* модалка детали */
+ .tile-modal{position:fixed;inset:0;background:rgba(20,30,55,.45);display:none;align-items:center;justify-content:center;z-index:200;padding:18px}
+ .tile-modal.on{display:flex}
+ .tile-modal-card{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;padding:20px 22px;box-shadow:0 12px 40px rgba(20,30,55,.2)}
+ .tile-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+ .tile-modal-ttl{font-size:var(--fs-16);font-weight:var(--fw-eb)}
+ .tile-modal-close{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:0 4px}
+ .tile-modal-close:hover{color:var(--ink)}
+
  /* верхние табы */
  .rtab-bar{display:flex;gap:8px;margin-bottom:18px;padding:7px;background:#f4f7fb;border:1px solid var(--line);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:56px;z-index:90}
  .rtab{font-size:var(--fs-14);padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:var(--fw-sb);white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
@@ -400,6 +424,15 @@
 
 <div class="modal-overlay" id="modalMgr"><div class="modal" id="modalMgrBody"></div></div>
 <div class="modal-overlay" id="modalTask"><div class="modal" id="modalTaskBody"></div></div>
+<div class="tile-modal" id="tileModal" onclick="if(event.target.id==='tileModal')closeTileModal()">
+  <div class="tile-modal-card">
+    <div class="tile-modal-head">
+      <div class="tile-modal-ttl"></div>
+      <button class="tile-modal-close" onclick="closeTileModal()">×</button>
+    </div>
+    <div class="tile-modal-body"></div>
+  </div>
+</div>
 
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
@@ -515,6 +548,123 @@ window.openManager=()=>{
 };
 function helpCard(){ return `<button class="help-btn" onclick="openManager()">💬 Запросить помощь управляющего партнёра</button>`; }
 
+/* ─── TZ-A30 §1: шапка-плитки ─── */
+function _spark(values,color){
+ const arr=(values||[]).filter(v=>typeof v==='number');
+ if(arr.length<2) return '';
+ const N=arr.length, max=Math.max(...arr,1);
+ const W=120,H=26;
+ const pts=arr.map((v,i)=>[((W/(N-1))*i).toFixed(1),(H-2-(v/max)*(H-4)).toFixed(1)]);
+ const line=pts.map((p,i)=>(i?'L':'M')+p[0]+' '+p[1]).join(' ');
+ const dots=pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2" fill="${color}"/>`).join('');
+ return `<svg class="tile-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${line}" fill="none" stroke="${color}" stroke-width="2"/>${dots}</svg>`;
+}
+function _stazhBars(members){
+ // 3 столбика: 6+ лет (≥72 мес) · 4–6 (48-71) · 0–3 (<48)
+ let s72=0,s48=0,s0=0;
+ (members||[]).forEach(m=>{
+  const v=typeof m.stazh_months==='number'?m.stazh_months:0;
+  if(v>=72) s72++; else if(v>=48) s48++; else s0++;
+ });
+ const mx=Math.max(s72,s48,s0,1);
+ const bar=(v,c)=>`<span style="height:${Math.max(6,Math.round(v/mx*100))}%;background:${c}"></span>`;
+ return {html:`<div class="tile-bars">${bar(s72,'var(--brand)')}${bar(s48,'var(--muted-2,#a8aebd)')}${bar(s0,'var(--ok)')}</div>`, s72, s48, s0};
+}
+function _tasksStat(tasks){
+ // считаем задачи: всего / выполнено за месяц / просрочено
+ const items=Array.isArray(tasks)?tasks:[];
+ const now=Date.now(), m30=30*86400000;
+ let total=0,done=0,overdue=0;
+ items.forEach(t=>{
+  if(!t) return; total++;
+  if(t.status==='done') done++;
+  if(t.status!=='done' && t.due_at && t.due_at<now-86400000) overdue++;
+  return;
+ });
+ return {total,done,overdue};
+}
+function renderTiles(o){
+ const irClr=o.irValue>=70?'var(--ok)':o.irValue>=50?'var(--warn)':'var(--bad)';
+ const irSparkValues=o.irWeekly.slice(-4);
+ const sparkHtml=irSparkValues.length>=2?_spark(irSparkValues,irClr):'';
+ const sparkSub=irSparkValues.length?`<div class="tile-sub">по неделям: ${irSparkValues.join(' · ')}</div>`:`<div class="tile-sub">недельных снимков пока нет</div>`;
+ const perfTotal=o.perfTotal||1;
+ const perfPct=Math.round((o.perf/perfTotal)*100);
+ const perfClr=perfPct>=50?'var(--ok)':perfPct>=25?'var(--warn)':'var(--bad)';
+ const perfSub=(o.newbies||o.g0)?`новичков ${o.newbies||0} · группа 0: ${o.g0||0} · не в счёте`:`все участвуют в счёте`;
+ const stazh=_stazhBars(o.teamMembers);
+ const tasksS=_tasksStat(o.tasks);
+ const taskDonePct=tasksS.total?Math.round((tasksS.done/tasksS.total)*100):0;
+ return `<div class="tiles">
+  <div class="tile" onclick="openTileModal('ir')"><span class="chev">›</span>
+   <div class="tile-cap">ИР ${esc(o.scope)} · ${esc(_monthShort())}</div>
+   <div class="tile-val" style="color:${irClr}">${o.irValue}%</div>
+   ${sparkHtml}${sparkSub}</div>
+  <div class="tile" onclick="openTileModal('perf')"><span class="chev">›</span>
+   <div class="tile-cap">Выполняют ИР ≥ 70%</div>
+   <div class="tile-val">${o.perf} <span class="tile-sub-num">из ${perfTotal}</span></div>
+   <div class="tile-seg"><i style="width:${perfPct}%;background:${perfClr}"></i></div>
+   <div class="tile-sub">${perfSub}</div></div>
+  <div class="tile" onclick="openTileModal('stazh')"><span class="chev">›</span>
+   <div class="tile-cap">Состав по стажу</div>
+   ${stazh.html}
+   <div class="tile-sub">6+ : ${stazh.s72} · 4–6 : ${stazh.s48} · 0–3 : ${stazh.s0}</div></div>
+  <div class="tile" onclick="openTileModal('tasks')"><span class="chev">›</span>
+   <div class="tile-cap">Задачи за месяц</div>
+   <div class="tile-val">${tasksS.done} <span class="tile-sub-num">из ${tasksS.total}</span></div>
+   <div class="tile-seg"><i style="width:${taskDonePct}%;background:var(--ok)"></i></div>
+   <div class="tile-sub">${taskDonePct}% выполнено${tasksS.overdue?` · ${tasksS.overdue} просрочено`:''}</div></div>
+ </div>`;
+}
+function _monthShort(){ const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; return m[new Date().getMonth()]; }
+window.openTileModal=function(kind){
+ const d=CTX.data; if(!d) return;
+ const a=d.aggregates||{}; const members=(d.team_cards&&d.team_cards.members)||[];
+ let title='', body='';
+ if(kind==='ir'){
+  const w=(d.ir_history&&d.ir_history.week_history&&d.ir_history.week_history.total)||[];
+  const m=(d.ir_history&&d.ir_history.month_history&&d.ir_history.month_history.total)||[];
+  title='ИР группы — разбор';
+  body=`<p class="muted" style="margin-bottom:10px">ИР v2 — насколько команда выполняет план. 100% = все четыре направления (поток, горячие, задатки, валовая выручка) на плане. Среднее по партнёрам в счёте.</p>
+   <div style="margin-bottom:8px"><b>По неделям (последние 4):</b> ${w.length?w.join(' · '):'нет данных'}</div>
+   <div><b>По месяцам:</b> ${m.length?m.join(' · '):'нет данных'}</div>`;
+ } else if(kind==='perf'){
+  const ok=members.filter(m=>typeof m.ir_v2_week_total==='number'?m.ir_v2_week_total>=70:m.ir_month>=70);
+  const bad=members.filter(m=>(typeof m.ir_v2_week_total==='number'?m.ir_v2_week_total:m.ir_month)<70);
+  title='Выполняют ≥ 70% — список';
+  body=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+   <div><b style="color:var(--ok)">Выполняют (${ok.length})</b>${ok.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+ok.map(m=>'<li>'+esc(m.name)+' — '+(m.ir_v2_week_total!=null?m.ir_v2_week_total:m.ir_month)+'%</li>').join('')+'</ul>':'<div class="muted" style="font-size:var(--fs-12);margin-top:4px">никого</div>'}</div>
+   <div><b style="color:var(--bad)">Ниже нормы (${bad.length})</b>${bad.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+bad.map(m=>'<li>'+esc(m.name)+' — '+(m.ir_v2_week_total!=null?m.ir_v2_week_total:m.ir_month)+'%</li>').join('')+'</ul>':'<div class="muted" style="font-size:var(--fs-12);margin-top:4px">никого</div>'}</div></div>`;
+ } else if(kind==='stazh'){
+  const cats=[
+   {label:'6+ лет (опытные)',min:72,max:Infinity,color:'var(--brand)'},
+   {label:'4–6 лет',min:48,max:71,color:'var(--muted-2,#a8aebd)'},
+   {label:'0–3 года',min:0,max:47,color:'var(--ok)'}];
+  title='Состав по стажу';
+  body=cats.map(c=>{
+   const list=members.filter(m=>typeof m.stazh_months==='number' && m.stazh_months>=c.min && m.stazh_months<=c.max);
+   return `<div style="margin-bottom:14px"><b style="color:${c.color}">${esc(c.label)} · ${list.length}</b>${list.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+list.map(m=>'<li>'+esc(m.name)+' — '+Math.round(m.stazh_months/12*10)/10+' лет</li>').join('')+'</ul>':''}</div>`;
+  }).join('');
+ } else if(kind==='tasks'){
+  const items=Array.isArray(d.tasks)?d.tasks:[];
+  const now=Date.now();
+  const done=items.filter(t=>t&&t.status==='done');
+  const overdue=items.filter(t=>t&&t.status!=='done'&&t.due_at&&t.due_at<now-86400000);
+  const open=items.filter(t=>t&&t.status!=='done'&&!(t.due_at&&t.due_at<now-86400000));
+  title='Задачи — разбор';
+  body=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:10px">
+   <div><b style="color:var(--ok)">Сделано</b><div style="font-size:var(--fs-22);font-weight:var(--fw-eb)">${done.length}</div></div>
+   <div><b style="color:var(--bad)">Просрочено</b><div style="font-size:var(--fs-22);font-weight:var(--fw-eb)">${overdue.length}</div></div>
+   <div><b style="color:var(--brand)">В работе</b><div style="font-size:var(--fs-22);font-weight:var(--fw-eb)">${open.length}</div></div></div>
+   <div class="muted" style="font-size:var(--fs-12)">Подробный список — в табе «Задачи».</div>`;
+ }
+ const m=document.getElementById('tileModal');
+ m.querySelector('.tile-modal-ttl').textContent=title;
+ m.querySelector('.tile-modal-body').innerHTML=body;
+ m.classList.add('on');
+};
+window.closeTileModal=function(){ document.getElementById('tileModal').classList.remove('on'); };
+
 /* ─── HERO ─── */
 function renderHero(d){
  const u=d.user,a=d.aggregates;
@@ -522,20 +672,21 @@ function renderHero(d){
  const inIR=a&&a.scope.members_count;
  const meta=[]; if(u.rop_name)meta.push('Управляющий партнёр: '+esc(u.rop_name)); if(a)meta.push(totalP+' партнёров');
  let stats='',fcStats='';
- if(a){ const subAll=totalP!==inIR?`<div class="muted" style="font-size:var(--fs-11);margin-top:2px">в расчёте ИР: ${inIR}</div>`:'';
- // TZ-A29: шапка читает новый ir_v2_week_total (avg по партнёрам) и performers_v2_count.
- const irGroup = (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : a.ir_total;
- const perf = (typeof a.scope.performers_v2_count === 'number' && a.scope.performers_v2_count > 0) ? a.scope.performers_v2_count : a.scope.performers_count;
- const under = (typeof a.scope.underperformers_v2_count === 'number' && a.scope.underperformers_v2_count > 0) ? a.scope.underperformers_v2_count : a.scope.underperformers_count;
- const TIP_GROUP = 'недельный ИР v2: avg(ir_v2_week.ir_total) по партнёрам группы.';
- const TIP_PERF = 'count(ir_v2_week ≥ 70%) по партнёрам группы.';
- const TIP_UNDER = 'count(ir_v2_week < 70%) по партнёрам группы.';
- stats=`<div class="stat-grid">
- <div class="stat"><div class="s-cap">ИР группы</div><b style="color:${barColor(irGroup)}">${irGroup}%</b></div>
- <div class="stat"><div class="s-cap">выполняют ≥70%</div><b style="color:var(--ok)">${perf}</b></div>
- <div class="stat"><div class="s-cap">в зоне риска</div><b style="color:var(--bad)">${under}</b></div>
- <div class="stat"><div class="s-cap">всего</div><b>${totalP}</b>${subAll}</div>
- </div>`;
+ if(a){
+ // TZ-A29 + TZ-A30: шапка-плитки. 4 кликабельных плитки, каждая → модалка с деталью.
+ const irGroup = (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : (a.ir_total||0);
+ const perf = (typeof a.scope.performers_v2_count === 'number') ? a.scope.performers_v2_count : (a.scope.performers_count||0);
+ const inIRcnt = (typeof a.scope.members_count === 'number') ? a.scope.members_count : (inIR||0);
+ const newbies = (typeof a.scope.newbies_count === 'number') ? a.scope.newbies_count : 0;
+ const g0 = (typeof a.scope.group0_count === 'number') ? a.scope.group0_count : 0;
+ stats = renderTiles({
+   scope:'группы',
+   irValue: irGroup,
+   irWeekly: (d&&d.ir_history&&d.ir_history.week_history&&d.ir_history.week_history.total)||[],
+   perf, perfTotal: inIRcnt, newbies, g0,
+   teamMembers: (d&&d.team_cards&&d.team_cards.members)||[],
+   tasks: (d&&d.tasks)||[]
+ });
  fcStats=fcHero(a.forecast); }
  document.getElementById('hero').innerHTML=`<div class="card">
  <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
