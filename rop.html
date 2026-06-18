@@ -109,6 +109,25 @@
  .tile-modal-ttl{font-size:var(--fs-16);font-weight:var(--fw-eb)}
  .tile-modal-close{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:0 4px}
  .tile-modal-close:hover{color:var(--ink)}
+ /* TZ-A30 §1 ред.2 (18.06): плитка ИР разделена на 2 части — недели сверху, месяц снизу */
+ .ir-tile-split{display:flex;flex-direction:column;flex:1;margin-top:8px;gap:6px}
+ .ir-tile-weeks{padding-bottom:6px;border-bottom:1px dashed var(--line)}
+ .ir-tile-weeks-cap{font-size:10px;color:var(--muted-2,#a8aebd);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+ .ir-tile-weeks-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+ .ir-wk-cell{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 0;text-align:center;font-size:12px;font-weight:var(--fw-eb);min-height:24px}
+ .ir-wk-cell.empty{color:var(--muted-2,#a8aebd);font-weight:var(--fw-r)}
+ .ir-tile-month{display:flex;flex-direction:column;align-items:center;margin-top:auto;padding-top:4px}
+ .ir-tile-month-cap{font-size:10px;color:var(--muted-2,#a8aebd);text-transform:uppercase;letter-spacing:.04em}
+ .ir-tile-month-val{font-size:var(--fs-22);font-weight:var(--fw-eb);line-height:1.1}
+ /* TZ-A30 правка 18.06: подписи под каждым столбиком в плитке «Состав по стажу» */
+ .bar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;flex:1}
+ .bar-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+ .bar-num{font-size:13px;font-weight:var(--fw-eb);color:var(--ink);margin-bottom:2px}
+ .bar-track{width:100%;height:30px;display:flex;align-items:flex-end}
+ .bar-track span{width:100%;border-radius:3px 3px 0 0;min-height:4px}
+ .bar-lbl{font-size:10px;color:var(--muted);margin-top:3px}
+
+ /* TZ-A30: Группа 0 — отдельный блок внизу таба «Команда» */
 
  .rtab-bar{display:flex;gap:8px;margin-bottom:18px;padding:7px;background:#f4f7fb;border:1px solid var(--line);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:56px;z-index:90}
  .rtab{font-size:var(--fs-14);padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:var(--fw-sb);white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
@@ -542,15 +561,16 @@ function _spark(values,color){
  return `<svg class="tile-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${line}" fill="none" stroke="${color}" stroke-width="2"/>${dots}</svg>`;
 }
 function _stazhBars(members){
- // 3 столбика: 6+ лет (≥72 мес) · 4–6 (48-71) · 0–3 (<48)
+ // 3 столбика с подписями: 0–3 (<48 мес) · 4–6 (48-71) · 6+ (≥72)
  let s72=0,s48=0,s0=0;
  (members||[]).forEach(m=>{
   const v=typeof m.stazh_months==='number'?m.stazh_months:0;
   if(v>=72) s72++; else if(v>=48) s48++; else s0++;
  });
  const mx=Math.max(s72,s48,s0,1);
- const bar=(v,c)=>`<span style="height:${Math.max(6,Math.round(v/mx*100))}%;background:${c}"></span>`;
- return {html:`<div class="tile-bars">${bar(s72,'var(--brand)')}${bar(s48,'var(--muted-2,#a8aebd)')}${bar(s0,'var(--ok)')}</div>`, s72, s48, s0};
+ // Каждый столбик с числом и подписью лет внизу
+ const col=(v,c,label)=>`<div class="bar-col"><div class="bar-num">${v}</div><div class="bar-track"><span style="height:${Math.max(6,Math.round(v/mx*100))}%;background:${c}"></span></div><div class="bar-lbl">${label}</div></div>`;
+ return {html:`<div class="bar-grid">${col(s0,'var(--ok)','0–3')}${col(s48,'var(--muted-2,#a8aebd)','4–6')}${col(s72,'var(--brand)','6+')}</div>`, s72, s48, s0};
 }
 function _tasksStat(tasks){
  // считаем задачи: всего / выполнено за месяц / просрочено
@@ -566,31 +586,59 @@ function _tasksStat(tasks){
  return {total,done,overdue};
 }
 function renderTiles(o){
- const irClr=o.irValue>=70?'var(--ok)':o.irValue>=50?'var(--warn)':'var(--bad)';
- const irSparkValues=o.irWeekly.slice(-4);
- const sparkHtml=irSparkValues.length>=2?_spark(irSparkValues,irClr):'';
- const sparkSub=irSparkValues.length?`<div class="tile-sub">по неделям: ${irSparkValues.join(' · ')}</div>`:`<div class="tile-sub">недельных снимков пока нет</div>`;
+ // ── ПЛИТКА 1: ИР разделена на 2 части (TZ-A30, правка Егора 18.06):
+ //   сверху — 4 ячейки по неделям месяца (только завершённые), снизу — месячный ИР.
+ const today=new Date();
+ const dayN=today.getDate();
+ // граничные дни: 7, 14, 21, последний день месяца → сколько завершённых недель
+ const lastDay=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+ const completedWeeks=dayN>lastDay?4:dayN>21?3:dayN>14?2:dayN>7?1:0;
+ // берём последние completedWeeks значений (это завершённые недели текущего месяца)
+ const wk=(o.irWeekly||[]).slice(-completedWeeks||0);
+ const cellW=(v,active)=>{
+  if(!active) return `<div class="ir-wk-cell empty">—</div>`;
+  const c=v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)';
+  return `<div class="ir-wk-cell" style="color:${c}">${v}%</div>`;
+ };
+ let weekRow='';
+ for(let i=0;i<4;i++){
+  weekRow+=cellW(wk[i],i<completedWeeks);
+ }
+ const irMonth=typeof o.irMonth==='number'?o.irMonth:o.irValue;
+ const irMonthClr=irMonth>=70?'var(--ok)':irMonth>=50?'var(--warn)':'var(--bad)';
+
+ // ── ПЛИТКА 2: убираем подпись про новичков/g0 (просьба Егора 18.06)
  const perfTotal=o.perfTotal||1;
  const perfPct=Math.round((o.perf/perfTotal)*100);
  const perfClr=perfPct>=50?'var(--ok)':perfPct>=25?'var(--warn)':'var(--bad)';
- const perfSub=(o.newbies||o.g0)?`новичков ${o.newbies||0} · группа 0: ${o.g0||0} · не в счёте`:`все участвуют в счёте`;
+
+ // ── ПЛИТКА 3: подписи теперь под каждым столбиком
  const stazh=_stazhBars(o.teamMembers);
+
  const tasksS=_tasksStat(o.tasks);
  const taskDonePct=tasksS.total?Math.round((tasksS.done/tasksS.total)*100):0;
  return `<div class="tiles">
   <div class="tile" onclick="openTileModal('ir')"><span class="chev">›</span>
    <div class="tile-cap">ИР ${esc(o.scope)} · ${esc(_monthShort())}</div>
-   <div class="tile-val" style="color:${irClr}">${o.irValue}%</div>
-   ${sparkHtml}${sparkSub}</div>
+   <div class="ir-tile-split">
+    <div class="ir-tile-weeks">
+     <div class="ir-tile-weeks-cap">по неделям</div>
+     <div class="ir-tile-weeks-row">${weekRow}</div>
+    </div>
+    <div class="ir-tile-month">
+     <div class="ir-tile-month-cap">месяц</div>
+     <div class="ir-tile-month-val" style="color:${irMonthClr}">${irMonth}%</div>
+    </div>
+   </div></div>
   <div class="tile" onclick="openTileModal('perf')"><span class="chev">›</span>
    <div class="tile-cap">Выполняют ИР ≥ 70%</div>
    <div class="tile-val">${o.perf} <span class="tile-sub-num">из ${perfTotal}</span></div>
    <div class="tile-seg"><i style="width:${perfPct}%;background:${perfClr}"></i></div>
-   <div class="tile-sub">${perfSub}</div></div>
+   <div class="tile-sub"></div></div>
   <div class="tile" onclick="openTileModal('stazh')"><span class="chev">›</span>
    <div class="tile-cap">Состав по стажу</div>
    ${stazh.html}
-   <div class="tile-sub">6+ : ${stazh.s72} · 4–6 : ${stazh.s48} · 0–3 : ${stazh.s0}</div></div>
+   <div class="tile-sub"></div></div>
   <div class="tile" onclick="openTileModal('tasks')"><span class="chev">›</span>
    <div class="tile-cap">Задачи за месяц</div>
    <div class="tile-val">${tasksS.done} <span class="tile-sub-num">из ${tasksS.total}</span></div>
@@ -662,6 +710,7 @@ function renderHero(d){
  stats = renderTiles({
    scope:'отдела',
    irValue: irDept,
+   irMonth: (typeof a.ir_v2_month_total === 'number') ? a.ir_v2_month_total : irDept,
    irWeekly: (d&&d.ir_history&&d.ir_history.week_history&&d.ir_history.week_history.total)||[],
    perf, perfTotal: inIRcnt,
    newbies: (typeof a.scope.newbies_count==='number'?a.scope.newbies_count:0),
