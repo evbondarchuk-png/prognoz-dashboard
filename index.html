@@ -987,10 +987,16 @@ function renderTasks(d){
  const root = document.getElementById('screen-tasks');
  if (root && !root.dataset.calMounted) {
    root.dataset.calMounted = '1';
-   try {
-     const db = getDatabase(getApp());
-     mountCalendar(root, { db, ownerCode: CTX.target, mode: 'partner' });
-   } catch (e) { console.error('mountCalendar failed', e); root.innerHTML = '<div class="banner">Календарь не запустился: '+esc(e.message||e)+'</div>'; }
+   root.innerHTML = '<div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div>';
+   (async () => {
+     try {
+       const db = getDatabase(getApp());
+       await mountCalendar(root, { db, ownerCode: CTX.target, mode: 'partner' });
+     } catch (e) {
+       console.error('[calendar] mount failed', e);
+       root.innerHTML = '<div class="banner" style="margin:20px;padding:16px">Календарь не запустился: <code>'+esc(e.message||String(e))+'</code><br><small>Открой DevTools → Console для деталей</small></div>';
+     }
+   })();
  }
  // Бейдж количества задач у таба — считаем сами из d.tasks (для совместимости)
  const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
