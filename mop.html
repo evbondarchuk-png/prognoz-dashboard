@@ -825,6 +825,15 @@ function renderMain(d){
  const a=d.aggregates; const out=[];
  if(a){
  const irHist=d.ir_history||{now:{total:a.ir_total,buyer:a.ir_buyer,seller:a.ir_seller},week_history:{buyer:[],seller:[],total:[]},month_history:{buyer:[],seller:[],total:[]}};
+ // TZ-A29: главный ИР шапки = ir_v2_week_total. На табах подменяем total из ir_v2.
+ // Каналы buyer/seller бэк по-новому не делит — оставляем 8-этапные значения.
+ if (typeof a.ir_v2_week_total === 'number') {
+   irHist.now = { ...irHist.now, total: a.ir_v2_week_total };
+   irHist.week = { total: a.ir_v2_week_total, buyer: irHist.now.buyer, seller: irHist.now.seller };
+ }
+ if (typeof a.ir_v2_month_total === 'number') {
+   irHist.month = { total: a.ir_v2_month_total, buyer: irHist.now.buyer, seller: irHist.now.seller };
+ }
  out.push(renderIrCard({ir_history:irHist, isPartner:false, periodLabel:a.period_label}));
  out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'группы')}</div>`);
  out.push(tasksMain(d));
@@ -1330,8 +1339,9 @@ window.applyIrMode=function(card, mode){
   const elTotal = card.querySelector('.ir-total');
   const elTotalDelta = card.querySelector('.ir-total-delta');
   const rows = card.querySelectorAll('.ir-channel-row');
+  const src = mode==='month' && h.month ? h.month : (mode==='week' && h.week ? h.week : h.now);
   const setChan = (row, sideKey, color) => {
-    const pct = h.now[sideKey];
+    const pct = src[sideKey];
     row.querySelector('.ir-channel-fill').style.width = Math.min(pct,100)+'%';
     row.querySelector('.ir-channel-pct').textContent = pct+'%';
     const dEl = row.querySelector('.ir-channel-delta');
@@ -1353,12 +1363,13 @@ window.applyIrMode=function(card, mode){
   setChan(rows[0], 'buyer', '#3b82f6');
   setChan(rows[1], 'seller', '#10b981');
   // Общий ИР + дельта
-  elTotal.textContent = h.now.total+'%';
+  elTotal.textContent = src.total+'%';
+  elTotal.style.color = barColor(src.total);
   if (mode==='now'){
     elTotalDelta.classList.add('hidden');
   } else {
     const prev = (mode==='week' ? h.week_prev : h.month_prev) || {};
-    const d = h.now.total - (prev.total||0);
+    const d = src.total - (prev.total||0);
     const dObj = _irDelta(d);
     elTotalDelta.className = 'ir-total-delta '+dObj.cls;
     elTotalDelta.textContent = dObj.text;
