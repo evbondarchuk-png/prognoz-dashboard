@@ -599,7 +599,7 @@ function _stazhBars(members, scope){
  if (scope !== 'группы') {
    const lbl='<div class="bar-lbl" style="color:var(--muted-2,#a8aebd)">нет данных</div>';
    const col=(c,label)=>`<div class="bar-col"><div class="bar-num" style="color:var(--muted-2,#a8aebd)">—</div><div class="bar-track"><span style="height:6px;background:${c};opacity:.3"></span></div><div class="bar-lbl">${label}</div></div>`;
-   return {html:`<div class="bar-grid">${col('var(--ok)','0–3')}${col('var(--muted-2,#a8aebd)','4–6')}${col('var(--brand)','6+')}</div>`, s72:0, s48:0, s0:0};
+   return {html:`<div class="bar-grid">${col('var(--brand)','6+')}${col('var(--muted-2,#a8aebd)','4–6')}${col('var(--ok)','0–3')}</div>`, s72:0, s48:0, s0:0};
  }
  let s72=0,s48=0,s0=0;
  (members||[]).forEach(m=>{
@@ -609,7 +609,7 @@ function _stazhBars(members, scope){
  });
  const mx=Math.max(s72,s48,s0,1);
  const col=(v,c,label)=>`<div class="bar-col"><div class="bar-num">${v}</div><div class="bar-track"><span style="height:${Math.max(6,Math.round(v/mx*100))}%;background:${c}"></span></div><div class="bar-lbl">${label}</div></div>`;
- return {html:`<div class="bar-grid">${col(s0,'var(--ok)','0–3')}${col(s48,'var(--muted-2,#a8aebd)','4–6')}${col(s72,'var(--brand)','6+')}</div>`, s72, s48, s0};
+ return {html:`<div class="bar-grid">${col(s72,'var(--brand)','6+')}${col(s48,'var(--muted-2,#a8aebd)','4–6')}${col(s0,'var(--ok)','0–3')}</div>`, s72, s48, s0};
 }
 function _tasksStat(tasks){
  // считаем задачи: всего / выполнено за месяц / просрочено
