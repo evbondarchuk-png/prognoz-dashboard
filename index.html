@@ -565,7 +565,9 @@ function daysPath(plan){ if(!plan||!plan.started_month) return null;
 
 /* ─── HERO (профиль + достижения + income-track) ─── */
 function renderHero(d){
- const u=d.user,g=d.goal,nb=d.notifications;
+ const u=d.user,nb=d.notifications;
+ // TZ группа 0 (Егор 19.06): цель/трек убираем — у них нет плана.
+ const g = (u && u.is_group_zero) ? null : d.goal;
  const unread=nb?.unread_count||0;
  const meta=[]; if(u.mop_name)meta.push('Старший партнёр: '+esc(u.mop_name)); if(u.stazh_label)meta.push('стаж '+esc(u.stazh_label));
  const sfMini=u.position_in_company!=null?`<div class="sf-mini" onclick="goTab('svetofor')"><b>#${u.position_in_company}</b><span class="sf-z muted">${esc(u.svetofor_zone_label||'')} · светофор ›</span></div>`:'';
@@ -746,6 +748,12 @@ window.openManager=()=>{
 /* ─── ГЛАВНАЯ ─── */
 function renderMain(d){
  const f=d.funnel; const out=[];
+ const isG0 = !!(d.user && d.user.is_group_zero);
+ if (isG0) {
+   out.push(`<div class="banner" style="background:#fff7e6;border:1px solid #fcd34d;color:#92400e;padding:12px 14px;border-radius:var(--r-md,12px);margin-bottom:12px">
+     🛌 <b>Ты в группе 0</b> — план не считается. Чтобы получить цели, нужно попасть в светофор опытных (наработать историю в архиве).
+   </div>`);
+ }
  if(f&&f.buyer){
  // TZ-A29: общий ИР и полосы Покуп/Прод — все три числа из новой 4-составляющей модели,
  // чтобы шапка не расходилась со скобками. Fallback на старую модель если ir_v2 пуст.
@@ -767,7 +775,7 @@ function renderMain(d){
      seller: typeof v2m.seller_pct === 'number' ? v2m.seller_pct : v2m.ir_total,
    };
  }
- out.push(renderIrCard({ir_history:irHist, isPartner:true, periodLabel:f.period_label}));
+ if (!isG0) out.push(renderIrCard({ir_history:irHist, isPartner:true, periodLabel:f.period_label}));
  // Скобки «ИР X% · …» у каждой стороны — из МЕСЯЧНОГО v2 (воронка показывает
  // месячные факт/план, поэтому ИР воронки тоже месячный — иначе рассинхрон со скобкой).
  const vSrc = v2m || v2;
