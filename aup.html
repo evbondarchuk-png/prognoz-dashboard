@@ -1118,8 +1118,7 @@ function renderIrCard(opts){
     <div class="ir-card-head">
       <div class="ir-card-title">Индекс развития · ${esc(periodLabel)}<span class="ir-info" data-tip="${esc(IR_TIP_MAIN_AGG)}">?</span></div>
       <div class="ir-tabs">
-        <button class="ir-tab active" data-mode="now">Сейчас</button>
-        <button class="ir-tab" data-mode="week">Неделя</button>
+        <button class="ir-tab active" data-mode="week">Неделя</button>
         <button class="ir-tab" data-mode="month">Месяц</button>
       </div>
     </div>
@@ -1210,7 +1209,7 @@ window.initIrCards=function(root){
     tabs.forEach(t=>{
       t.addEventListener('click',()=>{ tabs.forEach(x=>x.classList.toggle('active', x===t)); window.applyIrMode(card, t.dataset.mode); });
     });
-    window.applyIrMode(card, 'now');
+    window.applyIrMode(card, 'week');
   });
 };
 
