@@ -750,12 +750,21 @@ function renderMain(d){
  // TZ-A29: общий ИР и полосы Покуп/Прод — все три числа из новой 4-составляющей модели,
  // чтобы шапка не расходилась со скобками. Fallback на старую модель если ir_v2 пуст.
  const v2 = d.ir_v2?.week;
+ const v2m = d.ir_v2?.month;
  const irHist=d.ir_history||{now:{total:f.ir_total,buyer:f.ir_buyer,seller:f.ir_seller},week_history:{buyer:[],seller:[],total:[]},month_history:{buyer:[],seller:[],total:[]}};
  if (v2 && typeof v2.ir_total === 'number') {
    irHist.now = { ...irHist.now,
      total: v2.ir_total,
      buyer: typeof v2.buyer_pct === 'number' ? v2.buyer_pct : irHist.now.buyer,
      seller: typeof v2.seller_pct === 'number' ? v2.seller_pct : irHist.now.seller,
+   };
+   irHist.week = { total: v2.ir_total, buyer: irHist.now.buyer, seller: irHist.now.seller };
+ }
+ if (v2m && typeof v2m.ir_total === 'number') {
+   irHist.month = {
+     total: v2m.ir_total,
+     buyer: typeof v2m.buyer_pct === 'number' ? v2m.buyer_pct : v2m.ir_total,
+     seller: typeof v2m.seller_pct === 'number' ? v2m.seller_pct : v2m.ir_total,
    };
  }
  out.push(renderIrCard({ir_history:irHist, isPartner:true, periodLabel:f.period_label}));
@@ -1302,8 +1311,9 @@ window.applyIrMode=function(card, mode){
   const elTotal = card.querySelector('.ir-total');
   const elTotalDelta = card.querySelector('.ir-total-delta');
   const rows = card.querySelectorAll('.ir-channel-row');
+  const src = mode==='month' && h.month ? h.month : (mode==='week' && h.week ? h.week : h.now);
   const setChan = (row, sideKey, color) => {
-    const pct = h.now[sideKey];
+    const pct = src[sideKey];
     row.querySelector('.ir-channel-fill').style.width = Math.min(pct,100)+'%';
     row.querySelector('.ir-channel-pct').textContent = pct+'%';
     const dEl = row.querySelector('.ir-channel-delta');
@@ -1325,12 +1335,13 @@ window.applyIrMode=function(card, mode){
   setChan(rows[0], 'buyer', '#3b82f6');
   setChan(rows[1], 'seller', '#10b981');
   // Общий ИР + дельта
-  elTotal.textContent = h.now.total+'%';
+  elTotal.textContent = src.total+'%';
+  elTotal.style.color = barColor(src.total);
   if (mode==='now'){
     elTotalDelta.classList.add('hidden');
   } else {
     const prev = (mode==='week' ? h.week_prev : h.month_prev) || {};
-    const d = h.now.total - (prev.total||0);
+    const d = src.total - (prev.total||0);
     const dObj = _irDelta(d);
     elTotalDelta.className = 'ir-total-delta '+dObj.cls;
     elTotalDelta.textContent = dObj.text;
