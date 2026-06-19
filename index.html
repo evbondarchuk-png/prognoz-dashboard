@@ -768,18 +768,20 @@ function renderMain(d){
    };
  }
  out.push(renderIrCard({ir_history:irHist, isPartner:true, periodLabel:f.period_label}));
- // Скобки «ИР X% · …» у каждой стороны тоже из ir_v2, чтобы цифры совпадали с шапкой.
- if (v2) {
+ // Скобки «ИР X% · …» у каждой стороны — из МЕСЯЧНОГО v2 (воронка показывает
+ // месячные факт/план, поэтому ИР воронки тоже месячный — иначе рассинхрон со скобкой).
+ const vSrc = v2m || v2;
+ if (vSrc) {
    const sideSt = (p) => p >= 70 ? 'green' : (p >= 50 ? 'yellow' : 'red');
    const sideLbl = { green: 'в норме', yellow: 'в риске', red: 'провал' };
-   if (typeof v2.buyer_pct === 'number') {
-     f.buyer.ir = v2.buyer_pct;
-     f.buyer.ir_status = sideSt(v2.buyer_pct);
+   if (typeof vSrc.buyer_pct === 'number') {
+     f.buyer.ir = vSrc.buyer_pct;
+     f.buyer.ir_status = sideSt(vSrc.buyer_pct);
      f.buyer.ir_status_label = sideLbl[f.buyer.ir_status];
    }
-   if (typeof v2.seller_pct === 'number') {
-     f.seller.ir = v2.seller_pct;
-     f.seller.ir_status = sideSt(v2.seller_pct);
+   if (typeof vSrc.seller_pct === 'number') {
+     f.seller.ir = vSrc.seller_pct;
+     f.seller.ir_status = sideSt(vSrc.seller_pct);
      f.seller.ir_status_label = sideLbl[f.seller.ir_status];
    }
  }
