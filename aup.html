@@ -653,13 +653,13 @@ window.openTileModal=function(kind){
    <div><b style="color:var(--bad)">Ниже нормы (${bad.length})</b>${bad.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+bad.map(m=>'<li>'+esc(m.name)+' — '+(m.ir_v2_week_total!=null?m.ir_v2_week_total:m.ir_month)+'%</li>').join('')+'</ul>':'<div class="muted" style="font-size:var(--fs-12);margin-top:4px">никого</div>'}</div></div>`;
  } else if(kind==='stazh'){
   const cats=[
-   {label:'6+ лет (опытные)',min:72,max:Infinity,color:'var(--brand)'},
-   {label:'4–6 лет',min:48,max:71,color:'var(--muted-2,#a8aebd)'},
-   {label:'0–3 года',min:0,max:47,color:'var(--ok)'}];
-  title='Состав по стажу';
+   {label:'6+ мес',min:6,max:Infinity,color:'var(--brand)'},
+   {label:'4–6 мес',min:4,max:5.99,color:'var(--muted-2,#a8aebd)'},
+   {label:'0–3 мес',min:0,max:3.99,color:'var(--ok)'}];
+  title='Состав по стажу · мес';
   body=cats.map(c=>{
-   const list=members.filter(m=>typeof m.stazh_months==='number' && m.stazh_months>=c.min && m.stazh_months<=c.max);
-   return `<div style="margin-bottom:14px"><b style="color:${c.color}">${esc(c.label)} · ${list.length}</b>${list.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+list.map(m=>'<li>'+esc(m.name)+' — '+Math.round(m.stazh_months/12*10)/10+' лет</li>').join('')+'</ul>':''}</div>`;
+   const list=members.filter(m=>!m.is_self && typeof m.stazh_months==='number' && m.stazh_months>=c.min && m.stazh_months<=c.max);
+   return `<div style="margin-bottom:14px"><b style="color:${c.color}">${esc(c.label)} · ${list.length}</b>${list.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+list.map(m=>'<li>'+esc(m.name)+' — '+Math.round(m.stazh_months*10)/10+' мес</li>').join('')+'</ul>':''}</div>`;
   }).join('');
  } else if(kind==='tasks'){
   const items=Array.isArray(d.tasks)?d.tasks:[];
