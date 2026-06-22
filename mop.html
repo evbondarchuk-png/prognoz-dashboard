@@ -1002,7 +1002,11 @@ function g0Row(m){
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
 }
 function teamRowCommon(m,idx){
-  const ir=m.ir_month||0;
+  // TZ-A32 §7: в столбце ИР — МЕСЯЧНЫЙ (ir_v2_month_total), цвет по нему,
+  // tooltip с недельным значением (ir_v2_week_total).
+  const irM = (typeof m.ir_v2_month_total==='number') ? m.ir_v2_month_total : (m.ir_month||0);
+  const irW = (typeof m.ir_v2_week_total==='number') ? m.ir_v2_week_total : null;
+  const irTip = irW!=null ? `недельный ИР: ${irW}% · текущая неделя` : 'нет недельного ИР';
   const plan=m.plan_month||0;
   const fact=m.fact_month||0;
   const forecast=m.forecast_month||0;
@@ -1014,7 +1018,7 @@ function teamRowCommon(m,idx){
       <div class="t-group-avatar">${esc(_avatar(m.name))}</div>
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}${_trafficBadge(m.traffic_position)}</div></div></div></td>
-    <td><span class="t-ir ${_irStatus(ir)}">${ir}%</span></td>
+    <td><span class="t-ir ${_irStatus(irM)}" data-tip="${esc(irTip)}">${irM}%</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
@@ -1070,7 +1074,7 @@ function renderTeam(d){
  const _SK = 'team_sort_mop';
  let sortKey = (localStorage.getItem(_SK) || 'ir');
  if (!['ir','fact','forecast'].includes(sortKey)) sortKey = 'ir';
- const _sortVal = (m, k) => k==='ir' ? (m.ir_v2_week_total!=null?m.ir_v2_week_total:(m.ir_month||0))
+ const _sortVal = (m, k) => k==='ir' ? (m.ir_v2_month_total!=null?m.ir_v2_month_total:(m.ir_month||0))
    : k==='fact' ? (m.fact_month||0)
    : k==='forecast' ? (m.forecast_month||0) : 0;
  const sorted=[...main].sort((a,b)=>_sortVal(b,sortKey)-_sortVal(a,sortKey));
