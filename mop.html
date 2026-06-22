@@ -810,7 +810,7 @@ function renderAggFunnelsPaired(buyer,seller,factLbl){
  const bs=(buyer.stages||[]).map(st=>aggStageCard('buyer',st));
  const ss=(seller.stages||[]).map(st=>aggStageCard('seller',st));
  const rows=Math.max(bs.length,ss.length);
- const cells=[head(buyer,'🛒','buyer'),head(seller,'🏘','seller')];
+ const cells=[head(buyer,'🛒','buyer'),head(seller,'🏠','seller')];
  for(let i=0;i<rows;i++){
   cells.push(`<div class="row-stage">${bs[i]||''}</div>`);
   cells.push(`<div class="row-stage">${ss[i]||''}</div>`);
@@ -1066,8 +1066,14 @@ function renderTeam(d){
  // TZ-A30 §4 + правило «Группа 0»: разделяем основную команду и блок «Группа 0»
  const main=members.filter(m=>!m.is_group_zero);
  const g0=members.filter(m=>m.is_group_zero);
- // Сортировка по ИР убывающе (для основного), по имени (для g0)
- const sorted=[...main].sort((a,b)=>(b.ir_month||0)-(a.ir_month||0));
+ // TZ-A32 §4: сортировка по выбору (ir/fact/forecast), запомнить в localStorage.
+ const _SK = 'team_sort_mop';
+ let sortKey = (localStorage.getItem(_SK) || 'ir');
+ if (!['ir','fact','forecast'].includes(sortKey)) sortKey = 'ir';
+ const _sortVal = (m, k) => k==='ir' ? (m.ir_v2_week_total!=null?m.ir_v2_week_total:(m.ir_month||0))
+   : k==='fact' ? (m.fact_month||0)
+   : k==='forecast' ? (m.forecast_month||0) : 0;
+ const sorted=[...main].sort((a,b)=>_sortVal(b,sortKey)-_sortVal(a,sortKey));
  const g0sorted=[...g0].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
  // TZ-A30 правка Егора 18.06: показываем только месяцы, по которым есть данные.
  // Собираем индексы (0..5) колонок, где хоть у одного партнёра ir_pct != null.
@@ -1083,7 +1089,7 @@ function renderTeam(d){
    <div class="team-head">
      <div><div class="team-h-title">👥 Моя команда</div>
        <div class="team-h-sub">${members.length} ${members.length===1?'партнёр':(members.length<5?'партнёра':'партнёров')}</div></div>
-     <div class="team-h-sort">сортировка: ИР ↓</div>
+     <div class="team-h-sort">сортировка: ${sortKey==='ir'?'ИР':sortKey==='fact'?'Факт вала':'Прогноз'} ↓</div>
    </div>
    <div class="team-tabs" role="tablist">
      <button class="team-tab active" data-team-tab="common">📊 Общее</button>
@@ -1092,7 +1098,12 @@ function renderTeam(d){
    </div>
    <div class="team-panel active" data-team-panel="common">
      <div class="scroll-wrap"><table class="team-table">
-       <thead><tr><th>Партнёр</th><th>ИР  ↓</th><th>План вала</th><th>Факт вала</th><th>Прогноз</th><th class="center">Статус</th><th></th></tr></thead>
+       <thead><tr><th>Партнёр</th>
+         <th class="t-sort" data-sort-key="ir" style="cursor:pointer">ИР${sortKey==='ir'?' ↓':''}</th>
+         <th>План вала</th>
+         <th class="t-sort" data-sort-key="fact" style="cursor:pointer">Факт вала${sortKey==='fact'?' ↓':''}</th>
+         <th class="t-sort" data-sort-key="forecast" style="cursor:pointer">Прогноз${sortKey==='forecast'?' ↓':''}</th>
+         <th class="center">Статус</th><th></th></tr></thead>
        <tbody>${sorted.map(teamRowCommon).join('')}</tbody>
      </table></div>
      ${g0sorted.length?`
@@ -1107,8 +1118,8 @@ function renderTeam(d){
    </div>
    <div class="team-panel" data-team-panel="weeks">
      ${(()=>{
-       // TZ-A30 §3: только партнёры со streak ≥ 1, отсортированы по уровню убывающе.
-       const inRisk=sorted.filter(m=>!m.is_group_zero && !(typeof m.stazh_months==='number'&&m.stazh_months<1) && (m.weeks_in_risk_streak||0)>=1);
+       // TZ-A30 §3 + TZ-A32 §5: только РИЕЛТОРЫ (не МОП/РОП) со streak ≥ 1.
+       const inRisk=sorted.filter(m=>m.role==='realtor' && !m.is_group_zero && !(typeof m.stazh_months==='number'&&m.stazh_months<1) && (m.weeks_in_risk_streak||0)>=1);
        inRisk.sort((a,b)=>(b.weeks_in_risk_streak||0)-(a.weeks_in_risk_streak||0));
        if(!inRisk.length) return `<div class="muted" style="padding:var(--sp-5);text-align:center">🎉 Никто из команды не в риске по неделям. Все либо в норме (≥70% последнюю завершённую неделю), либо новички/Группа 0.</div>`;
        return `<div class="muted" style="margin-bottom:var(--sp-3)">Партнёры с подряд идущими «плохими» неделями (ИР v2 ниже ${Math.round(((d&&d.n_risk&&d.n_risk.floor)||0.7)*100)}%). Текущая (незакрытая) неделя в стрик не входит.</div>
@@ -1135,6 +1146,10 @@ function renderTeam(d){
      document.querySelectorAll('.team-tab').forEach(x=>x.classList.toggle('active',x===t));
      document.querySelectorAll('.team-panel').forEach(p=>p.classList.toggle('active',p.dataset.teamPanel===t.dataset.teamTab));
    });
+ });
+ // TZ-A32 §4: клик по сортируемому заголовку
+ document.querySelectorAll('.t-sort').forEach(th=>{
+   th.addEventListener('click',()=>{ localStorage.setItem(_SK, th.dataset.sortKey); renderTeam(d); });
  });
 }
 
@@ -1334,7 +1349,7 @@ function renderIrCard(opts){
           <svg class="ir-channel-spark hidden" viewBox="0 0 70 18" preserveAspectRatio="none" data-channel="buyer"></svg>
         </div>
         <div class="ir-channel-row">
-          <div class="ir-channel-name">🏘 Продавец</div>
+          <div class="ir-channel-name">🏠 Продавец</div>
           <div class="ir-channel-bar"><div class="ir-channel-fill seller" style="width:${Math.min(h.now.seller,100)}%"></div></div>
           <div class="ir-channel-pct">${h.now.seller}%</div>
           <div class="ir-channel-delta hidden">·</div>

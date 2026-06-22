@@ -747,7 +747,7 @@ function renderAggFunnelsPaired(buyer,seller,factLbl){
  const bs=(buyer.stages||[]).map(st=>aggStageCard('buyer',st));
  const ss=(seller.stages||[]).map(st=>aggStageCard('seller',st));
  const rows=Math.max(bs.length,ss.length);
- const cells=[head(buyer,'🛒','buyer'),head(seller,'🏘','seller')];
+ const cells=[head(buyer,'🛒','buyer'),head(seller,'🏠','seller')];
  for(let i=0;i<rows;i++){
   cells.push(`<div class="row-stage">${bs[i]||''}</div>`);
   cells.push(`<div class="row-stage">${ss[i]||''}</div>`);
@@ -912,7 +912,14 @@ function teamRowMonth(m){
 function renderDepts(d){
  const tc=d.team_cards; const members=(tc&&tc.members)||[];
  if(!members.length){ document.getElementById('screen-depts').innerHTML='<div class="banner">Нет активных отделов.</div>'; return; }
- const sorted=[...members].sort((a,b)=>(b.ir_month||0)-(a.ir_month||0));
+ // TZ-A32 §4
+ const _SK = 'team_sort_aup';
+ let sortKey = (localStorage.getItem(_SK) || 'ir');
+ if (!['ir','fact','forecast'].includes(sortKey)) sortKey = 'ir';
+ const _sortVal = (m, k) => k==='ir' ? (m.ir_v2_week_total!=null?m.ir_v2_week_total:(m.ir_month||0))
+   : k==='fact' ? (m.fact_month||0)
+   : k==='forecast' ? (m.forecast_month||0) : 0;
+ const sorted=[...members].sort((a,b)=>_sortVal(b,sortKey)-_sortVal(a,sortKey));
  const now=new Date(); const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
  const monthHdrs=[];
  for(let i=5;i>=1;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); monthHdrs.push(mn[d.getMonth()]); }
@@ -921,7 +928,7 @@ function renderDepts(d){
    <div class="team-head">
      <div><div class="team-h-title">👥 Отделы компании</div>
        <div class="team-h-sub">${members.length} ${members.length===1?'отдел':(members.length<5?'отдела':'отделов')}</div></div>
-     <div class="team-h-sort">сортировка: ИР ↓</div>
+     <div class="team-h-sort">сортировка: ${sortKey==='ir'?'ИР':sortKey==='fact'?'Факт вала':'Прогноз'} ↓</div>
    </div>
    <div class="team-tabs" role="tablist">
      <button class="team-tab active" data-team-tab="common">📊 Общее</button>
@@ -930,7 +937,12 @@ function renderDepts(d){
    </div>
    <div class="team-panel active" data-team-panel="common">
      <div class="scroll-wrap"><table class="team-table">
-       <thead><tr><th>Управляющий партнёр</th><th>ИР  ↓</th><th>План вала</th><th>Факт вала</th><th>Прогноз</th><th class="center">Статус</th><th></th></tr></thead>
+       <thead><tr><th>Управляющий партнёр</th>
+         <th class="t-sort" data-sort-key="ir" style="cursor:pointer">ИР${sortKey==='ir'?' ↓':''}</th>
+         <th>План вала</th>
+         <th class="t-sort" data-sort-key="fact" style="cursor:pointer">Факт вала${sortKey==='fact'?' ↓':''}</th>
+         <th class="t-sort" data-sort-key="forecast" style="cursor:pointer">Прогноз${sortKey==='forecast'?' ↓':''}</th>
+         <th class="center">Статус</th><th></th></tr></thead>
        <tbody>${sorted.map(teamRowCommon).join('')}</tbody>
      </table></div>
    </div>
@@ -951,6 +963,9 @@ function renderDepts(d){
      document.querySelectorAll('.team-tab').forEach(x=>x.classList.toggle('active',x===t));
      document.querySelectorAll('.team-panel').forEach(p=>p.classList.toggle('active',p.dataset.teamPanel===t.dataset.teamTab));
    });
+ });
+ document.querySelectorAll('.t-sort').forEach(th=>{
+   th.addEventListener('click',()=>{ localStorage.setItem(_SK, th.dataset.sortKey); renderDepts(d); });
  });
 }
 
@@ -1146,7 +1161,7 @@ function renderIrCard(opts){
           <svg class="ir-channel-spark hidden" viewBox="0 0 70 18" preserveAspectRatio="none" data-channel="buyer"></svg>
         </div>
         <div class="ir-channel-row">
-          <div class="ir-channel-name">🏘 Продавец</div>
+          <div class="ir-channel-name">🏠 Продавец</div>
           <div class="ir-channel-bar"><div class="ir-channel-fill seller" style="width:${Math.min(h.now.seller,100)}%"></div></div>
           <div class="ir-channel-pct">${h.now.seller}%</div>
           <div class="ir-channel-delta hidden">·</div>

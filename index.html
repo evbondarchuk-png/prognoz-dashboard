@@ -695,7 +695,7 @@ function renderFunnelsPaired(buyer,seller){
  const bs=(buyer.stages||[]).map(st=>stageCard('buyer',st));
  const ss=(seller.stages||[]).map(st=>stageCard('seller',st));
  const rows=Math.max(bs.length,ss.length);
- const cells=[head(buyer,'🛒','buyer'),head(seller,'🏘','seller')];
+ const cells=[head(buyer,'🛒','buyer'),head(seller,'🏠','seller')];
  for(let i=0;i<rows;i++){
   cells.push(`<div class="row-stage">${bs[i]||''}</div>`);
   cells.push(`<div class="row-stage">${ss[i]||''}</div>`);
@@ -749,9 +749,14 @@ window.openManager=()=>{
 function renderMain(d){
  const f=d.funnel; const out=[];
  const isG0 = !!(d.user && d.user.is_group_zero);
+ const isNewbie = !isG0 && d.user && typeof d.user.stazh_months==='number' && d.user.stazh_months < 1;
  if (isG0) {
    out.push(`<div class="banner" style="background:#fff7e6;border:1px solid #fcd34d;color:#92400e;padding:12px 14px;border-radius:var(--r-md,12px);margin-bottom:12px">
      🛌 <b>Ты в группе 0</b> — план не считается. Чтобы получить цели, нужно попасть в светофор опытных (наработать историю в архиве).
+   </div>`);
+ } else if (isNewbie) {
+   out.push(`<div class="banner" style="background:#ecfdf5;border:1px solid #86efac;color:#065f46;padding:12px 14px;border-radius:var(--r-md,12px);margin-bottom:12px">
+     🌱 <b>Ты в начале пути · стаж &lt; 1 мес.</b> Плановые показатели появятся с 1-го числа следующего месяца. Сейчас сосредоточься на горячих клиентах и первых задатках — система их уже видит.
    </div>`);
  }
  if(f&&f.buyer){
@@ -880,7 +885,7 @@ function renderCoach(d){
  <div class="muted" style="margin:-6px 0 12px">${per} · конверсии показывают, где теряются клиенты</div>
  <div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR.buyer}"></span><div style="font-weight:var(--fw-b)">🛒 Покупатель</div></div></div>
  ${f12Buyer(f12.buyer&&f12.buyer.all, f12.buyer&&f12.buyer.segments)}</div>
- <div class="funnel-side" style="margin-top:10px"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR.seller}"></span><div style="font-weight:var(--fw-b)">🏘 Продавец</div></div></div>
+ <div class="funnel-side" style="margin-top:10px"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR.seller}"></span><div style="font-weight:var(--fw-b)">🏠 Продавец</div></div></div>
  ${f12Seller(f12.seller&&f12.seller.all, f12.seller&&f12.seller.segments)}</div></div>`);
  }
  if(d.coach&&(d.coach.buyer||d.coach.seller)){
@@ -1303,7 +1308,7 @@ function renderIrCard(opts){
           <svg class="ir-channel-spark hidden" viewBox="0 0 70 18" preserveAspectRatio="none" data-channel="buyer"></svg>
         </div>
         <div class="ir-channel-row">
-          <div class="ir-channel-name">🏘 Продавец</div>
+          <div class="ir-channel-name">🏠 Продавец</div>
           <div class="ir-channel-bar"><div class="ir-channel-fill seller" style="width:${Math.min(h.now.seller,100)}%"></div></div>
           <div class="ir-channel-pct">${h.now.seller}%</div>
           <div class="ir-channel-delta hidden">·</div>
