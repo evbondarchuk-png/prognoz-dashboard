@@ -378,7 +378,196 @@ function tasksHTML(t) {
   return chips + rows;
 }
 
+function chipsMopHTML(c) {
+  const h = [];
+  if (c.ir_pct != null) {
+    const cls = c.ir_status === 'green' ? 'ok' : c.ir_status === 'red' ? 'bad' : '';
+    h.push(`<div class="chip ir ${cls}">ИР группы ${c.ir_pct}% · норма ${c.ir_norm}%</div>`);
+  }
+  if (c.in_risk != null && c.total != null) {
+    const cls = c.in_risk === 0 ? 'up' : c.in_risk <= 2 ? 'ir' : 'down';
+    h.push(`<div class="chip ${cls}">⚠️ в риске ${c.in_risk} из ${c.total}</div>`);
+  }
+  if (c.performers != null && c.total != null) {
+    h.push(`<div class="chip up">✅ выполняют ≥70% — ${c.performers}</div>`);
+  }
+  if (c.ir_delta != null && Math.abs(c.ir_delta) >= 1) {
+    const cls = c.ir_delta > 0 ? 'up' : 'down';
+    const sign = c.ir_delta > 0 ? '▲ +' : '▼ ';
+    h.push(`<div class="chip ${cls}">${sign}${c.ir_delta} п.п. за неделю</div>`);
+  }
+  return h.join('');
+}
+
+function membersTableHTML(state) {
+  const members = state.members || [];
+  if (!members.length) return '<div class="muted">В группе нет партнёров.</div>';
+  const row = (m) => {
+    const irM = m.ir_v2_month != null ? m.ir_v2_month : '—';
+    const irClr = m.ir_v2_month == null ? 'var(--muted)' : m.ir_v2_month >= 70 ? 'var(--ok)' : m.ir_v2_month >= 40 ? 'var(--warn)' : 'var(--bad)';
+    const status = m.is_group_zero ? '🛌 группа 0' : m.is_newbie ? '🌱 новичок' : m.risk_level >= 1 ? `🔴 Н${Math.min(4, m.risk_level)}` : '✅';
+    const plan = m.plan_month > 0 ? fmtK(m.plan_month) : '—';
+    const fact = fmtK(m.fact_month);
+    const fc = fmtK(m.forecast_month);
+    const planPct = m.plan_month > 0 ? Math.round(m.fact_month / m.plan_month * 100) : null;
+    const planPctClr = planPct == null ? 'var(--muted)' : planPct >= 100 ? 'var(--ok)' : planPct >= 70 ? 'var(--warn)' : 'var(--bad)';
+    return `<tr>
+      <td style="padding:8px;border-bottom:1px solid var(--line)">${esc(m.name)}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700">${irM}${m.ir_v2_month != null ? '%' : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${plan}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fact}${planPct != null ? ` <span style="color:${planPctClr};font-size:11px">(${planPct}%)</span>` : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fc}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:center;font-size:11px">${status}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:center"><a href="session-report.html?level=partner&code=${esc(m.code)}" target="_blank" style="color:var(--brand);font-size:11px;font-weight:700;background:var(--brand-soft);padding:3px 7px;border-radius:4px;text-decoration:none">📄</a></td>
+    </tr>`;
+  };
+  return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:var(--surface-2)">
+      <th style="padding:8px;text-align:left">Партнёр</th>
+      <th style="padding:8px;text-align:right">ИР мес</th>
+      <th style="padding:8px;text-align:right">План</th>
+      <th style="padding:8px;text-align:right">Факт</th>
+      <th style="padding:8px;text-align:right">Прогноз</th>
+      <th style="padding:8px;text-align:center">Статус</th>
+      <th style="padding:8px;text-align:center">Отчёт</th>
+    </tr></thead>
+    <tbody>${members.map(row).join('')}</tbody>
+  </table></div>`;
+}
+
+function riskListHTML(risk) {
+  if (!risk.list || !risk.list.length) {
+    return '<div class="tagline tag-ok">✅ Никто из команды не в риске.</div>';
+  }
+  const items = risk.list.map((r) => `<div class="trow over">
+    <span class="tco">🔴</span>
+    <div class="trc">
+      <div class="trn">${esc(r.name)}</div>
+      <div class="trm">Н${r.level} · ${r.streak}-я неделя в риске · ИР мес ${r.ir_month != null ? r.ir_month + '%' : '—'}</div>
+    </div>
+    <a href="session-report.html?level=partner&code=${esc(r.code)}" target="_blank" class="trst" style="background:var(--brand-soft);color:var(--brand);text-decoration:none">📄 Отчёт</a>
+  </div>`).join('');
+  return `<div class="block-title">${risk.in_risk_count} ${risk.in_risk_count === 1 ? 'партнёр' : 'партнёров'} в риске из ${risk.total_qualified}</div>${items}`;
+}
+
+function aggFunnelHTML(funnel) {
+  const stages = (sideStages, isBuyer) => {
+    if (!sideStages || !sideStages.length) return '<div class="muted">Нет данных</div>';
+    const max = Math.max(...sideStages.map(s => s.fact || 0), 1);
+    return sideStages.map((st) => {
+      const w = Math.max(15, Math.round((st.fact || 0) / max * 100));
+      const color = isBuyer ? 'var(--buyer)' : 'var(--seller)';
+      const pct = st.progress_pct != null ? `${st.progress_pct}%` : '';
+      const fact = st.is_revenue ? fmtK(st.fact) : (st.fact != null ? st.fact : '—');
+      return `<div class="fstep"><div class="fname">${esc(st.label)}</div><div class="fbar" style="background:${color};width:${w}%;min-width:42px">${fact}</div><div class="fconv">${pct}</div></div>`;
+    }).join('');
+  };
+  return `<div class="two">
+    <div><div class="side-h">🛒 Покупатели</div><div class="funnel">${stages(funnel.buyer_stages, true)}</div></div>
+    <div><div class="side-h">🏠 Продавцы</div><div class="funnel">${stages(funnel.seller_stages, false)}</div></div>
+  </div>`;
+}
+
+function goalsMopHTML(g) {
+  const rows = [];
+  if (g.plan_revenue_month > 0) {
+    const pct = g.plan_pct != null ? g.plan_pct : 0;
+    const clr = pct >= 100 ? 'var(--ok)' : pct >= 70 ? 'var(--warn)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">💰</div><div class="gt"><b>План вала группы на месяц</b><small>факт ${fmtK(g.fact_revenue_month)} ₽ · прогноз ${fmtK(g.forecast_revenue_month)} ₽ · план ${fmtK(g.plan_revenue_month)} ₽</small></div><div class="gv" style="color:${clr}">${pct}%${g.gap_to_plan > 0 ? ` · +${fmtK(g.gap_to_plan)}` : ''}</div></div>`);
+  }
+  if (g.next_month_plan > 0) {
+    const pct = Math.round(g.next_month_forecast / g.next_month_plan * 100);
+    const clr = pct >= 100 ? 'var(--ok)' : pct >= 70 ? 'var(--warn)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">📅</div><div class="gt"><b>Прогноз на следующий месяц</b><small>прогноз ${fmtK(g.next_month_forecast)} ₽ · план ${fmtK(g.next_month_plan)} ₽</small></div><div class="gv" style="color:${clr}">${pct}%</div></div>`);
+  }
+  if (g.ir_current != null) {
+    const clr = g.ir_current >= g.ir_target_pct ? 'var(--ok)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">🎯</div><div class="gt"><b>Цель ИР группы</b><small>сейчас ${g.ir_current}%, цель ${g.ir_target_pct}%</small></div><div class="gv" style="color:${clr}">${g.ir_current >= g.ir_target_pct ? 'в норме' : `+${g.ir_target_pct - g.ir_current} п.п.`}</div></div>`);
+  }
+  return rows.join('') || '<div class="muted">Цели не настроены.</div>';
+}
+
+function renderMop(r, fromCache) {
+  const root = document.getElementById('root');
+  const h = r.head || {};
+  const cacheNote = fromCache ? '<div class="note" style="margin-bottom:12px">📦 Из кэша. Нажми «🔄 Пересчитать» если данные изменились.</div>' : '';
+  root.innerHTML = `
+    ${cacheNote}
+    <div class="rep-head">
+      <div class="eyebrow">${esc(r.period_label || '')}</div>
+      <h1>${esc(h.name)}</h1>
+      <div class="sub">${esc(h.role_label || 'Старший партнёр')} · ${h.members_count} ${h.members_count === 1 ? 'партнёр' : (h.members_count < 5 ? 'партнёра' : 'партнёров')} (qualified: ${h.qualified_count}${h.newbies_count ? `, новичков ${h.newbies_count}` : ''}${h.group0_count ? `, группа 0 ${h.group0_count}` : ''})</div>
+      <div class="chips">${chipsMopHTML(h.chips || {})}</div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">1</span> Коротко: где сейчас группа</div>
+      <p class="lede">${esc(r.lede || '—')}</p>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">2</span> Как шла группа — динамика цикла 6 мес</div>
+      <div class="sec-sub">Вал группы по месяцам vs план МОПа (личный план как ориентир) и ИР группы.</div>
+      <div class="two">
+        <div>
+          <div class="block-title">Вал группы по месяцам</div>
+          ${sparkPlanVsFact(r.history)}
+        </div>
+        <div>
+          <div class="block-title">ИР группы по месяцам</div>
+          ${sparkIr(r.history)}
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">3</span> Кто в риске</div>
+      <div class="sec-sub">Партнёры со стрик «Н1+» (только qualified, не новички и не группа 0).</div>
+      ${riskListHTML(r.risk)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">4</span> Состояние группы</div>
+      <div class="sec-sub">Поимённо — ИР месяца, план/факт/прогноз вала, статус. Клик «📄» — открыть партнёрский отчёт.</div>
+      ${membersTableHTML(r.state)}
+      ${r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 по ИР</div>${r.state.top.map(m => `<div class="tagline tag-ok">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : ''}
+      ${r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 по ИР</div>${r.state.lowest.map(m => `<div class="tagline tag-bad">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : ''}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">5</span> Клиенты — воронка группы</div>
+      <div class="sec-sub">Агрегированная воронка по всей группе (суммарно поток/горячие/задатки/сделки).</div>
+      ${aggFunnelHTML(r.funnel || {})}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">6</span> На какие цифры выйти</div>
+      <div class="sec-sub">План группы, разрывы и цель ИР.</div>
+      ${goalsMopHTML(r.goals)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">7</span> Достижения и зона роста (уровень группы)</div>
+      <div class="sec-sub">Что заработала группа и над чем работать.</div>
+      ${achievementsHTML(r.achievements)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">8</span> Задачи МОПа и дисциплина управления</div>
+      <div class="sec-sub">Что ставилось МОПу за прошлую неделю (включая управленческие из эскалаций «Н»).</div>
+      ${tasksHTML(r.tasks)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">9</span> Заметки наставника (для сессии с РОПом)</div>
+      <div class="sec-sub">Договорённости и наблюдения (сохранение — фаза 2).</div>
+      <div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div>
+    </div>
+  `;
+}
+
 function render(r, fromCache) {
+  if (r.level === 'mop') return renderMop(r, fromCache);
   const root = document.getElementById('root');
   const h = r.head || {};
   const cacheNote = fromCache ? '<div class="note" style="margin-bottom:12px">📦 Из кэша. Нажми «🔄 Пересчитать» если данные изменились.</div>' : '';
