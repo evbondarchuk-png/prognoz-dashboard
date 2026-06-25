@@ -566,7 +566,181 @@ function renderMop(r, fromCache) {
   `;
 }
 
+function chipsRopHTML(c) {
+  const h = [];
+  if (c.ir_pct != null) {
+    const cls = c.ir_status === 'green' ? 'ok' : c.ir_status === 'red' ? 'bad' : '';
+    h.push(`<div class="chip ir ${cls}">ИР отдела ${c.ir_pct}% · норма ${c.ir_norm}%</div>`);
+  }
+  if (c.in_risk_groups != null && c.total_groups != null) {
+    const cls = c.in_risk_groups === 0 ? 'up' : c.in_risk_groups <= 1 ? 'ir' : 'down';
+    h.push(`<div class="chip ${cls}">⚠️ групп в риске ${c.in_risk_groups} из ${c.total_groups}</div>`);
+  }
+  if (c.in_risk_partners != null && c.total_partners != null) {
+    h.push(`<div class="chip">👥 партнёров в риске ${c.in_risk_partners} из ${c.total_partners}</div>`);
+  }
+  if (c.ir_delta != null && Math.abs(c.ir_delta) >= 1) {
+    const cls = c.ir_delta > 0 ? 'up' : 'down';
+    const sign = c.ir_delta > 0 ? '▲ +' : '▼ ';
+    h.push(`<div class="chip ${cls}">${sign}${c.ir_delta} п.п. за неделю</div>`);
+  }
+  return h.join('');
+}
+
+function groupsTableHTML(state) {
+  const groups = state.groups || [];
+  if (!groups.length) return '<div class="muted">В отделе нет групп.</div>';
+  const row = (g) => {
+    const irW = g.ir_v2_week != null ? g.ir_v2_week : '—';
+    const irM = g.ir_v2_month != null ? g.ir_v2_month : '—';
+    const irClr = g.ir_v2_week == null ? 'var(--muted)' : g.ir_v2_week >= 70 ? 'var(--ok)' : g.ir_v2_week >= 40 ? 'var(--warn)' : 'var(--bad)';
+    const plan = g.plan_month > 0 ? fmtK(g.plan_month) : '—';
+    const fact = fmtK(g.fact_month);
+    const fc = fmtK(g.forecast_month);
+    const planPct = g.plan_month > 0 ? Math.round(g.fact_month / g.plan_month * 100) : null;
+    const planPctClr = planPct == null ? 'var(--muted)' : planPct >= 100 ? 'var(--ok)' : planPct >= 70 ? 'var(--warn)' : 'var(--bad)';
+    const riskPart = g.underperformers_v2 > 0 ? `<span style="color:var(--bad);font-size:11px">⚠️ ${g.underperformers_v2}</span>` : `<span style="color:var(--ok);font-size:11px">✅</span>`;
+    return `<tr>
+      <td style="padding:8px;border-bottom:1px solid var(--line)">${esc(g.name)}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700">${irW}${g.ir_v2_week != null ? '%' : ''}<div style="font-size:10px;color:var(--muted);font-weight:400">мес ${irM}${g.ir_v2_month != null ? '%' : ''}</div></td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${g.members_count}<div style="font-size:10px;color:var(--muted)">${g.performers_v2} ≥70%</div></td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${plan}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fact}${planPct != null ? ` <span style="color:${planPctClr};font-size:11px">(${planPct}%)</span>` : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fc}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:center">${riskPart}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:center"><a href="session-report.html?level=mop&code=${esc(g.code)}" target="_blank" style="color:var(--brand);font-size:11px;font-weight:700;background:var(--brand-soft);padding:3px 7px;border-radius:4px;text-decoration:none">📄</a></td>
+    </tr>`;
+  };
+  return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:var(--surface-2)">
+      <th style="padding:8px;text-align:left">Старший партнёр</th>
+      <th style="padding:8px;text-align:right">ИР неделя</th>
+      <th style="padding:8px;text-align:right">Партнёров</th>
+      <th style="padding:8px;text-align:right">План</th>
+      <th style="padding:8px;text-align:right">Факт</th>
+      <th style="padding:8px;text-align:right">Прогноз</th>
+      <th style="padding:8px;text-align:center">Риск</th>
+      <th style="padding:8px;text-align:center">Отчёт</th>
+    </tr></thead>
+    <tbody>${groups.map(row).join('')}</tbody>
+  </table></div>`;
+}
+
+function riskGroupsListHTML(risk) {
+  if (!risk.list || !risk.list.length) {
+    return '<div class="tagline tag-ok">✅ Все группы в норме.</div>';
+  }
+  const items = risk.list.map((g) => `<div class="trow over">
+    <span class="tco">🔴</span>
+    <div class="trc">
+      <div class="trn">${esc(g.name)}</div>
+      <div class="trm">ИР нед ${g.ir_week != null ? g.ir_week + '%' : '—'} · ИР мес ${g.ir_month != null ? g.ir_month + '%' : '—'} · ${g.underperformers} из ${g.partners_count} партнёров в риске</div>
+    </div>
+    <a href="session-report.html?level=mop&code=${esc(g.code)}" target="_blank" class="trst" style="background:var(--brand-soft);color:var(--brand);text-decoration:none">📄 Отчёт</a>
+  </div>`).join('');
+  return `<div class="block-title">${risk.in_risk_count} ${risk.in_risk_count === 1 ? 'группа' : 'групп'} в риске из ${risk.total}</div>${items}`;
+}
+
+function goalsRopHTML(g) {
+  const rows = [];
+  if (g.plan_revenue_month > 0) {
+    const pct = g.plan_pct != null ? g.plan_pct : 0;
+    const clr = pct >= 100 ? 'var(--ok)' : pct >= 70 ? 'var(--warn)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">💰</div><div class="gt"><b>План вала отдела</b><small>факт ${fmtK(g.fact_revenue_month)} ₽ · прогноз ${fmtK(g.forecast_revenue_month)} ₽ · план ${fmtK(g.plan_revenue_month)} ₽</small></div><div class="gv" style="color:${clr}">${pct}%${g.gap_to_plan > 0 ? ` · +${fmtK(g.gap_to_plan)}` : ''}</div></div>`);
+  }
+  if (g.next_month_plan > 0) {
+    const pct = Math.round(g.next_month_forecast / g.next_month_plan * 100);
+    const clr = pct >= 100 ? 'var(--ok)' : pct >= 70 ? 'var(--warn)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">📅</div><div class="gt"><b>Прогноз на следующий месяц</b><small>прогноз ${fmtK(g.next_month_forecast)} ₽ · план ${fmtK(g.next_month_plan)} ₽</small></div><div class="gv" style="color:${clr}">${pct}%</div></div>`);
+  }
+  if (g.ir_current != null) {
+    const clr = g.ir_current >= g.ir_target_pct ? 'var(--ok)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">🎯</div><div class="gt"><b>Цель ИР отдела</b><small>сейчас ${g.ir_current}%, цель ${g.ir_target_pct}%</small></div><div class="gv" style="color:${clr}">${g.ir_current >= g.ir_target_pct ? 'в норме' : `+${g.ir_target_pct - g.ir_current} п.п.`}</div></div>`);
+  }
+  return rows.join('') || '<div class="muted">Цели не настроены.</div>';
+}
+
+function renderRop(r, fromCache) {
+  const root = document.getElementById('root');
+  const h = r.head || {};
+  const cacheNote = fromCache ? '<div class="note" style="margin-bottom:12px">📦 Из кэша. Нажми «🔄 Пересчитать» если данные изменились.</div>' : '';
+  root.innerHTML = `
+    ${cacheNote}
+    <div class="rep-head">
+      <div class="eyebrow">${esc(r.period_label || '')}</div>
+      <h1>${esc(h.name)}</h1>
+      <div class="sub">${esc(h.role_label || 'Управляющий партнёр')} · ${h.mops_count} ${h.mops_count === 1 ? 'группа' : (h.mops_count < 5 ? 'группы' : 'групп')} · ${h.partners_count} партнёров</div>
+      <div class="chips">${chipsRopHTML(h.chips || {})}</div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">1</span> Коротко: где сейчас отдел</div>
+      <p class="lede">${esc(r.lede || '—')}</p>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">2</span> Как шёл отдел — динамика цикла 6 мес</div>
+      <div class="sec-sub">Вал отдела по месяцам vs план РОПа (личный план как ориентир) и ИР отдела.</div>
+      <div class="two">
+        <div>
+          <div class="block-title">Вал отдела по месяцам</div>
+          ${sparkPlanVsFact(r.history)}
+        </div>
+        <div>
+          <div class="block-title">ИР отдела по месяцам</div>
+          ${sparkIr(r.history)}
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">3</span> Какие группы в риске</div>
+      <div class="sec-sub">Группы с ИР нед &lt; 70%. Открой 📄 — увидишь поимённый разбор группы.</div>
+      ${riskGroupsListHTML(r.risk)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">4</span> Состояние отдела</div>
+      <div class="sec-sub">По группам — ИР, кол-во партнёров, план/факт/прогноз вала, риск.</div>
+      ${groupsTableHTML(r.state)}
+      ${r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 группы по ИР</div>${r.state.top.map(g => `<div class="tagline tag-ok">${esc(g.name)} — ${g.ir_v2_week}%</div>`).join('')}` : ''}
+      ${r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 группы</div>${r.state.lowest.map(g => `<div class="tagline tag-bad">${esc(g.name)} — ${g.ir_v2_week}%</div>`).join('')}` : ''}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">5</span> Клиенты — воронка отдела</div>
+      <div class="sec-sub">Агрегированная воронка по всем партнёрам отдела.</div>
+      ${aggFunnelHTML(r.funnel || {})}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">6</span> На какие цифры выйти</div>
+      <div class="sec-sub">План отдела, разрывы и цель ИР.</div>
+      ${goalsRopHTML(r.goals)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">7</span> Достижения и зона роста (уровень отдела)</div>
+      <div class="sec-sub">Что заработал отдел и над чем работать.</div>
+      ${achievementsHTML(r.achievements)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">8</span> Задачи РОПа и дисциплина управления</div>
+      <div class="sec-sub">Что ставилось РОПу за прошлую неделю (включая управленческие из эскалаций Н4).</div>
+      ${tasksHTML(r.tasks)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">9</span> Заметки наставника (для сессии с АУПом)</div>
+      <div class="sec-sub">Договорённости и наблюдения (сохранение — фаза 2).</div>
+      <div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div>
+    </div>
+  `;
+}
+
 function render(r, fromCache) {
+  if (r.level === 'rop') return renderRop(r, fromCache);
   if (r.level === 'mop') return renderMop(r, fromCache);
   const root = document.getElementById('root');
   const h = r.head || {};

@@ -862,7 +862,7 @@ function teamRowCommon(m){
   const plan=m.plan_month||0; const fact=m.fact_month||0; const forecast=m.forecast_month||0;
   const factPct=plan>0?Math.round(fact/plan*100):0;
   const fcPct=plan>0?Math.round(forecast/plan*100):0;
-  return `<tr class="t-row" onclick="location.href='${esc(m.drill_url||'#')}'">
+  return `<tr class="t-row" onclick="if(event.target.closest('.t-report'))return;location.href='${esc(m.drill_url||'#')}'">
     <td><div class="t-group-cell">
       <span class="t-status-bar ${_statusBarCls(m)}"></span>
       <div class="t-group-avatar">${esc(_avatar(m.name))}</div>
@@ -873,7 +873,7 @@ function teamRowCommon(m){
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
     <td class="center">${_statusBadge(m)}</td>
-    <td class="center"><span class="t-arrow">›</span></td></tr>`;
+    <td class="center"><a class="t-report" href="session-report.html?level=rop&code=${esc(m.code||'')}" target="_blank" style="color:var(--brand);font-size:var(--fs-12);font-weight:var(--fw-b);text-decoration:none;padding:4px 8px;border-radius:6px;background:var(--brand-soft);white-space:nowrap" title="Отчёт по отделу">📄 Отчёт</a></td></tr>`;
 }
 function _monthCells(hist){
   if(!hist) return '<td colspan="6" class="center muted">—</td>';
@@ -945,7 +945,7 @@ function renderDepts(d){
          <th>План вала</th>
          <th class="t-sort" data-sort-key="fact" style="cursor:pointer">Факт вала${sortKey==='fact'?' ↓':''}</th>
          <th class="t-sort" data-sort-key="forecast" style="cursor:pointer">Прогноз${sortKey==='forecast'?' ↓':''}</th>
-         <th class="center">Статус</th><th></th></tr></thead>
+         <th class="center">Статус</th><th class="center">Отчёт</th></tr></thead>
        <tbody>${sorted.map(teamRowCommon).join('')}</tbody>
      </table></div>
    </div>
