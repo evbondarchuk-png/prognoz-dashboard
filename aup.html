@@ -531,23 +531,22 @@ function _spark(values,color){
  const dots=pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2" fill="${color}"/>`).join('');
  return `<svg class="tile-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${line}" fill="none" stroke="${color}" stroke-width="2"/>${dots}</svg>`;
 }
-function _stazhBars(members, scope){
- // 0–3 / 4–6 / 6+ лет — только по РЕАЛЬНЫМ риелторам.
- // - Исключаем «справочного» сам МОПа (is_self) — он не партнёр группы.
- // - Для РОПа/АУПа team_cards.members это МОПы/РОПы (не риелторы), считать
- //   нельзя — показываем заглушку. Реальный состав отдела/компании по
- //   стажу нужно добавить отдельным полем на бэке.
- if (scope !== 'группы') {
-   const lbl='<div class="bar-lbl" style="color:var(--muted-2,#a8aebd)">нет данных</div>';
+function _stazhBars(members, scope, dist){
+ let s72=0,s48=0,s0=0;
+ if (dist && typeof dist === 'object' && (dist.total||0) > 0) {
+   s72 = dist.s6plus || 0;
+   s48 = dist.s4_6 || 0;
+   s0  = dist.s0_3 || 0;
+ } else if (scope === 'группы') {
+   (members||[]).forEach(m=>{
+     if (m.is_self) return;
+     const v=typeof m.stazh_months==='number'?m.stazh_months:0;
+     if(v>=6) s72++; else if(v>=4) s48++; else s0++;
+   });
+ } else {
    const col=(c,label)=>`<div class="bar-col"><div class="bar-num" style="color:var(--muted-2,#a8aebd)">—</div><div class="bar-track"><span style="height:6px;background:${c};opacity:.3"></span></div><div class="bar-lbl">${label}</div></div>`;
    return {html:`<div class="bar-grid">${col('var(--brand)','6+')}${col('var(--muted-2,#a8aebd)','4–6')}${col('var(--ok)','0–3')}</div>`, s72:0, s48:0, s0:0};
  }
- let s72=0,s48=0,s0=0;
- (members||[]).forEach(m=>{
-  if (m.is_self) return;  // сам МОП — не входит в состав партнёров его группы
-  const v=typeof m.stazh_months==='number'?m.stazh_months:0;
-  if(v>=6) s72++; else if(v>=4) s48++; else s0++;
- });
  const mx=Math.max(s72,s48,s0,1);
  const col=(v,c,label)=>`<div class="bar-col"><div class="bar-num">${v}</div><div class="bar-track"><span style="height:${Math.max(6,Math.round(v/mx*100))}%;background:${c}"></span></div><div class="bar-lbl">${label}</div></div>`;
  return {html:`<div class="bar-grid">${col(s72,'var(--brand)','6+')}${col(s48,'var(--muted-2,#a8aebd)','4–6')}${col(s0,'var(--ok)','0–3')}</div>`, s72, s48, s0};
@@ -597,7 +596,7 @@ function renderTiles(o){
  const revClr = revPct>=50?'var(--ok)':revPct>=25?'var(--warn)':'var(--bad)';
 
  // ── ПЛИТКА 3: подписи теперь под каждым столбиком
- const stazh=_stazhBars(o.teamMembers, o.scope);
+ const stazh=_stazhBars(o.teamMembers, o.scope, o.stazhDist);
 
  const tasksS=_tasksStat(o.tasks);
  const taskDonePct=tasksS.total?Math.round((tasksS.done/tasksS.total)*100):0;
@@ -701,6 +700,7 @@ function renderHero(d){
    newbies: (typeof a.scope.newbies_count==='number'?a.scope.newbies_count:0),
    g0: (typeof a.scope.group0_count==='number'?a.scope.group0_count:0),
    teamMembers: (d&&d.team_cards&&d.team_cards.members)||[],
+   stazhDist: a.stazh_distribution || null,
    tasks: (d&&d.tasks)||[]
  });
  fcStats=fcHero(a.forecast); }
