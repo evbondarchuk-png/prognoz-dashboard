@@ -317,7 +317,7 @@
 .team-tab.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(20,30,55,.08)}
 .team-panel{display:none} .team-panel.active{display:block}
 .scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.team-table{width:100%;min-width:760px;border-collapse:separate;border-spacing:0;font-size:var(--fs-13)}
+.team-table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--fs-13)}
 .team-table th{text-align:right;padding:var(--sp-2) var(--sp-3);font-size:var(--fs-11);font-weight:var(--fw-sb);color:var(--muted);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--line);white-space:nowrap}
 .team-table th:first-child{text-align:left} .team-table th.center{text-align:center}
 .team-table td{padding:var(--sp-3);border-bottom:1px solid var(--surface-3,var(--line));vertical-align:middle;text-align:right;white-space:nowrap}
@@ -1022,7 +1022,6 @@ function teamRowCommon(m,idx){
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
-    <td class="center">${_statusBadge(m)}</td>
     <td class="center"><a class="t-report" href="session-report.html?level=partner&code=${esc(m.code||'')}" target="_blank" style="color:var(--brand);font-size:var(--fs-12);font-weight:var(--fw-b);text-decoration:none;padding:4px 8px;border-radius:6px;background:var(--brand-soft);white-space:nowrap" title="Отчёт к наставнической сессии">📄 Отчёт</a></td></tr>`;
 }
 function _monthCells(hist, idxs){
@@ -1074,9 +1073,13 @@ function renderTeam(d){
  const _SK = 'team_sort_mop';
  let sortKey = (localStorage.getItem(_SK) || 'ir');
  if (!['ir','fact','forecast'].includes(sortKey)) sortKey = 'ir';
- const _sortVal = (m, k) => k==='ir' ? (m.ir_v2_month_total!=null?m.ir_v2_month_total:(m.ir_month||0))
-   : k==='fact' ? (m.fact_month||0)
-   : k==='forecast' ? (m.forecast_month||0) : 0;
+ const _sortVal = (m, k) => {
+   const plan = m.plan_month || 0;
+   if (k === 'ir') return m.ir_v2_month_total != null ? m.ir_v2_month_total : (m.ir_month || 0);
+   if (k === 'fact') return plan > 0 ? (m.fact_month || 0) / plan : 0;
+   if (k === 'forecast') return plan > 0 ? (m.forecast_month || 0) / plan : 0;
+   return 0;
+ };
  const sorted=[...main].sort((a,b)=>_sortVal(b,sortKey)-_sortVal(a,sortKey));
  const g0sorted=[...g0].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
  // TZ-A30 правка Егора 18.06: показываем только месяцы, по которым есть данные.
@@ -1093,7 +1096,7 @@ function renderTeam(d){
    <div class="team-head">
      <div><div class="team-h-title">👥 Моя команда</div>
        <div class="team-h-sub">${members.length} ${members.length===1?'партнёр':(members.length<5?'партнёра':'партнёров')}</div></div>
-     <div class="team-h-sort">сортировка: ${sortKey==='ir'?'ИР':sortKey==='fact'?'Факт вала':'Прогноз'} ↓</div>
+     <div class="team-h-sort">сортировка: ${sortKey==='ir'?'ИР':sortKey==='fact'?'% факта':'% прогноза'} ↓</div>
    </div>
    <div class="team-tabs" role="tablist">
      <button class="team-tab active" data-team-tab="common">📊 Общее</button>
@@ -1107,7 +1110,7 @@ function renderTeam(d){
          <th>План вала</th>
          <th class="t-sort" data-sort-key="fact" style="cursor:pointer">Факт вала${sortKey==='fact'?' ↓':''}</th>
          <th class="t-sort" data-sort-key="forecast" style="cursor:pointer">Прогноз${sortKey==='forecast'?' ↓':''}</th>
-         <th class="center">Статус</th><th class="center">Отчёт</th></tr></thead>
+         <th class="center">Отчёт</th></tr></thead>
        <tbody>${sorted.map(teamRowCommon).join('')}</tbody>
      </table></div>
      ${g0sorted.length?`
