@@ -160,6 +160,30 @@ const params = new URLSearchParams(location.search);
 const level = params.get('level') || 'partner';
 const userCode = params.get('code');
 
+// Fallback-словарь если бэк прислал bit_key вместо label (например, старый кэш)
+const BIT_LABELS = {
+  k_distribution_flow: 'Перекос входящего потока по сегментам',
+  k_sufficiency_flow: 'Мало входящих клиентов',
+  k_sufficiency_hot: 'Мало горячих клиентов в работе',
+  k_sufficiency_deals: 'Мало сделок в работе',
+  p_conversion_to_hot: 'Низкая конверсия в горячие',
+  p_conversion_to_deals: 'Низкая конверсия в сделки',
+  k_distribution_objects: 'Перекос объектов по сегментам',
+  k_sufficiency_objects: 'Мало объектов в работе',
+  k_sufficiency_hot_objects: 'Мало горячих объектов',
+  k_sufficiency_deals_objects: 'Мало сделок по объектам',
+  p_conversion_to_hot_objects: 'Объекты не доходят до горячих',
+};
+const niceBitLabel = (w) => {
+  const isCode = w && w.label && /^[a-z_]+$/.test(w.label);
+  if (isCode || !w.label) return BIT_LABELS[w.bit_key] || w.label || w.bit_key || 'отклонение';
+  return w.label;
+};
+// Подменяет в тексте «p_conversion_to_hot, k_sufficiency_hot_objects» → человеческие фразы
+function humanizeLede(s) {
+  if (!s) return s;
+  return s.replace(/\b([kp]_[a-z_]+)\b/g, (m) => (BIT_LABELS[m] || m).toLowerCase());
+}
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 const fmtK = (n) => { n = Number(n) || 0; if (n >= 1e6) return (n/1e6).toFixed(1).replace('.', ',')+' млн'; if (n >= 1e4) return Math.round(n/1e3)+'к'; if (n >= 1e3) return (n/1e3).toFixed(1).replace('.', ',')+'к'; return String(Math.round(n)); };
 const monthShort = (ym) => { const m = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; const idx = parseInt(ym.slice(5, 7), 10) - 1; return m[idx] || ym; };
@@ -285,7 +309,7 @@ function diagnosticHTML(d) {
     const descr = w.description ? `<div style="font-size:13px;margin-top:6px;color:var(--ink)">${esc(w.description)}</div>` : '';
     const task = w.task_title ? `<div class="arrow" style="margin-top:8px;color:var(--ink)">→ <b>что делать:</b> ${esc(w.task_title)}${w.tool ? ` <span class="muted" style="font-size:11px">· инструмент: ${esc(w.tool)}</span>` : ''}</div>` : '';
     return `<div class="diag"><div class="di">${ico}</div><div class="dt">
-      <b>${esc(w.label)}</b> <span class="muted" style="font-size:11px">(${sideLbl})</span>
+      <b>${esc(niceBitLabel(w))}</b> <span class="muted" style="font-size:11px">(${sideLbl})</span>
       ${numbers}
       ${descr}
       ${task}
@@ -294,7 +318,7 @@ function diagnosticHTML(d) {
   const items = [];
   for (const w of (d.buyer_weak || [])) items.push(renderItem(w, 'buyer'));
   for (const w of (d.seller_weak || [])) items.push(renderItem(w, 'seller'));
-  const norms = (d.norm_chips || []).map((c) => `<span class="nchip">✓ ${esc(c.label)}</span>`).join('');
+  const norms = (d.norm_chips || []).map((c) => `<span class="nchip">✓ ${esc(niceBitLabel(c))}</span>`).join('');
   if (!items.length) {
     return `<div class="tagline tag-ok">✅ Отклонений по справочнику нет — повод похвалить.</div>${norms ? `<div class="norm-chips" style="margin-top:14px">${norms}</div>` : ''}`;
   }
@@ -501,7 +525,7 @@ function renderMop(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">1</span> Коротко: где сейчас группа</div>
-      <p class="lede">${esc(r.lede || '—')}</p>
+      <p class="lede">${esc(humanizeLede(r.lede || '—'))}</p>
     </div>
 
     <div class="sec">
@@ -555,12 +579,6 @@ function renderMop(r, fromCache) {
       <div class="sec-h"><span class="n">8</span> Задачи МОПа и дисциплина управления</div>
       <div class="sec-sub">Что ставилось МОПу за прошлую неделю (включая управленческие из эскалаций «Н»).</div>
       ${tasksHTML(r.tasks)}
-    </div>
-
-    <div class="sec">
-      <div class="sec-h"><span class="n">9</span> Заметки наставника (для сессии с РОПом)</div>
-      <div class="sec-sub">Договорённости и наблюдения (сохранение — фаза 2).</div>
-      <div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div>
     </div>
   `;
 }
@@ -674,7 +692,7 @@ function renderRop(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">1</span> Коротко: где сейчас отдел</div>
-      <p class="lede">${esc(r.lede || '—')}</p>
+      <p class="lede">${esc(humanizeLede(r.lede || '—'))}</p>
     </div>
 
     <div class="sec">
@@ -729,12 +747,6 @@ function renderRop(r, fromCache) {
       <div class="sec-sub">Что ставилось РОПу за прошлую неделю (включая управленческие из эскалаций Н4).</div>
       ${tasksHTML(r.tasks)}
     </div>
-
-    <div class="sec">
-      <div class="sec-h"><span class="n">9</span> Заметки наставника (для сессии с АУПом)</div>
-      <div class="sec-sub">Договорённости и наблюдения (сохранение — фаза 2).</div>
-      <div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div>
-    </div>
   `;
 }
 
@@ -755,7 +767,7 @@ function render(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">1</span> Коротко: где он сейчас</div>
-      <p class="lede">${esc(r.lede || '—')}</p>
+      <p class="lede">${esc(humanizeLede(r.lede || '—'))}</p>
     </div>
 
     <div class="sec">
@@ -810,12 +822,6 @@ function render(r, fromCache) {
       <div class="sec-sub">Что система и менеджер поставили за прошлую неделю.</div>
       ${tasksHTML(r.tasks)}
       <div class="note" style="margin-top:14px">📈 Плашка «эффект» (вырос ли показатель после задачи) — фаза 2, появится после накопления истории состояний.</div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-h"><span class="n">9</span> Заметки наставника</div>
-      <div class="sec-sub">Договорённости и наблюдения по итогам встречи (сохранение — фаза 2).</div>
-      <div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div><div class="notes-line"></div>
     </div>
   `;
 }
