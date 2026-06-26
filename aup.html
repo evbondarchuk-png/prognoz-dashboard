@@ -1102,7 +1102,9 @@ function renderStage(stage){
   if(showForecast){
     const fmtDelta=(d)=>{ const a=Math.abs(d); if(a>=1000000) return (d/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=10000) return Math.round(d/1000)+'к'; if(a>=1000) return (d/1000).toFixed(1).replace('.',',')+' тыс'; return String(Math.round(d)); };
     const deltaLabel='+'+fmtDelta(forecast - fact);
-    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+    const totalLabel=fmtDelta(forecast);
+    const u = is_revenue ? ' ₽' : '';
+    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">итого</span><span style="color:#374151;font-weight:var(--fw-b)">${esc(totalLabel + u)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   } else {
     numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   }
