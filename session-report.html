@@ -276,25 +276,24 @@ function compsHTML(ir_breakdown) {
 }
 
 function diagnosticHTML(d) {
+  const renderItem = (w, side) => {
+    const ico = side === 'buyer' ? '🛒' : '🏠';
+    const sideLbl = side === 'buyer' ? 'покупатель' : 'продавец';
+    const a = w.actual != null ? `факт ${w.actual}` : '';
+    const t = w.threshold != null ? ` · норма ${w.threshold}` : '';
+    const numbers = (a || t) ? `<div class="muted" style="font-size:11px;margin-top:4px">${esc(a + t)}</div>` : '';
+    const descr = w.description ? `<div style="font-size:13px;margin-top:6px;color:var(--ink)">${esc(w.description)}</div>` : '';
+    const task = w.task_title ? `<div class="arrow" style="margin-top:8px;color:var(--ink)">→ <b>что делать:</b> ${esc(w.task_title)}${w.tool ? ` <span class="muted" style="font-size:11px">· инструмент: ${esc(w.tool)}</span>` : ''}</div>` : '';
+    return `<div class="diag"><div class="di">${ico}</div><div class="dt">
+      <b>${esc(w.label)}</b> <span class="muted" style="font-size:11px">(${sideLbl})</span>
+      ${numbers}
+      ${descr}
+      ${task}
+    </div></div>`;
+  };
   const items = [];
-  for (const w of (d.buyer_weak || [])) {
-    const a = w.actual != null ? `факт ${w.actual}` : '';
-    const t = w.threshold != null ? ` · норма ${w.threshold}` : '';
-    items.push(`<div class="diag"><div class="di">🛒</div><div class="dt">
-      <b>${esc(w.label)} <span class="muted">(покупатель)</span></b><br>
-      <span class="muted">${esc(a + t)}</span> · <span class="code">${esc(w.bit_key)}</span>
-      ${w.task_title ? `<div class="arrow">→ задача «${esc(w.task_title)}»${w.tool ? ` · инструмент <b>${esc(w.tool)}</b>` : ''}</div>` : ''}
-    </div></div>`);
-  }
-  for (const w of (d.seller_weak || [])) {
-    const a = w.actual != null ? `факт ${w.actual}` : '';
-    const t = w.threshold != null ? ` · норма ${w.threshold}` : '';
-    items.push(`<div class="diag"><div class="di">🏠</div><div class="dt">
-      <b>${esc(w.label)} <span class="muted">(продавец)</span></b><br>
-      <span class="muted">${esc(a + t)}</span> · <span class="code">${esc(w.bit_key)}</span>
-      ${w.task_title ? `<div class="arrow">→ задача «${esc(w.task_title)}»${w.tool ? ` · инструмент <b>${esc(w.tool)}</b>` : ''}</div>` : ''}
-    </div></div>`);
-  }
+  for (const w of (d.buyer_weak || [])) items.push(renderItem(w, 'buyer'));
+  for (const w of (d.seller_weak || [])) items.push(renderItem(w, 'seller'));
   const norms = (d.norm_chips || []).map((c) => `<span class="nchip">✓ ${esc(c.label)}</span>`).join('');
   if (!items.length) {
     return `<div class="tagline tag-ok">✅ Отклонений по справочнику нет — повод похвалить.</div>${norms ? `<div class="norm-chips" style="margin-top:14px">${norms}</div>` : ''}`;
