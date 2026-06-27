@@ -277,7 +277,7 @@ function nstepHTML(risk) {
   // risk.streak: 0..4+; показываем Н1-Н4
   const lvl = Math.min(4, risk.streak || 0);
   const boxes = [1, 2, 3, 4].map((n) => {
-    const labels = { 1: 'флаг', 2: 'разбор + встреча', 3: 'разбор · сейчас', 4: '+ уведомить РОП' };
+    const labels = { 1: 'флаг', 2: 'разбор + встреча', 3: 'разбор · сейчас', 4: '+ уведомить управляющего партнёра' };
     if (n < lvl) return `<div class="nbox passed">Н${n}<span>${labels[n]}</span></div>`;
     if (n === lvl) return `<div class="nbox cur">Н${n}<span>${labels[n]}</span></div>`;
     return `<div class="nbox">Н${n}<span>${labels[n]}</span></div>`;
@@ -285,8 +285,12 @@ function nstepHTML(risk) {
   return `<div class="nstep">${boxes.join('')}</div>`;
 }
 
-function compsHTML(ir_breakdown) {
-  if (!ir_breakdown) return '<div class="muted">Нет данных ИР v2 за сегодня.</div>';
+function compsHTML(ir_breakdown, head) {
+  if (!ir_breakdown) {
+    if (head && head.is_newbie) return '<div class="tagline tag-ok">🌱 У новичка (стаж &lt; 1 мес) ИР пока не считается — план включится с 1-го числа первого полного месяца работы.</div>';
+    if (head && head.is_group_zero) return '<div class="tagline tag-warn">🛌 В Группе 0 (без зоны светофора) — ИР не считается.</div>';
+    return '<div class="muted">Нет данных ИР v2 за сегодня.</div>';
+  }
   const comp = (label, val) => {
     const cls = val >= 70 ? 'f-ok' : val >= 40 ? 'f-warn' : 'f-bad';
     const lbl = val >= 70 ? 'норма' : val >= 40 ? 'ниже нормы' : 'просело';
@@ -530,7 +534,7 @@ function renderMop(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">2</span> Как шла группа — динамика цикла 6 мес</div>
-      <div class="sec-sub">Вал группы по месяцам vs план МОПа (личный план как ориентир) и ИР группы.</div>
+      <div class="sec-sub">Вал группы по месяцам vs личный план старшего партнёра (как ориентир) и ИР группы.</div>
       <div class="two">
         <div>
           <div class="block-title">Вал группы по месяцам</div>
@@ -576,8 +580,8 @@ function renderMop(r, fromCache) {
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">8</span> Задачи МОПа и дисциплина управления</div>
-      <div class="sec-sub">Что ставилось МОПу за прошлую неделю (включая управленческие из эскалаций «Н»).</div>
+      <div class="sec-h"><span class="n">8</span> Задачи старшего партнёра и дисциплина управления</div>
+      <div class="sec-sub">Что ставилось старшему партнёру за прошлую неделю (включая управленческие из эскалаций «Н»).</div>
       ${tasksHTML(r.tasks)}
     </div>
   `;
@@ -697,7 +701,7 @@ function renderRop(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">2</span> Как шёл отдел — динамика цикла 6 мес</div>
-      <div class="sec-sub">Вал отдела по месяцам vs план РОПа (личный план как ориентир) и ИР отдела.</div>
+      <div class="sec-sub">Вал отдела по месяцам vs личный план управляющего партнёра (как ориентир) и ИР отдела.</div>
       <div class="two">
         <div>
           <div class="block-title">Вал отдела по месяцам</div>
@@ -743,8 +747,8 @@ function renderRop(r, fromCache) {
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">8</span> Задачи РОПа и дисциплина управления</div>
-      <div class="sec-sub">Что ставилось РОПу за прошлую неделю (включая управленческие из эскалаций Н4).</div>
+      <div class="sec-h"><span class="n">8</span> Задачи управляющего партнёра и дисциплина управления</div>
+      <div class="sec-sub">Что ставилось управляющему партнёру за прошлую неделю (включая управленческие из эскалаций Н4).</div>
       ${tasksHTML(r.tasks)}
     </div>
   `;
@@ -789,7 +793,7 @@ function render(r, fromCache) {
     <div class="sec">
       <div class="sec-h"><span class="n">3</span> Из чего собран ИР</div>
       <div class="sec-sub">ИР v2 — четыре составляющих по 25%. Чёрная метка — норматив 70%.</div>
-      ${compsHTML(r.ir_breakdown)}
+      ${compsHTML(r.ir_breakdown, r.head)}
     </div>
 
     <div class="sec">
