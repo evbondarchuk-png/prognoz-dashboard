@@ -115,14 +115,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sa
 .prog{height:6px;background:var(--surface-2);border-radius:4px;margin-top:7px;overflow:hidden}
 .prog div{height:100%;background:var(--ok);border-radius:4px}
 
-.trow{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-left-width:3px;border-radius:var(--r-sm);margin-top:7px}
+.trow{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-left-width:3px;border-radius:var(--r-sm);margin-top:7px;flex-wrap:wrap}
 .trow.done{border-left-color:var(--ok)}.trow.prog{border-left-color:var(--warn)}
 .trow.over{border-left-color:var(--bad)}.trow.event{border-left-color:var(--brand)}
 .trow .tco{font-size:15px;flex-shrink:0}
-.trow .trc{flex:1;min-width:0}
-.trow .trn{font-size:13px;font-weight:600}
+.trow .trc{flex:1 1 200px;min-width:0;overflow:hidden}
+.trow .trn{font-size:13px;font-weight:600;overflow-wrap:break-word;word-break:break-word}
 .trow .trn.struck{text-decoration:line-through;opacity:.6}
-.trow .trm{font-size:11px;color:var(--muted);margin-top:2px}
+.trow .trm{font-size:11px;color:var(--muted);margin-top:2px;overflow-wrap:break-word}
 .trow .trm .cm{color:var(--ink)}
 .trow .trm .code{font-family:ui-monospace,monospace;font-size:10px}
 .trst{font-size:11px;font-weight:800;padding:3px 9px;border-radius:var(--pill);white-space:nowrap;flex-shrink:0}
