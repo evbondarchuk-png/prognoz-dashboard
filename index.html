@@ -811,33 +811,270 @@ function renderMain(d){
 }
 
 /* ─── ПРОГНОЗ (TZ-A10 — из forecast по bL/sL) ─── */
+/* ─── TZ-A34: Вкладка «Прогноз» (партнёр) ─── */
+const PRG_MODE_KEY = 'prognoz_mode_p';
+function _prgFmtK(n){ n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e4) return Math.round(n/1e3)+'к'; if(n>=1e3) return (n/1e3).toFixed(1).replace('.',',')+'к'; return String(Math.round(n)); }
+function _prgFmtFull(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
+function _monthShortRu(ym){ const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; return m[parseInt(ym.slice(5,7),10)-1]||ym; }
+
 function renderPrognoz(d){
- const f=d.forecast; const out=[];
- if(f && (f.current_month.income>0 || f.next_month.income>0)){
- const cm=f.current_month, nm=f.next_month, tm=f.two_mo, cp=f.cycle_progress;
- const zp=(lbl)=>`<div style="font-size:var(--fs-14);font-weight:var(--fw-b);color:var(--ok);margin-top:2px">≈ ЗП ${esc(lbl)} ₽</div>`;
- out.push(`<div class="card"><div class="section-title">📅 Текущий месяц · ${esc(cm.label)}</div>
- <div class="fc-big">${esc(cm.revenue_label)} ₽<span style="font-size:var(--fs-14);color:var(--muted);font-weight:var(--fw-sb)"> вал</span></div>
- ${zp(cm.income_label)}
- <div class="muted" style="margin-top:6px">факт ${esc(cm.fact_revenue_label)} + прогноз ${esc(cm.forecast_revenue_label)} · ${cm.deals_total} сделок (${cm.deals_closed} закрыто)</div></div>`);
- const rc=tm.risk_flag==='deep_drop'?'deep':(tm.risk_flag==='next_month_surge'?'surge':'');
- const nmPlanLine = nm.target_revenue>0?`<div class="muted" style="margin-top:4px">план месяца ${esc(nm.target_revenue_label)} ₽ · <b style="color:${nm.progress_pct>=100?'var(--ok)':nm.progress_pct>=70?'var(--warn)':'var(--bad)'}">${nm.progress_pct}%</b> выполнения</div>`:'';
- out.push(`<div class="card"><div class="section-title">📅 Следующий месяц · ${esc(nm.label)}</div>
- <div class="fc-big">${esc(nm.revenue_label)} ₽<span style="font-size:var(--fs-14);color:var(--muted);font-weight:var(--fw-sb)"> вал</span></div>
- ${zp(nm.income_label)}
- ${nmPlanLine}
- <div class="muted" style="margin-top:6px">по прогнозу воронки n8n · ${nm.deals_forecast} сделок прогноз · ЗП ≈ 48% от вала</div>
- ${tm.risk_label?`<div class="risk-alert ${rc}">${esc(tm.risk_label)}</div>`:''}</div>`);
- if(cp) out.push(`<div class="card"><div class="section-title">🎯 Шаг к цели</div>
- <div class="muted">факт и прогноз закрытий за цикл 6 месяцев</div>
- <div class="it-bar" style="margin:10px 0"><div class="it-bar-fill" style="width:${cp.progress_pct}%"></div></div>
- <div class="muted">${esc(cp.income_to_date_label)} ₽ из ${esc(cp.target_income_6mo_label)} ₽ · ${cp.progress_pct}%</div>
- <div style="margin-top:8px;font-weight:var(--fw-b);color:${cp.will_reach_target?'var(--ok)':'var(--warn)'}">${esc(cp.status_label)}</div></div>`);
- } else {
- out.push(`<div class="card"><div class="section-title">📈 Прогноз дохода</div>
- <div class="soon"><span class="soon-ic">📈</span>Прогноз появится, когда в работе будут горячие клиенты и задатки.</div></div>`);
- }
- document.getElementById('screen-prognoz').innerHTML=out.join('');
+  const pt = d.prognoz_tab;
+  const f = d.forecast;
+  const goal = d.goal;
+  const u = d.user;
+  const out = [];
+
+  // Граничные случаи: новичок / Группа 0 — показываем нейтральную карточку
+  if (u && (u.is_group_zero || (typeof u.stazh_months==='number' && u.stazh_months<1))) {
+    const msg = u.is_group_zero
+      ? '🛌 Ты в Группе 0 — план и прогноз не считаются.'
+      : '🌱 Стаж меньше месяца — план и прогноз появятся с 1-го числа первого полного месяца.';
+    document.getElementById('screen-prognoz').innerHTML =
+      `<div class="card"><div class="section-title">📅 Прогноз</div><div class="banner" style="background:#fff7e6;border:1px solid #fcd34d;color:#92400e;padding:12px 14px;border-radius:10px">${msg}</div></div>`;
+    return;
+  }
+  if (!pt || !pt.monthly || !pt.monthly.length) {
+    document.getElementById('screen-prognoz').innerHTML =
+      `<div class="card"><div class="section-title">📅 Прогноз</div><div class="soon"><span class="soon-ic">📈</span>Прогноз появится после первого месячного снапшота.</div></div>`;
+    return;
+  }
+
+  // Mode toggle: dohod (по умолч.) / val
+  let mode = localStorage.getItem(PRG_MODE_KEY) || 'dohod';
+  if (!['dohod','val'].includes(mode)) mode='dohod';
+
+  // ── 1. Hero: вал + доход за текущий месяц ──
+  const cur = pt.monthly.find(m=>m.is_current) || pt.monthly[pt.monthly.length-1];
+  const goalRevMonth = goal ? Number(goal.target_revenue_month)||0 : 0;
+  const valFact = cur.fact_revenue||0;
+  const valPlan = cur.plan_revenue||0;
+  const valPct = valPlan>0 ? Math.round(valFact/valPlan*100) : 0;
+  const incFact = cur.fact_income||0;
+  const incGoal = goalRevMonth || cur.plan_income||0;
+  const incPct = incGoal>0 ? Math.round(incFact/incGoal*100) : 0;
+  out.push(`<div class="card">
+    <div class="section-title">💰 ${esc(_monthShortRu(cur.ym))} · вал и доход</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:#eff6ff;border:1px solid #cfe3fb;border-radius:8px;padding:14px 16px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Вал · оборот</div>
+        <div style="font-size:24px;font-weight:800;color:#1e63d9;margin:5px 0 2px">${_prgFmtFull(valFact)} ₽</div>
+        <div style="font-size:12px;color:var(--muted)">план ${_prgFmtFull(valPlan)} ₽</div>
+        ${valPlan>0?`<div style="display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;margin-top:7px;background:#dbeafe;color:#1e40af">${valPct}% плана</div>`:''}
+      </div>
+      <div style="background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;padding:14px 16px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Доход · моя ЗП</div>
+        <div style="font-size:24px;font-weight:800;color:#0e7a4f;margin:5px 0 2px">${_prgFmtFull(incFact)} ₽</div>
+        <div style="font-size:12px;color:var(--muted)">${goalRevMonth>0?'личная цель '+_prgFmtFull(incGoal):'≈ 48% от вала'} ₽</div>
+        ${incGoal>0?`<div style="display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;margin-top:7px;background:#d1f0df;color:#0b5236">${incPct}% цели</div>`:''}
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">💡 <b>Вал</b> — оборот (комиссия агентства, по нему план и ИР). <b>Доход</b> — твоя ЗП (≈ 48% от вала).</div>
+  </div>`);
+
+  // ── 2. График по месяцам — переключатель Доход/Вал ──
+  out.push(`<div class="card">
+    <div class="section-title">📊 Цикл по месяцам</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Переключи: <b>доход</b> (твоя ЗП, к ней цель) или <b>вал</b> (оборот, план). Зелёное — факт, синее — прогноз, штриховка — план.</div>
+    <div style="display:inline-flex;background:var(--surface-2,#f1f3f7);border-radius:999px;padding:3px;gap:2px;margin-bottom:12px">
+      <button onclick="prgSetMode('dohod')" id="prg-btn-dohod" style="border:none;background:${mode==='dohod'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='dohod'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='dohod'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Доход (моя ЗП)</button>
+      <button onclick="prgSetMode('val')" id="prg-btn-val" style="border:none;background:${mode==='val'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='val'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='val'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Вал (оборот)</button>
+    </div>
+    <div id="prg-bars-wrap"></div>
+  </div>`);
+
+  // ── 3. Путь к цели по доходу ──
+  out.push(`<div class="card">
+    <div class="section-title">🎯 Как я иду к цели по доходу</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Накопительный доход за цикл vs плановый темп.</div>
+    <div id="prg-goal-svg"></div>
+  </div>`);
+
+  // ── 4. Цель по доходу ──
+  if (goal) {
+    const goalLbl = goal.target_revenue_month_short || _prgFmtFull(goal.target_revenue_month);
+    const changeTxt = goal.change_count>0 ? `менял ${goal.change_count} раз` : 'не менял';
+    out.push(`<div class="card">
+      <div class="section-title">💵 Цель по доходу (ставишь сам)</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div><div style="font-size:18px;font-weight:800">${esc(goalLbl)} ₽</div><div style="font-size:11px;color:var(--muted)">текущая цель${goal.is_auto?' (авто)':''}</div></div>
+        <div style="font-size:12px;color:var(--muted)">${changeTxt}</div>
+        ${goal.can_change?'<button class="b-secondary" onclick="openEditGoal()" style="margin-left:auto;font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2,#f1f3f7);cursor:pointer">Изменить</button>':''}
+      </div>
+    </div>`);
+  }
+
+  // ── 5. Сделки за цикл по сегментам ──
+  if (pt.segments && pt.segments.length) {
+    const rows = pt.segments.map(s=>{
+      const parts=[];
+      if (s.b_deals>0) parts.push(`<div style="font-size:11px;color:var(--muted)">🛒 покуп: <b>${Math.round(s.b_deals*10)/10}</b> · ${_prgFmtFull(s.b_revenue)} ₽</div>`);
+      if (s.s_deals>0) parts.push(`<div style="font-size:11px;color:var(--muted)">🏠 прод: <b>${Math.round(s.s_deals*10)/10}</b> · ${_prgFmtFull(s.s_revenue)} ₽</div>`);
+      return `<div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid var(--line);border-radius:8px">
+        <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(s.label)}</div>${parts.join('')}</div>
+        <div style="text-align:right;white-space:nowrap"><div style="font-size:14px;font-weight:800;color:#0e7a4f">${_prgFmtFull(s.total_revenue)} ₽</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">${Math.round(s.total_deals*10)/10} сделок</div></div>
+      </div>`;
+    }).join('');
+    const tot = pt.totals||{};
+    out.push(`<div class="card">
+      <div class="section-title">🤝 Сделки за цикл по сегментам</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Что закрыто за весь цикл (текущие 6 мес). Доход ≈ 48% от вала.</div>
+      <div style="display:flex;flex-direction:column;gap:7px">${rows}</div>
+      <div style="margin-top:12px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div><div style="font-size:13px;color:var(--muted)">${Math.round((tot.deals||0)*10)/10} сделок</div></div>
+        <div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#0e7a4f">${_prgFmtFull(tot.revenue||0)} ₽ <span style="font-size:11px;color:var(--muted);font-weight:600">вал</span></div><div style="font-size:13px;font-weight:700;color:#0e7a4f">${_prgFmtFull(tot.income||0)} ₽ <span style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase">доход</span></div></div>
+      </div>
+    </div>`);
+  }
+
+  document.getElementById('screen-prognoz').innerHTML = out.join('');
+  prgRenderBars(pt, mode);
+  prgRenderGoalSvg(pt);
+}
+
+window.prgSetMode = function(m){
+  localStorage.setItem(PRG_MODE_KEY, m);
+  // re-render только секции графика баров
+  const d = window.CTX && CTX.data; if (d) renderPrognoz(d);
+};
+
+function prgRenderBars(pt, mode){
+  const wrap = document.getElementById('prg-bars-wrap'); if (!wrap) return;
+  const months = pt.monthly||[];
+  const isDohod = mode==='dohod';
+  const vals = months.map(m=>{
+    const fact = isDohod?(m.fact_income||0):(m.fact_revenue||0);
+    const fcst = isDohod?(m.forecast_income||0):(m.forecast_revenue||0);
+    const plan = isDohod?(m.plan_income||0):(m.plan_revenue||0);
+    return {ym:m.ym, fact, fcst, plan, is_current:m.is_current, is_future:m.is_future, is_past:m.is_past};
+  });
+  const max = Math.max(...vals.map(v=>Math.max(v.fact,v.fcst,v.plan)), 1);
+  const cols = vals.map(v=>{
+    const planH = Math.round((v.plan||0)/max*100);
+    const factH = Math.round((v.fact||0)/max*100);
+    const fcstH = v.fcst>0 ? Math.round(v.fcst/max*100) : 0;
+    const showVal = v.fact>0 ? v.fact : (v.fcst>0?v.fcst:0);
+    const isForecast = v.is_future || (v.is_current && v.fcst>0 && v.fcst>v.fact);
+    const barColor = v.is_past?'linear-gradient(180deg,#22c55e,#16a34a)' : v.is_current?'linear-gradient(180deg,#10b981,#0e7a4f)' : 'linear-gradient(180deg,#3b82f6,#1e63d9)';
+    const barH = isForecast?fcstH:factH;
+    const fillStyle = `position:absolute;bottom:0;left:0;right:0;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:6px;background:${barColor};height:${barH}%`;
+    const planStyle = `position:absolute;bottom:0;left:0;right:0;background:repeating-linear-gradient(45deg,#cbd5e1 0,#cbd5e1 4px,#e2e8f0 4px,#e2e8f0 8px);border-radius:6px;opacity:.7;height:${planH}%`;
+    const captionFor = v.is_current?'сейчас':(v.is_future?'прогноз':'факт');
+    const valLabel = showVal>0 ? _prgFmtK(showVal) : '—';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;height:100%">
+      <div style="font-size:9px;color:${v.is_current?'var(--brand)':'transparent'};text-transform:uppercase;letter-spacing:.4px;font-weight:700">${captionFor}</div>
+      <div style="position:relative;flex:1;width:100%;background:#f1f5f9;border-radius:6px;overflow:hidden;min-height:120px">
+        <div style="${planStyle}"></div>
+        ${barH>0?`<div style="${fillStyle}"><span style="color:#fff;font-size:12px;font-weight:800;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.15)">${valLabel}</span></div>`:''}
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--ink);text-align:center;line-height:1.3">${valLabel} / ${_prgFmtK(v.plan)}</div>
+      <div style="font-size:11px;color:${v.is_current?'var(--brand)':'var(--muted)'};font-weight:600;text-transform:uppercase">${_monthShortRu(v.ym)}</div>
+    </div>`;
+  }).join('');
+  const planTotal = vals.reduce((s,v)=>s+(v.plan||0),0);
+  const factTotal = vals.filter(v=>!v.is_future).reduce((s,v)=>s+(v.fact||0),0);
+  const fcstNext = (vals.find(v=>v.is_future)||{}).fcst||0;
+  wrap.innerHTML = `<div style="background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:14px 14px 10px">
+    <div style="display:grid;grid-template-columns:repeat(${vals.length},1fr);gap:8px;align-items:end;height:200px;margin-bottom:10px">${cols}</div>
+    <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);padding:8px 0;border-top:1px dashed var(--line);flex-wrap:wrap">
+      <span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:repeating-linear-gradient(45deg,#cbd5e1 0,#cbd5e1 2px,#e2e8f0 2px,#e2e8f0 4px)"></i>план / цель</span>
+      <span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:linear-gradient(180deg,#22c55e,#16a34a)"></i>факт</span>
+      <span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:linear-gradient(180deg,#3b82f6,#1e63d9)"></i>прогноз</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding-top:8px;flex-wrap:wrap;gap:8px">
+      <span style="color:var(--muted)">За цикл: <b style="color:var(--ink)">${_prgFmtK(factTotal)}</b> из ${_prgFmtK(planTotal)} ${isDohod?'ЗП':'вала'} · прогноз след: <b style="color:var(--ink)">${_prgFmtK(fcstNext)}</b></span>
+      <span style="font-weight:700;color:${factTotal>=planTotal*0.9?'var(--ok)':'var(--warn)'}">${factTotal>=planTotal?'▲ опережаем план':factTotal>=planTotal*0.7?'≈ в плане':'▼ отстаём'}</span>
+    </div>
+  </div>`;
+}
+
+function prgRenderGoalSvg(pt){
+  const wrap = document.getElementById('prg-goal-svg'); if (!wrap) return;
+  const months = pt.monthly||[];
+  // путь по ДОХОДУ накопительно (CLAUDE.md §6)
+  const planAcc = []; const factAcc = []; let pS=0, fS=0;
+  let lastFactIdx = -1;
+  months.forEach((m,i)=>{
+    pS += m.plan_income||0; planAcc.push(pS);
+    if (m.is_future) { factAcc.push(null); return; }
+    fS += m.fact_income||0; factAcc.push(fS);
+    if ((m.fact_income||0) > 0 || m.is_current) lastFactIdx = i;
+  });
+  const total = planAcc[planAcc.length-1] || 1;
+  // ratio для зверя — берём последнюю точку с фактом
+  const idx = lastFactIdx>=0 ? lastFactIdx : 0;
+  const factVal = factAcc[idx]||0;
+  const planVal = planAcc[idx]||1;
+  const ratio = planVal>0 ? factVal/planVal : 0;
+  let animal, col, label;
+  if (ratio>=1.05) { animal='cheetah'; col='#16a34a'; label='🐆 гепард — опережаешь!'; }
+  else if (ratio>=0.85) { animal='hare'; col='#d97706'; label='🐇 заяц — идёшь ровно'; }
+  else { animal='turtle'; col='#dc2626'; label='🐢 черепаха — поднажми'; }
+
+  const W=920, H=280, pl=44, pr=20, pt2=34, pb=38, cw=W-pl-pr, ch=H-pt2-pb, n=months.length;
+  const x = i => pl + cw * i / (n-1);
+  const y = v => pt2 + ch * (1 - (v||0)/total);
+
+  let s='';
+  // grid + ось Y
+  for (let g=0;g<=4;g++){
+    const gy = pt2 + ch*g/4;
+    s += `<line x1="${pl}" y1="${gy}" x2="${W-pr}" y2="${gy}" stroke="#eef0f4"/>`;
+    s += `<text x="${pl-7}" y="${gy+3}" text-anchor="end" font-size="9" fill="#b4b9c5">${100-g*25}%</text>`;
+  }
+  // подписи месяцев
+  months.forEach((m,i)=>{
+    s += `<text x="${x(i)}" y="${H-12}" text-anchor="middle" font-size="11" fill="#7a8194">${_monthShortRu(m.ym)}</text>`;
+  });
+  // плановая линия (пунктир)
+  s += `<polyline points="${planAcc.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="#cbd5e1" stroke-width="2.5" stroke-dasharray="6 5"/>`;
+  // факт-линия (синяя) — заполненные точки до последней
+  const fpts = factAcc.map((v,i)=> v==null ? null : [x(i), y(v)]).filter(Boolean);
+  if (fpts.length > 1) {
+    const area = `${fpts[0][0]},${y(0)} ${fpts.map(p=>p.join(',')).join(' ')} ${fpts[fpts.length-1][0]},${y(0)}`;
+    s += `<polygon points="${area}" fill="#16a34a" opacity="0.10"/>`;
+    s += `<polyline points="${fpts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>`;
+  }
+  fpts.forEach((p,i)=>{
+    s += `<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="#fff" stroke="#16a34a" stroke-width="3"/>`;
+  });
+  // Зверь на последней точке
+  if (fpts.length>0 && idx<n) {
+    const last = [x(idx), y(factVal)];
+    let beast='';
+    if (animal==='cheetah') {
+      beast = `<ellipse cx="0" cy="-12" rx="17" ry="9" fill="${col}"/>`
+        + `<circle cx="15" cy="-18" r="7" fill="${col}"/><circle cx="17" cy="-19" r="1.6" fill="#fff"/>`
+        + `<path d="M 10 -23 l 3 -4 M 18 -24 l 1 -4" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`
+        + `<path d="M -16 -12 q -10 -2 -14 4" stroke="${col}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`
+        + `<circle cx="-6" cy="-14" r="2" fill="#fff"/><circle cx="9" cy="-15" r="2" fill="#fff"/>`;
+    } else if (animal==='hare') {
+      beast = `<ellipse cx="0" cy="-10" rx="11" ry="13" fill="${col}"/>`
+        + `<circle cx="0" cy="-24" r="8" fill="${col}"/>`
+        + `<ellipse cx="-4" cy="-36" rx="3.5" ry="10" fill="${col}"/>`
+        + `<ellipse cx="4" cy="-36" rx="3.5" ry="10" fill="${col}"/>`
+        + `<circle cx="-3" cy="-25" r="1.7" fill="#fff"/><circle cx="3" cy="-25" r="1.7" fill="#fff"/>`;
+    } else {
+      beast = `<ellipse cx="0" cy="-10" rx="14" ry="10" fill="${col}"/>`
+        + `<path d="M -14 -10 a 14 9 0 0 1 28 0" fill="none" stroke="#fff" stroke-width="1.5"/>`
+        + `<circle cx="15" cy="-13" r="6" fill="${col}"/><circle cx="17" cy="-14" r="1.5" fill="#fff"/>`;
+    }
+    s += `<g transform="translate(${last[0]},${last[1]})">`
+      + `<circle cx="0" cy="0" r="9" fill="none" stroke="${col}" stroke-width="2" opacity="0.4"/>`
+      + `<g transform="translate(0,-30)">${beast}</g>`
+      + `<text x="0" y="-50" text-anchor="middle" font-size="11" font-weight="800" fill="${col}">это я!</text>`
+      + `<text x="0" y="20" text-anchor="middle" font-size="10" font-weight="600" fill="${col}">${label}</text>`
+      + `</g>`;
+  }
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${s}</svg>
+    <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--line)">
+      <span><i style="display:inline-block;width:11px;height:11px;background:#cbd5e1;border-radius:2px;margin-right:5px;vertical-align:-1px"></i>плановый темп</span>
+      <span><i style="display:inline-block;width:11px;height:11px;background:#16a34a;border-radius:2px;margin-right:5px;vertical-align:-1px"></i>мой путь</span>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--muted);background:#f7f9fc;border-radius:8px;padding:9px 12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">Твой темп — это зверь на графике:
+      <span><b style="color:#16a34a">🐆 гепард</b> — опережаешь</span>
+      <span><b style="color:#d97706">🐇 заяц</b> — идёшь ровно</span>
+      <span><b style="color:#dc2626">🐢 черепаха</b> — отстаёшь</span>
+    </div>`;
 }
 
 /* ─── ТРЕНЕР (диагностика + ИИ) ─── */
