@@ -903,21 +903,37 @@ function renderPrognoz(d){
     </div>`);
   }
 
-  // ── 5. Сделки за цикл по сегментам ──
+  // ── 5. Сделки за цикл по сегментам (с разбивкой по месяцам) ──
   if (pt.segments && pt.segments.length) {
-    const rows = pt.segments.map(s=>{
-      const parts=[];
-      if (s.b_deals>0) parts.push(`<div style="font-size:11px;color:var(--muted)">🛒 покуп: <b>${Math.round(s.b_deals*10)/10}</b> · ${_prgFmtFull(s.b_revenue)} ₽</div>`);
-      if (s.s_deals>0) parts.push(`<div style="font-size:11px;color:var(--muted)">🏠 прод: <b>${Math.round(s.s_deals*10)/10}</b> · ${_prgFmtFull(s.s_revenue)} ₽</div>`);
-      return `<div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid var(--line);border-radius:8px">
-        <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(s.label)}</div>${parts.join('')}</div>
-        <div style="text-align:right;white-space:nowrap"><div style="font-size:14px;font-weight:800;color:#0e7a4f">${_prgFmtFull(s.total_revenue)} ₽</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">${Math.round(s.total_deals*10)/10} сделок</div></div>
+    const rows = pt.segments.map((s, idx)=>{
+      const headParts=[];
+      if (s.b_deals>0) headParts.push(`<span style="color:var(--muted)">🛒 покуп: <b style="color:var(--ink)">${s.b_deals}</b> · ${_prgFmtFull(s.b_revenue)} ₽</span>`);
+      if (s.s_deals>0) headParts.push(`<span style="color:var(--muted)">🏠 прод: <b style="color:var(--ink)">${s.s_deals}</b> · ${_prgFmtFull(s.s_revenue)} ₽</span>`);
+      // помесячные строки внутри сегмента
+      const monthRows = (s.months||[]).map(m=>{
+        const mParts=[];
+        if (m.b_deals>0) mParts.push(`<span style="color:var(--muted)">🛒 <b style="color:var(--ink)">${m.b_deals}</b> · ${_prgFmtFull(m.b_revenue)} ₽</span>`);
+        if (m.s_deals>0) mParts.push(`<span style="color:var(--muted)">🏠 <b style="color:var(--ink)">${m.s_deals}</b> · ${_prgFmtFull(m.s_revenue)} ₽</span>`);
+        const mTotal = (m.b_revenue||0)+(m.s_revenue||0);
+        return `<div style="display:flex;align-items:center;gap:11px;padding:7px 0;border-top:1px dashed var(--line)">
+          <div style="width:46px;font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">${_monthShortRu(m.ym)}</div>
+          <div style="flex:1;font-size:11px;display:flex;gap:11px;flex-wrap:wrap">${mParts.join('')}</div>
+          <div style="font-size:12px;font-weight:700;color:#0e7a4f;white-space:nowrap">${_prgFmtFull(mTotal)} ₽</div>
+        </div>`;
+      }).join('');
+      return `<div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">
+        <div onclick="this.nextElementSibling.style.display=(this.nextElementSibling.style.display==='block'?'none':'block')" style="display:flex;align-items:center;gap:11px;padding:11px 13px;cursor:pointer">
+          <span style="color:var(--muted);font-size:11px">›</span>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(s.label)}</div><div style="font-size:11px;margin-top:2px;display:flex;gap:11px;flex-wrap:wrap">${headParts.join('')}</div></div>
+          <div style="text-align:right;white-space:nowrap"><div style="font-size:14px;font-weight:800;color:#0e7a4f">${_prgFmtFull(s.total_revenue)} ₽</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">${s.total_deals} сделок</div></div>
+        </div>
+        <div style="display:none;padding:0 13px 11px 28px;background:var(--surface-2,#f7f9fc)">${monthRows||'<div style="padding:7px 0;color:var(--muted);font-size:11px">нет помесячной разбивки</div>'}</div>
       </div>`;
     }).join('');
     const tot = pt.totals||{};
     out.push(`<div class="card">
       <div class="section-title">🤝 Сделки за цикл по сегментам</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Что закрыто за весь цикл (текущие 6 мес). Доход ≈ 48% от вала.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Что закрыто за весь цикл (текущие 6 мес). Доход ≈ 48% от вала. Кликни на сегмент — раскроется по месяцам.</div>
       <div style="display:flex;flex-direction:column;gap:7px">${rows}</div>
       <div style="margin-top:12px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
         <div><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div><div style="font-size:13px;color:var(--muted)">${Math.round((tot.deals||0)*10)/10} сделок</div></div>
