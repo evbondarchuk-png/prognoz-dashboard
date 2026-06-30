@@ -869,15 +869,114 @@ function fcCard(title,big,sub,delta){
  <div style="font-size:var(--fs-28);font-weight:var(--fw-eb);color:var(--brand)">${esc(big)} ₽${delta||''}</div>
  <div class="muted">${sub}</div></div>`;
 }
+/* ─── TZ-A34: Вкладка «Прогноз» (МОП — единица «группа») ─── */
+const PRG_MODE_KEY = 'prognoz_mode_mop';
+function _prgFmtK(n){ n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e4) return Math.round(n/1e3)+'к'; if(n>=1e3) return (n/1e3).toFixed(1).replace('.',',')+'к'; return String(Math.round(n)); }
+function _prgFmtFull(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
+function _monthShortRu(ym){ const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; return m[parseInt(ym.slice(5,7),10)-1]||ym; }
+
 function renderPrognoz(d){
- const a=d.aggregates; const f=a&&a.forecast; const out=[];
- if(f && (f.current_month.revenue_total>0 || f.next_month.revenue_total>0)){
- const cm=f.current_month,nm=f.next_month,tm=f.two_mo,dv=f.delta_vs_yesterday;
- const dlt=dv&&dv.revenue_pct?` <span style="font-size:var(--fs-14);color:${dv.direction==='up'?'var(--ok)':'var(--bad)'}">${dv.direction==='up'?'▲':'▼'} ${Math.abs(dv.revenue_pct)}%</span>`:'';
- out.push(fcCard('📅 Текущий месяц',cm.revenue_total_label,`прогнозный вал группы · ${cm.deals_closed} закрыто / ${cm.deals_forecast} в работе`));
- out.push(fcCard('📅 Следующий месяц',nm.revenue_total_label,`${nm.deals_forecast} сделок прогноз${f.at_risk_count?` · ⚠ ${f.at_risk_count} партнёров в риске`:''}`,dlt));
- } else out.push(`<div class="card"><div class="section-title">📈 Прогноз группы</div><div class="soon"><span class="soon-ic">📈</span>Прогноз появится, когда у партнёров группы будут горячие клиенты и задатки в работе.</div></div>`);
- document.getElementById('screen-prognoz').innerHTML=out.join('');
+  const pt = d.prognoz_tab;
+  const root = document.getElementById('screen-prognoz');
+  if (!pt || !pt.monthly || !pt.monthly.length) {
+    root.innerHTML = `<div class="card"><div class="section-title">📅 Прогноз группы</div><div class="soon"><span class="soon-ic">📈</span>Прогноз появится после первого месячного снапшота группы.</div></div>`;
+    return;
+  }
+  const scopeLbl = 'группы';
+  let mode = localStorage.getItem(PRG_MODE_KEY) || 'val';
+  if (!['dohod','val'].includes(mode)) mode='val';
+  const cur = pt.monthly.find(m=>m.is_current) || pt.monthly[pt.monthly.length-1];
+  const valFact = cur.fact_revenue||0, valPlan = cur.plan_revenue||0;
+  const valFc = cur.forecast_revenue!=null ? cur.forecast_revenue : valFact;
+  const valPct = valPlan>0 ? Math.round(valFc/valPlan*100) : 0;
+  const out=[];
+  out.push(`<div class="card">
+    <div class="section-title">💰 ${esc(_monthShortRu(cur.ym))} · вал ${scopeLbl}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:#eff6ff;border:1px solid #cfe3fb;border-radius:8px;padding:14px 16px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Факт вала</div>
+        <div style="font-size:24px;font-weight:800;color:#1e63d9;margin:5px 0 2px">${_prgFmtFull(valFact)} ₽</div>
+        <div style="font-size:12px;color:var(--muted)">план ${_prgFmtFull(valPlan)} ₽</div>
+      </div>
+      <div style="background:#f3effe;border:1px solid #d8c9fa;border-radius:8px;padding:14px 16px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Прогноз итого</div>
+        <div style="font-size:24px;font-weight:800;color:#7c3aed;margin:5px 0 2px">${_prgFmtFull(valFc)} ₽</div>
+        ${valPlan>0?`<div style="display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;margin-top:4px;background:${valPct>=100?'#d1f0df':'#dbeafe'};color:${valPct>=100?'#0b5236':'#1e40af'}">${valPct}% плана</div>`:''}
+      </div>
+    </div>
+  </div>`);
+  out.push(`<div class="card">
+    <div class="section-title">📊 Цикл по месяцам</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Помесячный вал группы vs план. Зелёное — факт, синее — прогноз, штриховка — план.</div>
+    <div style="display:inline-flex;background:var(--surface-2,#f1f3f7);border-radius:999px;padding:3px;gap:2px;margin-bottom:12px">
+      <button onclick="prgSetMode('val')" style="border:none;background:${mode==='val'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='val'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer">Вал (оборот)</button>
+      <button onclick="prgSetMode('dohod')" style="border:none;background:${mode==='dohod'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='dohod'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer">Доход (≈48%)</button>
+    </div>
+    <div id="prg-bars-wrap"></div>
+  </div>`);
+  // Сегменты с раскрытием по месяцам (на МОП — у бэка months=[], поэтому раскрытие пустое; но всё равно показываем сумму)
+  if (pt.segments && pt.segments.length) {
+    const rows = pt.segments.map(s=>{
+      const headParts=[];
+      if (s.b_deals>0) headParts.push(`<span style="color:var(--muted)">🛒 покуп: <b style="color:var(--ink)">${s.b_deals}</b> · ${_prgFmtFull(s.b_revenue)} ₽</span>`);
+      if (s.s_deals>0) headParts.push(`<span style="color:var(--muted)">🏠 прод: <b style="color:var(--ink)">${s.s_deals}</b> · ${_prgFmtFull(s.s_revenue)} ₽</span>`);
+      return `<div style="border:1px solid var(--line);border-radius:8px;padding:11px 13px;display:flex;align-items:center;gap:11px">
+        <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(s.label)}</div><div style="font-size:11px;margin-top:2px;display:flex;gap:11px;flex-wrap:wrap">${headParts.join('')}</div></div>
+        <div style="text-align:right;white-space:nowrap"><div style="font-size:14px;font-weight:800;color:#0e7a4f">${_prgFmtFull(s.total_revenue)} ₽</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">${s.total_deals} сделок</div></div>
+      </div>`;
+    }).join('');
+    const tot=pt.totals||{};
+    out.push(`<div class="card">
+      <div class="section-title">🤝 Сегменты текущего месяца</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Что закрыто и в работе по группе за этот месяц.</div>
+      <div style="display:flex;flex-direction:column;gap:7px">${rows}</div>
+      <div style="margin-top:12px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО</div><div style="font-size:13px;color:var(--muted)">${tot.deals||0} сделок</div></div>
+        <div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#0e7a4f">${_prgFmtFull(tot.revenue||0)} ₽</div></div>
+      </div>
+    </div>`);
+  }
+  root.innerHTML = out.join('');
+  prgRenderBars(pt, mode);
+}
+
+window.prgSetMode = function(m){ localStorage.setItem(PRG_MODE_KEY, m); const d=window.CTX&&CTX.data; if(d) renderPrognoz(d); };
+
+function prgRenderBars(pt, mode){
+  const wrap=document.getElementById('prg-bars-wrap'); if(!wrap) return;
+  const months=pt.monthly||[];
+  const isDohod=mode==='dohod';
+  const vals=months.map(m=>({ym:m.ym, fact:isDohod?(m.fact_income||0):(m.fact_revenue||0), fcst:isDohod?(m.forecast_income||0):(m.forecast_revenue||0), plan:isDohod?(m.plan_income||0):(m.plan_revenue||0), is_current:m.is_current, is_future:m.is_future, is_past:m.is_past}));
+  const max=Math.max(...vals.map(v=>Math.max(v.fact,v.fcst,v.plan)),1);
+  const cols=vals.map(v=>{
+    const planH=Math.round((v.plan||0)/max*100);
+    const factH=Math.round((v.fact||0)/max*100);
+    const fcstH=v.fcst>0?Math.round(v.fcst/max*100):0;
+    const isForecast=v.is_future||(v.is_current&&v.fcst>v.fact);
+    const barH=isForecast?fcstH:factH;
+    const barColor=v.is_past?'linear-gradient(180deg,#22c55e,#16a34a)':v.is_current?'linear-gradient(180deg,#10b981,#0e7a4f)':'linear-gradient(180deg,#3b82f6,#1e63d9)';
+    const showVal=v.fact>0?v.fact:(v.fcst>0?v.fcst:0);
+    const cap=v.is_current?'сейчас':(v.is_future?'прогноз':'факт');
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;height:100%">
+      <div style="font-size:9px;color:${v.is_current?'var(--brand)':'transparent'};text-transform:uppercase;letter-spacing:.4px;font-weight:700">${cap}</div>
+      <div style="position:relative;flex:1;width:100%;background:#f1f5f9;border-radius:6px;overflow:hidden;min-height:120px">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:${planH}%;background:repeating-linear-gradient(45deg,#cbd5e1 0,#cbd5e1 4px,#e2e8f0 4px,#e2e8f0 8px);border-radius:6px;opacity:.7"></div>
+        ${barH>0?`<div style="position:absolute;bottom:0;left:0;right:0;height:${barH}%;border-radius:6px;background:${barColor};display:flex;align-items:flex-start;justify-content:center;padding-top:6px"><span style="color:#fff;font-size:12px;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.15)">${_prgFmtK(showVal)}</span></div>`:''}
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--ink);line-height:1.3">${_prgFmtK(showVal)} / ${_prgFmtK(v.plan)}</div>
+      <div style="font-size:11px;color:${v.is_current?'var(--brand)':'var(--muted)'};font-weight:600;text-transform:uppercase">${_monthShortRu(v.ym)}</div>
+    </div>`;
+  }).join('');
+  const planTot=vals.reduce((s,v)=>s+(v.plan||0),0);
+  const factTot=vals.filter(v=>!v.is_future).reduce((s,v)=>s+(v.fact||0),0);
+  const fcstNext=(vals.find(v=>v.is_future)||{}).fcst||0;
+  wrap.innerHTML=`<div style="background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:14px">
+    <div style="display:grid;grid-template-columns:repeat(${vals.length},1fr);gap:8px;align-items:end;height:200px">${cols}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding-top:10px;border-top:1px dashed var(--line);margin-top:10px;flex-wrap:wrap;gap:8px">
+      <span style="color:var(--muted)">За цикл: <b style="color:var(--ink)">${_prgFmtK(factTot)}</b> из ${_prgFmtK(planTot)} · прогноз след: <b style="color:var(--ink)">${_prgFmtK(fcstNext)}</b></span>
+      <span style="font-weight:700;color:${factTot>=planTot*0.9?'var(--ok)':'var(--warn)'}">${factTot>=planTot?'▲ опережаем план':factTot>=planTot*0.7?'≈ в плане':'▼ отстаём'}</span>
+    </div>
+  </div>`;
 }
 
 /* ─── КОМАНДА ─── */
