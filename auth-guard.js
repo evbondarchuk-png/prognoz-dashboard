@@ -43,7 +43,9 @@ const LOGIN_URL = 'login.html';
  */
 export function requireAuth(opts = {}) {
   return new Promise((resolve) => {
-    onAuthStateChanged(auth, async (firebaseUser) => {
+    let settled = false;
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (settled) return;
       if (!firebaseUser) {
         const back = encodeURIComponent(location.pathname + location.search);
         location.href = `${LOGIN_URL}?back=${back}`;
@@ -61,6 +63,7 @@ export function requireAuth(opts = {}) {
 
       if (opts.allowedRoles && !opts.allowedRoles.includes(userInfo.role)) {
         // Не та роль — кидаем на главную риелтора
+        settled = true; unsub();
         alert('У вас нет доступа к этой странице.');
         location.href = 'index.html';
         return;
@@ -75,9 +78,16 @@ export function requireAuth(opts = {}) {
       const homeByRole = { mop: 'mop.html', rop: 'rop.html', aup: 'aup.html', admin: 'aup.html' };
       const home = homeByRole[userInfo.role];
       if (home && path === 'index.html' && !hasAgentParam) {
+        settled = true; unsub();
         location.href = home;
         return;
       }
+      // Отписываемся: transient null-события (обновление токена, синхронизация
+      // между вкладками через IndexedDB при открытии session-report) больше
+      // не будут дёргать редирект на login. Реальный signOut ловится в момент
+      // вызова Cloud Functions — там придёт permission-denied и пользователь
+      // просто обновит страницу.
+      settled = true; unsub();
       resolve(userInfo);
     });
   });
