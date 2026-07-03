@@ -1076,15 +1076,33 @@ function _statusBarCls(m){
   if(w<=1) return 'warn';
   return 'bad';
 }
+// Правило-based summary для панели «В риске (неделя)».
+// Учитывает: длину стрика + сохраняет ли партнёр свой средний доход.
+// «Держит уровень» = прогнозный доход тек.мес ≥ 80% исторического среднего.
+// В этом случае формулировка мягче: «план завышен относительно обычного темпа».
+function riskWeekSummary(m){
+  const streak = m.weeks_in_risk_streak || 0;
+  const forecastInc = m.income_forecast_current || 0;
+  const avgInc = m.avg_monthly_income || 0;
+  const kFmt = v => Math.round(v/1000) + 'к';
+  const holds = avgInc > 0 && forecastInc >= avgInc * 0.8;
+  const wLabel = streak >= 3 ? `${streak} нед подряд` : streak === 2 ? '2 нед подряд' : '1 неделя';
+  if (avgInc === 0) {
+    return `${wLabel} ниже плана. Исторических данных о доходе пока мало — понаблюдать.`;
+  }
+  if (holds) {
+    if (streak >= 3) return `${wLabel} не выполняет план, <b>но держит средний доход ~${kFmt(avgInc)}₽</b>. План выше обычного темпа — обсудить приоритет: рост или стабильность.`;
+    if (streak === 2) return `${wLabel} ниже плана, но <b>доход держит на уровне ~${kFmt(avgInc)}₽</b>. Понаблюдать ещё неделю.`;
+    return `Одна плохая неделя, <b>доход на уровне ~${kFmt(avgInc)}₽</b>. Возможен разовый спад.`;
+  }
+  if (streak >= 3) return `${wLabel} ниже плана, <b>доход просел до ${kFmt(forecastInc)}₽</b> (обычно ${kFmt(avgInc)}₽). Разобрать причину лично.`;
+  if (streak === 2) return `${wLabel} ниже плана, <b>доход снижается до ~${kFmt(forecastInc)}₽</b> (норма ${kFmt(avgInc)}₽). Уточнить, что мешает.`;
+  return `Одна плохая неделя, <b>доход снизился до ~${kFmt(forecastInc)}₽</b> (норма ${kFmt(avgInc)}₽). Уточнить активность.`;
+}
 function weekRiskRow(m){
-  // TZ-A30 ред.3: каждая pill показывает накопительный факт vs целевую долю.
-  const w=m.weeks_in_risk_streak||0;
-  const monRu=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-  const bad=(m.weeks_in_risk_examined||[]).filter(x=>x&&x.isRisk).map(x=>{
-    const dt=x.date.split('-');
-    return `<span class="wk-pill bad" title="на ${parseInt(dt[2])} ${monRu[parseInt(dt[1])-1]} (нед ${x.weekN}): выполнено ${x.irMonth}% месячного плана, нужно ≥${x.threshold}%">нед ${x.weekN}: ${x.irMonth}% / ${x.target}%</span>`;
-  });
-  const forecast=m.forecast_month||0;
+  const summary = riskWeekSummary(m);
+  const fact = m.fact_month || 0;
+  const forecast = m.forecast_month || 0;
   return `<tr class="t-row" onclick="location.href='${esc(m.drill_url||'#')}'">
     <td><div class="t-group-cell">
       <span class="t-status-bar bad"></span>
@@ -1092,7 +1110,8 @@ function weekRiskRow(m){
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}</div></div></div></td>
     <td class="center">${_statusBadge(m)}</td>
-    <td><div class="wk-list">${bad.join('')||'<span class="muted">—</span>'}</div></td>
+    <td style="font-size:var(--fs-12);line-height:1.35;max-width:340px">${summary}</td>
+    <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span></div></td>
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
 }
@@ -1241,7 +1260,7 @@ function renderTeam(d){
        if(!inRisk.length) return `<div class="muted" style="padding:var(--sp-5);text-align:center">🎉 Никто из команды не в риске по неделям. Все либо в норме (≥70% последнюю завершённую неделю), либо новички/Группа 0.</div>`;
        return `<div class="muted" style="margin-bottom:var(--sp-3)">Партнёры с подряд идущими «плохими» неделями (ИР v2 ниже ${Math.round(((d&&d.n_risk&&d.n_risk.floor)||0.7)*100)}%). Текущая (незакрытая) неделя в стрик не входит.</div>
         <div class="scroll-wrap"><table class="team-table">
-          <thead><tr><th>Партнёр</th><th>Стрик</th><th>Плохие недели</th><th>Прогноз вала</th><th></th></tr></thead>
+          <thead><tr><th>Партнёр</th><th>Стрик</th><th>Что происходит</th><th>Факт вала</th><th>Прогноз вала</th><th></th></tr></thead>
           <tbody>${inRisk.map(weekRiskRow).join('')}</tbody>
         </table></div>`;
      })()}
