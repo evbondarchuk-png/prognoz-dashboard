@@ -565,16 +565,21 @@ function renderTiles(o){
  // граничные дни: 7, 14, 21, последний день месяца → сколько завершённых недель
  const lastDay=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
  const completedWeeks=dayN>lastDay?4:dayN>21?3:dayN>14?2:dayN>7?1:0;
- // берём последние completedWeeks значений (это завершённые недели текущего месяца)
+ const currentWeekIdx = completedWeeks < 4 ? completedWeeks : -1;
  const wk=(o.irWeekly||[]).slice(-completedWeeks||0);
- const cellW=(v,active)=>{
-  if(!active) return `<div class="ir-wk-cell empty">—</div>`;
+ const irCurWeek = (typeof o.irCurrentWeek === 'number') ? o.irCurrentWeek : null;
+ const cellW=(v,state)=>{
+  if(state==='empty' || v==null) return `<div class="ir-wk-cell empty">—</div>`;
   const c=v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)';
-  return `<div class="ir-wk-cell" style="color:${c}">${v}%</div>`;
+  const tip = state==='current' ? ' title="Текущая неделя — динамический ИР, закроется в конце недели"' : '';
+  const badge = state==='current' ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.05em">СЕЙЧАС</div>` : '';
+  return `<div class="ir-wk-cell"${tip} style="color:${c}">${v}%${badge}</div>`;
  };
  let weekRow='';
  for(let i=0;i<4;i++){
-  weekRow+=cellW(wk[i],i<completedWeeks);
+  if(i<completedWeeks)      weekRow+=cellW(wk[i], 'closed');
+  else if(i===currentWeekIdx) weekRow+=cellW(irCurWeek, irCurWeek==null?'empty':'current');
+  else                      weekRow+=cellW(null, 'empty');
  }
  const irMonth=typeof o.irMonth==='number'?o.irMonth:o.irValue;
  const irMonthClr=irMonth>=70?'var(--ok)':irMonth>=50?'var(--warn)':'var(--bad)';
@@ -696,6 +701,7 @@ function renderHero(d){
    irValue: irCo,
    irMonth: (typeof a.ir_v2_month_total === 'number') ? a.ir_v2_month_total : irCo,
    irWeekly: (d&&d.ir_history&&d.ir_history.week_history&&d.ir_history.week_history.total)||[],
+   irCurrentWeek: (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : null,
    perf, perfTotal: inIRcnt,
    newbies: (typeof a.scope.newbies_count==='number'?a.scope.newbies_count:0),
    g0: (typeof a.scope.group0_count==='number'?a.scope.group0_count:0),
