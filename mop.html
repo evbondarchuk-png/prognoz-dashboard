@@ -325,11 +325,20 @@
 .team-table tr:last-child td{border-bottom:none}
 .team-table tr.t-row{cursor:pointer;transition:.12s}
 .team-table tr.t-row:hover td{background:var(--surface-2)}
-.t-group-cell{display:flex;align-items:center;gap:var(--sp-3)}
-.t-group-avatar{width:36px;height:36px;border-radius:50%;background:#0e7490;color:var(--on-dark,#fff);display:flex;align-items:center;justify-content:center;font-weight:var(--fw-b);font-size:12px;flex-shrink:0}
-.t-group-info{min-width:0}
-.t-group-name{font-weight:var(--fw-sb);color:var(--ink)}
+.t-group-cell{display:flex;align-items:flex-start;gap:var(--sp-3)}
+.t-group-avatar{width:36px;height:36px;border-radius:50%;background:#0e7490;color:var(--on-dark,#fff);display:flex;align-items:center;justify-content:center;font-weight:var(--fw-b);font-size:12px;flex-shrink:0;margin-top:2px}
+.t-group-info{min-width:0;flex:1}
+.t-group-name{font-weight:var(--fw-sb);color:var(--ink);white-space:normal;line-height:1.25}
 .t-group-meta{font-size:var(--fs-11);color:var(--muted);margin-top:2px}
+.risk-summary{margin-top:6px;font-size:var(--fs-12);line-height:1.4;color:var(--ink);white-space:normal;max-width:420px}
+.risk-summary b{color:var(--ink)}
+/* Первая ячейка (партнёр + summary) — переносится, остальные — nowrap для аккуратной таблицы */
+.team-table td.t-cell-wrap{white-space:normal}
+@media (max-width:640px){
+  .risk-summary{font-size:var(--fs-11);max-width:none}
+  .team-table th,.team-table td{padding:var(--sp-2)}
+  .team-table th{font-size:10px}
+}
 .t-status-bar{display:inline-block;width:4px;height:36px;border-radius:var(--r-pill);background:var(--line-strong);margin-right:var(--sp-2);vertical-align:middle}
 .t-status-bar.ok{background:var(--ok)} .t-status-bar.warn{background:var(--warn)} .t-status-bar.bad{background:var(--bad)}
 .t-ir{font-size:var(--fs-16);font-weight:var(--fw-eb)}
@@ -1104,15 +1113,17 @@ function weekRiskRow(m){
   const fact = m.fact_month || 0;
   const forecast = m.forecast_month || 0;
   return `<tr class="t-row" onclick="location.href='${esc(m.drill_url||'#')}'">
-    <td><div class="t-group-cell">
+    <td class="t-cell-wrap"><div class="t-group-cell">
       <span class="t-status-bar bad"></span>
       <div class="t-group-avatar">${esc(_avatar(m.name))}</div>
-      <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
-        <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}</div></div></div></td>
+      <div class="t-group-info">
+        <div class="t-group-name">${esc(m.name||'')}</div>
+        <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}</div>
+        <div class="risk-summary">${summary}</div>
+      </div></div></td>
     <td class="center">${_statusBadge(m)}</td>
-    <td style="font-size:var(--fs-12);line-height:1.35;max-width:340px">${summary}</td>
-    <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span></div></td>
-    <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span></div></td>
+    <td class="center"><div class="t-pair" style="align-items:center"><span class="t-pair-main">${_fmtK(fact)}</span></div></td>
+    <td class="center"><div class="t-pair" style="align-items:center"><span class="t-pair-main">${_fmtK(forecast)}</span></div></td>
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
 }
 function g0Row(m){
@@ -1260,7 +1271,7 @@ function renderTeam(d){
        if(!inRisk.length) return `<div class="muted" style="padding:var(--sp-5);text-align:center">🎉 Никто из команды не в риске по неделям. Все либо в норме (≥70% последнюю завершённую неделю), либо новички/Группа 0.</div>`;
        return `<div class="muted" style="margin-bottom:var(--sp-3)">Партнёры с подряд идущими «плохими» неделями (ИР v2 ниже ${Math.round(((d&&d.n_risk&&d.n_risk.floor)||0.7)*100)}%). Текущая (незакрытая) неделя в стрик не входит.</div>
         <div class="scroll-wrap"><table class="team-table">
-          <thead><tr><th>Партнёр</th><th>Стрик</th><th>Что происходит</th><th>Факт вала</th><th>Прогноз вала</th><th></th></tr></thead>
+          <thead><tr><th>Партнёр · что происходит</th><th class="center">Стрик</th><th class="center">Факт</th><th class="center">Прогноз</th><th></th></tr></thead>
           <tbody>${inRisk.map(weekRiskRow).join('')}</tbody>
         </table></div>`;
      })()}
