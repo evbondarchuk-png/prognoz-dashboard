@@ -150,6 +150,20 @@
  .n-risk-4{background:#fee2e2;color:#7f1d1d;border:1px solid #dc2626;animation:n4-pulse 1.8s infinite}
  @keyframes n4-pulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.45)}50%{box-shadow:0 0 0 5px rgba(220,38,38,0)}}
  .g0-pill{display:inline-block;font-size:10px;font-weight:var(--fw-eb);background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;padding:1px 7px;margin-left:6px;cursor:help;vertical-align:middle}
+ /* Позитивный стрик «серия · не разорви цепочку» (2026-07-03) */
+ .streak-card{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.03)}
+ .streak-cap{font-size:var(--fs-11);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:var(--fw-sb);margin-bottom:10px}
+ .streak-boxes{display:flex;gap:8px;flex-wrap:wrap}
+ .streak-box{flex:1;min-width:56px;aspect-ratio:1/1;max-height:66px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+ .streak-box .sb-icon{font-size:var(--fs-22);font-weight:var(--fw-eb);line-height:1}
+ .streak-box .sb-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-top:4px;font-weight:var(--fw-sb)}
+ .streak-box.done{background:#dcfce7;color:#166534}
+ .streak-box.done .sb-icon{color:#16a34a}
+ .streak-box.now{background:#fef3c7;border:2px dashed #fbbf24}
+ .streak-box.now .sb-icon{font-size:var(--fs-20)}
+ .streak-box.empty{background:var(--surface-2);color:var(--muted)}
+ .streak-plate{margin-top:12px;background:#fef3c7;border:1px solid #fcd34d;color:#92500e;font-size:var(--fs-13);font-weight:var(--fw-sb);padding:8px 12px;border-radius:8px;text-align:center}
+ .streak-plate-ok{background:#dcfce7;border-color:#86efac;color:#166534}
  .hero-name{font-size:var(--fs-20);font-weight:var(--fw-eb);line-height:1.15}
  .hero-sub{font-size:var(--fs-12);color:var(--muted);margin-top:3px}
  .sf-mini{margin-top:10px;display:inline-flex;align-items:baseline;gap:8px;background:var(--surface-2);border-radius:10px;padding:8px 14px;cursor:pointer}
@@ -563,6 +577,49 @@ function daysPath(plan){ if(!plan||!plan.started_month) return null;
  const total=(plan.horizon_months||6)*30; const passed=Math.max(0,Math.round((Date.now()-start.getTime())/86400000));
  return {passed:Math.min(passed,total),total}; }
 
+/* ─── Позитивный стрик «серия · не разорви цепочку» (2026-07-03) ─── */
+function streakCard(d){
+  const nr = d && d.n_risk;
+  if (!nr) return '';
+  const good = nr.good_streak || 0;
+  if (good < 1) return '';  // рисуем только когда есть что беречь
+  // Кол-во завершённых недель тек.мес (для позиции 🔥-«идёт»):
+  // день 1-7 → 0 недель завершено, идёт 1-я; 8-14 → 1; 15-21 → 2; 22-lastDay → 3; после — 0 (месяц закрыт).
+  const today = new Date();
+  const dayN = today.getDate();
+  const lastDay = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+  const completed = dayN > lastDay ? 4 : dayN > 21 ? 3 : dayN > 14 ? 2 : dayN > 7 ? 1 : 0;
+  const hasCurrent = completed < 4;  // если месяц не закрыт — есть текущая
+  // Визуал: до 4 боксов. Заполняем справа налево «done» на good штук, потом «now» 🔥, остальное — empty.
+  const totalBoxes = Math.max(4, good + (hasCurrent ? 1 : 0));
+  const cap = Math.min(6, totalBoxes);  // не более 6 иконок в ряд
+  // Слева самые старые «done», справа «now» → зеркалим индекс.
+  const boxes = [];
+  for (let i = 0; i < cap; i++){
+    const pos = cap - 1 - i; // справа налево заполняем
+    if (hasCurrent && pos === 0) boxes.unshift({cls:'now', icon:'🔥', label:'идёт'});
+    else if (pos < (hasCurrent ? good + 1 : good) && pos > 0){
+      boxes.unshift({cls:'done', icon:'✓', label:`нед ${good - (pos - 1)}`});
+    } else if (!hasCurrent && pos < good){
+      boxes.unshift({cls:'done', icon:'✓', label:`нед ${good - pos}`});
+    } else {
+      boxes.unshift({cls:'empty', icon:'—', label:''});
+    }
+  }
+  const plateText = good >= 3
+    ? `${good} недели подряд · не разорви на ${good+1}-й!`
+    : good === 2
+    ? `2 недели подряд · сделай третью и получишь серию!`
+    : `1 неделя в плане · продолжай!`;
+  const plateCls = good >= 3 ? '' : 'streak-plate-ok';
+  const boxesHtml = boxes.map(b=>`<div class="streak-box ${b.cls}"><div class="sb-icon">${b.icon}</div>${b.label?`<div class="sb-label">${b.label}</div>`:''}</div>`).join('');
+  return `<div class="streak-card">
+    <div class="streak-cap">🔥 серия · план по доходу</div>
+    <div class="streak-boxes">${boxesHtml}</div>
+    <div class="streak-plate ${plateCls}">${plateText}</div>
+  </div>`;
+}
+
 /* ─── HERO (профиль + достижения + income-track) ─── */
 function renderHero(d){
  const u=d.user,nb=d.notifications;
@@ -611,7 +668,12 @@ function renderHero(d){
  <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
  <span class="role-tag">${esc(u.role_label||'Партнёр')}</span>
  ${(()=>{
-   const nr=d.n_risk; const s=nr&&nr.streak; if(!s||s<1) return '';
+   // Приоритет: позитивный стрик > негативный Н1-Н4. Если серия «в плане» ≥ 1 —
+   // показываем виджет «не разорви цепочку» после виджета шапки (ниже, в streakCard).
+   // Здесь оставляем только Н-бейдж когда позитивного стрика нет.
+   const nr=d.n_risk; if(!nr) return '';
+   if((nr.good_streak||0)>=1) return '';
+   const s=nr.streak; if(!s||s<1) return '';
    const lvl='Н'+Math.min(s,4);
    const base=s>=4?'4 недели подряд ниже целевого темпа — эскалация РОПу':s===3?'3 недели подряд ниже целевого темпа — нужен план выхода':s===2?'2 недели подряд ниже целевого темпа — встреча с менеджером':'1 неделя ниже целевого темпа — флаг';
    const monRu=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
@@ -627,6 +689,7 @@ function renderHero(d){
  <div class="hero-name">${esc(u.name)}</div>
  <div class="hero-sub">${meta.join(' · ')}</div>
  ${sfMini}</div></div>
+ ${streakCard(d)}
  ${ach?`<div class="achievements">${ach}</div>`:''}
  ${track}
  ${valBar}
