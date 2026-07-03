@@ -570,7 +570,8 @@ function renderHero(d){
  const g = (u && u.is_group_zero) ? null : d.goal;
  const unread=nb?.unread_count||0;
  const meta=[]; if(u.mop_name)meta.push('Старший партнёр: '+esc(u.mop_name)); if(u.stazh_label)meta.push('стаж '+esc(u.stazh_label));
- const sfMini=u.position_in_company!=null?`<div class="sf-mini" onclick="goTab('svetofor')"><b>#${u.position_in_company}</b><span class="sf-z muted">${esc(u.svetofor_zone_label||'')} · светофор ›</span></div>`:'';
+ const sfPos=(u.position_in_pool!=null?u.position_in_pool:u.position_in_company);
+ const sfMini=sfPos!=null?`<div class="sf-mini" onclick="goTab('svetofor')"><b>#${sfPos}</b><span class="sf-z muted">${esc(u.svetofor_zone_label||'')} · светофор ›</span></div>`:'';
  const ach=(d.achievements||[]).map(a=>`<div class="ach-chip">${esc(a.emoji)} ${esc(a.text)}</div>`).join('');
 
  // income-track
