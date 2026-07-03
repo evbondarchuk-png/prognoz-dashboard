@@ -1234,8 +1234,9 @@ function renderTeam(d){
    </div>
    <div class="team-panel" data-team-panel="weeks">
      ${(()=>{
-       // TZ-A30 §3 + TZ-A32 §5: только РИЕЛТОРЫ (не МОП/РОП) со streak ≥ 1.
-       const inRisk=sorted.filter(m=>m.role==='realtor' && !m.is_group_zero && !(typeof m.stazh_months==='number'&&m.stazh_months<1) && (m.weeks_in_risk_streak||0)>=1);
+       // TZ-A30 §3 + TZ-A32 §5: партнёры со streak ≥ 1 (кроме самого МОПа-информационного, новичков, Группы 0).
+       // NB: раньше был фильтр m.role==='realtor', но role в team_cards.members не приходит → все отсеивались.
+       const inRisk=sorted.filter(m=>!m.is_self && !m.is_group_zero && !(typeof m.stazh_months==='number'&&m.stazh_months<1) && (m.weeks_in_risk_streak||0)>=1);
        inRisk.sort((a,b)=>(b.weeks_in_risk_streak||0)-(a.weeks_in_risk_streak||0));
        if(!inRisk.length) return `<div class="muted" style="padding:var(--sp-5);text-align:center">🎉 Никто из команды не в риске по неделям. Все либо в норме (≥70% последнюю завершённую неделю), либо новички/Группа 0.</div>`;
        return `<div class="muted" style="margin-bottom:var(--sp-3)">Партнёры с подряд идущими «плохими» неделями (ИР v2 ниже ${Math.round(((d&&d.n_risk&&d.n_risk.floor)||0.7)*100)}%). Текущая (незакрытая) неделя в стрик не входит.</div>
