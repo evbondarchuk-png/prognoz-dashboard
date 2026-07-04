@@ -897,12 +897,29 @@ function renderPrognoz(d){
   </div>`);
   if (pt.segments && pt.segments.length) {
     const rows = pt.segments.map(s=>{
-      const headParts=[];
-      if (s.b_deals>0) headParts.push(`<span style="color:var(--muted)">🛒 покуп: <b style="color:var(--ink)">${s.b_deals}</b> · ${_prgFmtFull(s.b_revenue)} ₽</span>`);
-      if (s.s_deals>0) headParts.push(`<span style="color:var(--muted)">🏠 прод: <b style="color:var(--ink)">${s.s_deals}</b> · ${_prgFmtFull(s.s_revenue)} ₽</span>`);
+      // Показываем факт (зелёным) + прогноз (оранжевым) для каждой стороны.
+      // Если у стороны нет ни факта, ни прогноза — сторона скрывается.
+      const sideLine = (icon, lbl, dF, rF, dFcst, rFcst) => {
+        const hasFact = dF > 0 || rF > 0;
+        const hasFcst = dFcst > 0 || rFcst > 0;
+        if (!hasFact && !hasFcst) return '';
+        const factPart = hasFact ? `<span style="color:#0e7a4f"><b>${dF||0}</b> сделок · ${_prgFmtFull(rF)} ₽</span>` : '';
+        const fcstPart = hasFcst ? `<span style="color:#c2410c">+<b>${dFcst||0}</b> сделок · +${_prgFmtFull(rFcst)} ₽</span>` : '';
+        const sep = hasFact && hasFcst ? '<span style="color:var(--muted)"> / прогноз </span>' : '';
+        return `<span style="color:var(--muted)">${icon} ${lbl}: ${factPart}${sep}${fcstPart}</span>`;
+      };
+      const headParts = [
+        sideLine('🛒', 'покуп', s.b_deals_fact||s.b_deals||0, s.b_revenue_fact||s.b_revenue||0, s.b_deals_forecast||0, s.b_revenue_forecast||0),
+        sideLine('🏠', 'прод', s.s_deals_fact||s.s_deals||0, s.s_revenue_fact||s.s_revenue||0, s.s_deals_forecast||0, s.s_revenue_forecast||0),
+      ].filter(Boolean);
+      const totFact = (s.b_revenue_fact||s.b_revenue||0) + (s.s_revenue_fact||s.s_revenue||0);
+      const totFcst = (s.b_revenue_forecast||0) + (s.s_revenue_forecast||0);
+      const totRight = totFcst > 0
+        ? `<div style="font-size:14px;font-weight:800;color:#0e7a4f">${_prgFmtFull(totFact)} ₽</div><div style="font-size:11px;font-weight:700;color:#c2410c">+ ${_prgFmtFull(totFcst)} ₽ прогноз</div>`
+        : `<div style="font-size:14px;font-weight:800;color:#0e7a4f">${_prgFmtFull(totFact)} ₽</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">${s.total_deals||0} сделок</div>`;
       return `<div style="border:1px solid var(--line);border-radius:8px;padding:11px 13px;display:flex;align-items:center;gap:11px">
-        <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(s.label)}</div><div style="font-size:11px;margin-top:2px;display:flex;gap:11px;flex-wrap:wrap">${headParts.join('')}</div></div>
-        <div style="text-align:right;white-space:nowrap"><div style="font-size:14px;font-weight:800;color:#0e7a4f">${_prgFmtFull(s.total_revenue)} ₽</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">${s.total_deals} сделок</div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">${esc(s.label)}</div><div style="font-size:11px;margin-top:3px;display:flex;flex-direction:column;gap:3px">${headParts.join('')}</div></div>
+        <div style="text-align:right;white-space:nowrap">${totRight}</div>
       </div>`;
     }).join('');
     const tot=pt.totals||{};
