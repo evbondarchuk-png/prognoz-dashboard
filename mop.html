@@ -478,7 +478,7 @@
 import { requireAuth, logout } from './auth-guard.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
-import { mountCalendar } from './calendar.js';
+import { mountCalendar, openTaskDetail } from './calendar.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
@@ -1324,9 +1324,16 @@ function taskItem(t){
  ? `<button class="task-skip" onclick="skipTask('${esc(t.id)}',event)" title="Отказаться">🚫</button><button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`
  : (t.status==='done'?'<span class="task-done">✓</span>':'');
  const author=t.author_display?`<div class="muted" style="font-size:var(--fs-11)">${esc(t.author_display)}${t.author_reason?` · ${esc(t.author_reason)}`:''}</div>`:'';
- return `<div class="task"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}${author}</div>
+ return `<div class="task" onclick="openTaskDetailForMe('${esc(t.id)}',event)" style="cursor:pointer"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}${author}</div>
  <div style="display:flex;align-items:center;gap:4px">${actions}</div></div>`;
 }
+window.openTaskDetailForMe = async (taskId, ev) => {
+  if (ev) ev.stopPropagation();
+  try {
+    const db = getDatabase(getApp());
+    await openTaskDetail({ db, ownerCode: CTX.target, taskId });
+  } catch (e) { console.error('[task-detail] failed', e); }
+};
 function renderTasks(d){
  const root = document.getElementById('screen-tasks');
  if (root && !root.dataset.calMounted) {

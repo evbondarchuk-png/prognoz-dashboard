@@ -61,14 +61,45 @@ const CSS = `
 .cal-root .thour{height:42px;font-size:10px;color:#7a8194;text-align:right;padding:2px 6px 0 0;box-sizing:border-box;border-right:1px solid #e6e8ee}
 .cal-root .tcol{flex:1;min-width:0;position:relative;border-right:1px solid #e6e8ee}
 .cal-root .tcol:last-child{border-right:none}
-.cal-root .hcell{height:42px;border-top:1px solid #e6e8ee;position:relative}
+.cal-root .hcell{height:42px;border-top:1px solid #e6e8ee;position:relative;display:flex;flex-direction:column}
 .cal-root .tcol .hcell:first-child{border-top:none}
-.cal-root .hcell.ok{cursor:pointer;background:rgba(43,108,176,.12)}
-.cal-root .hcell.ok:hover{background:rgba(43,108,176,.22);box-shadow:inset 0 0 0 1.5px #2b6cb0}
 .cal-root .hcell.past{background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(0,0,0,.02) 5px,rgba(0,0,0,.02) 10px)}
-.cal-root .hcell.creatable{cursor:pointer}
-.cal-root .hcell.creatable:hover{background:rgba(43,108,176,.05)}
-.cal-root .hcell.creatable:hover::after{content:"+";position:absolute;top:1px;left:5px;color:#2b6cb0;font-weight:800;font-size:13px;opacity:.5}
+/* Каждый час = 4 sub-slot по 15 мин. Тонкие полосы: 15/30/45 внутри часа. */
+.cal-root .qcell{flex:1;position:relative;border-top:1px dashed rgba(0,0,0,.05);cursor:default}
+.cal-root .qcell:first-child{border-top:none}
+.cal-root .qcell.creatable{cursor:pointer}
+.cal-root .qcell.creatable:hover{background:rgba(43,108,176,.06)}
+.cal-root .qcell.ok{cursor:pointer;background:rgba(43,108,176,.10)}
+.cal-root .qcell.ok:hover{background:rgba(43,108,176,.22);box-shadow:inset 0 0 0 1.5px #2b6cb0}
+.cal-root .qcell.dragover{background:rgba(43,108,176,.28);box-shadow:inset 0 0 0 2px #2b6cb0}
+/* List view — плоский реестр задач с фильтрами */
+.cal-root .list-wrap{background:#fff;padding:14px}
+.cal-root .list-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #e6e8ee}
+.cal-root .lf-group{display:flex;gap:4px;background:#f1f3f7;border-radius:8px;padding:3px}
+.cal-root .lf-btn{font-size:11px;font-weight:700;padding:5px 10px;border:none;background:transparent;color:#7a8194;border-radius:6px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.cal-root .lf-btn.on{background:#fff;color:#2b6cb0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.cal-root .lf-sep{width:1px;background:#e6e8ee;margin:0 4px}
+.cal-root .list-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f1f3f7;cursor:pointer;transition:background .1s}
+.cal-root .list-row:hover{background:#f7f9fc}
+.cal-root .list-row.done{opacity:.55}
+.cal-root .list-row.done .lr-title{text-decoration:line-through}
+.cal-root .list-row.overdue{background:rgba(220,38,38,.04)}
+.cal-root .lr-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cal-root .lr-body{flex:1;min-width:0}
+.cal-root .lr-title{font-size:13px;font-weight:600;color:#1a1f2e;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-root .lr-meta{font-size:11px;color:#7a8194;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.cal-root .lr-when{font-weight:600}
+.cal-root .lr-when.today{color:#dc2626}
+.cal-root .lr-when.overdue{color:#dc2626;font-weight:800}
+.cal-root .lr-when.week{color:#c2410c}
+.cal-root .lr-actions{display:flex;gap:4px;flex-shrink:0}
+.cal-root .lr-actions button{width:28px;height:28px;border:none;background:#f1f3f7;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:.1s}
+.cal-root .lr-actions button:hover{background:#e6e8ee}
+.cal-root .lr-actions .lr-done{background:#dcfce7;color:#16a34a}
+.cal-root .lr-actions .lr-done:hover{background:#86efac}
+.cal-root .list-group{margin-top:10px}
+.cal-root .list-group-h{font-size:11px;color:#7a8194;text-transform:uppercase;letter-spacing:.05em;font-weight:800;padding:8px 12px;background:#f7f9fc;border-radius:6px}
+.cal-root .list-empty{padding:30px 20px;text-align:center;color:#7a8194;font-size:13px}
 .cal-root .ev{border-radius:6px;padding:0 8px;font-size:11px;cursor:grab;border-left:3px solid;position:relative;display:flex;align-items:center;overflow:hidden}
 .cal-root .ev.timed{position:absolute;left:2px;right:2px;align-items:flex-start;padding-top:2px}
 .cal-root .ev:active{cursor:grabbing}
@@ -184,6 +215,72 @@ function lessYMD(a, b) { return a < b; }
 function eqYMD(a, b) { return a === b; }
 
 /* ─── публичный API ─── */
+/**
+ * Открыть модалку детали задачи БЕЗ полного календаря.
+ * Используется на «Главной» и в других местах, где нужен быстрый просмотр/редактирование.
+ *   openTaskDetail({ db, ownerCode, taskId });
+ * Модалка создаётся в document.body один раз и переиспользуется.
+ */
+export async function openTaskDetail({ db, ownerCode, taskId }) {
+  injectCss();
+  // Разово подгружаем tools при первом вызове.
+  if (!TOOLS || Object.keys(TOOLS).length === 0) {
+    try { const s = await get(ref(db, '/config/tools')); TOOLS = s.val() || {}; } catch (e) {}
+  }
+  // Ищем или создаём глобальный портал.
+  let portal = document.getElementById('task-detail-portal');
+  if (!portal) {
+    portal = document.createElement('div');
+    portal.id = 'task-detail-portal';
+    portal.className = 'cal-root';
+    portal.innerHTML = `<div class="cal-mount"><div class="cal-modal-bg" data-modal="detail"><div class="cal-dmodal" data-detail-card></div></div>
+      <div class="cal-modal-bg" data-modal="create"><div class="cal-modal">
+        <div class="cal-modal-h" data-mh>➕ Новая задача</div>
+        <input class="cal-m-input" data-nt-title placeholder="Что нужно сделать?" maxlength="60">
+        <label class="cal-m-check"><input type="checkbox" data-nt-allday> Весь день</label>
+        <div class="cal-m-row"><div style="flex:1"><label class="cal-m-lbl">День</label><select class="cal-m-sel" data-nt-day></select></div></div>
+        <div class="cal-m-row" data-nt-timerow><div style="flex:1"><label class="cal-m-lbl">С</label><select class="cal-m-sel" data-nt-start></select></div><div style="flex:1"><label class="cal-m-lbl">До</label><select class="cal-m-sel" data-nt-end></select></div></div>
+        <div class="cal-modal-actions"><button class="cal-dbtn" data-nt-cancel>Отмена</button><button class="cal-dbtn primary" data-nt-save>Создать</button></div>
+      </div></div></div>`;
+    document.body.appendChild(portal);
+    // clicks на бэкдропе закрывают модалку
+    portal.querySelectorAll('.cal-modal-bg').forEach((bg) => {
+      bg.onclick = (e) => { if (e.target === bg) bg.classList.remove('on'); };
+    });
+  }
+  // Читаем задачу из RTDB (не подписка — просто снимок).
+  let taskData = null;
+  try {
+    const s = await get(ref(db, `/tasks/${taskId}`));
+    taskData = s.val();
+  } catch (e) {}
+  if (!taskData) { alert('Задача не найдена'); return; }
+  // Мини-state (openDetail рассчитывает на state.tasks[id] и state.db).
+  const state = {
+    view: 'list',
+    tasks: { [taskId]: adaptTaskFromRtdb(taskId, taskData) },
+    ownerCode,
+    db,
+    today: todayYMD(),
+    listFilters: { when: 'all', author: 'all' },
+    weekStart: ymd(mondayOf(new Date())),
+    monthStart: ymd(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+    placing: null,
+    dragId: null,
+    bodyScroll: 0,
+    nowMin: new Date().getHours() * 60 + new Date().getMinutes(),
+  };
+  const mount = portal.querySelector('.cal-mount');
+  openDetail(state, mount, taskId);
+  // Подставляем cancel-handler для create-модалки (нужен на edit).
+  const cancelBtn = mount.querySelector('[data-nt-cancel]');
+  if (cancelBtn) cancelBtn.onclick = () => closeCreateModal(mount);
+  const saveBtn = mount.querySelector('[data-nt-save]');
+  if (saveBtn) saveBtn.onclick = () => saveNewTask(state, mount);
+  const alldayCb = mount.querySelector('[data-nt-allday]');
+  if (alldayCb) alldayCb.onchange = (e) => { mount.querySelector('[data-nt-timerow]').style.display = e.target.checked ? 'none' : 'flex'; };
+}
+
 export async function mountCalendar(rootEl, opts) {
   injectCss();
   const { db, ownerCode, mode = 'partner' } = opts;
@@ -200,7 +297,8 @@ export async function mountCalendar(rootEl, opts) {
   console.log('[calendar] mountCalendar called', { ownerCode, mode });
 
   const state = {
-    view: 'week',
+    view: localStorage.getItem('cal_view') || 'list',
+    listFilters: { when: 'all', author: 'all' },
     weekStart: ymd(mondayOf(new Date())),  // YYYY-MM-DD
     monthStart: ymd(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
     placing: null,
@@ -338,12 +436,13 @@ function render(state, mount) {
   mount.innerHTML = `
     <div class="toolbar">
       <div class="views">
-        <button class="vbtn" data-v="day">День</button>
-        <button class="vbtn" data-v="3">3 дня</button>
-        <button class="vbtn on" data-v="week">Неделя</button>
-        <button class="vbtn" data-v="month">Месяц</button>
+        <button class="vbtn ${state.view==='list'?'on':''}" data-v="list">📋 Список</button>
+        <button class="vbtn ${state.view==='day'?'on':''}" data-v="day">День</button>
+        <button class="vbtn ${state.view==='3'?'on':''}" data-v="3">3 дня</button>
+        <button class="vbtn ${state.view==='week'?'on':''}" data-v="week">Неделя</button>
+        <button class="vbtn ${state.view==='month'?'on':''}" data-v="month">Месяц</button>
       </div>
-      <div class="cnav"><button data-nav="prev">‹</button><button data-nav="today">⊙</button><button data-nav="next">›</button></div>
+      <div class="cnav" ${state.view==='list'?'style="visibility:hidden"':''}><button data-nav="prev">‹</button><button data-nav="today">⊙</button><button data-nav="next">›</button></div>
       <div class="tlabel">${escHtml(periodLbl)}</div>
       <button class="spread" data-spread>✨ Разложить на неделю</button>
     </div>
@@ -368,7 +467,12 @@ function render(state, mount) {
   // tabs
   mount.querySelectorAll('.vbtn').forEach((b) => {
     b.classList.toggle('on', b.dataset.v === state.view);
-    b.onclick = () => { state.view = b.dataset.v; state.placing = null; render(state, mount); };
+    b.onclick = () => {
+      state.view = b.dataset.v;
+      state.placing = null;
+      try { localStorage.setItem('cal_view', state.view); } catch (e) {}
+      render(state, mount);
+    };
   });
   mount.querySelector('[data-nav="prev"]').onclick = () => navigate(state, mount, -1);
   mount.querySelector('[data-nav="next"]').onclick = () => navigate(state, mount, +1);
@@ -377,7 +481,8 @@ function render(state, mount) {
   mount.querySelector('.hint .cancel').onclick = () => { state.placing = null; render(state, mount); };
 
   // body
-  if (state.view === 'month') renderMonth(state, mount.querySelector('.cal'), scheduled);
+  if (state.view === 'list') renderList(state, mount.querySelector('.cal'), inbox, scheduled);
+  else if (state.view === 'month') renderMonth(state, mount.querySelector('.cal'), scheduled);
   else renderTimeGrid(state, mount.querySelector('.cal'), scheduled);
   renderPanel(state, mount.querySelector('.panel'), inbox);
   renderHint(state, mount);
@@ -395,6 +500,7 @@ function render(state, mount) {
 }
 
 function labelForPeriod(state) {
+  if (state.view === 'list') return 'Все задачи';
   if (state.view === 'month') { const d = parseYMD(state.monthStart); return `${MON_RU_FULL[d.getMonth()]} ${d.getFullYear()}`; }
   if (state.view === 'day') { const d = parseYMD(state.today); return `${dowOfYMD(state.today)}, ${d.getDate()} ${MON_RU[d.getMonth()]}`; }
   if (state.view === '3') { const a = parseYMD(state.today); const b = addDays(a, 2); return `${a.getDate()}–${b.getDate()} ${MON_RU[a.getMonth()]} ${a.getFullYear()}`; }
@@ -447,9 +553,13 @@ function renderTimeGrid(state, calEl, scheduled) {
   let cols = days.map((d) => {
     const past = isPast(state, d);
     const cells = HOURS.map((h) => {
-      const ok = state.placing && !past && placeAllowed(state, d);
-      const cr = (!state.placing && !past) ? 'creatable' : '';
-      return `<div class="hcell ${ok ? 'ok' : ''} ${past ? 'past' : ''} ${cr}" data-day="${d}" data-hour="${h}"></div>`;
+      // Внутри часа — 4 подслота по 15 мин. Каждый — отдельный target для click/drop.
+      const quads = [0, 15, 30, 45].map((mm) => {
+        const ok = state.placing && !past && placeAllowed(state, d) ? 'ok' : '';
+        const cr = (!state.placing && !past) ? 'creatable' : '';
+        return `<div class="qcell ${ok} ${cr}" data-day="${d}" data-hour="${h}" data-min="${mm}"></div>`;
+      }).join('');
+      return `<div class="hcell ${past ? 'past' : ''}">${quads}</div>`;
     }).join('');
     const evs = scheduled.filter((t) => t.day === d && !t.allday && (t.span || 1) === 1).map(evHtml).join('');
     return `<div class="tcol" data-day="${d}">${cells}${evs}</div>`;
@@ -463,16 +573,18 @@ function renderTimeGrid(state, calEl, scheduled) {
   const cb = calEl.querySelector('[data-body]');
   if (cb) { cb.scrollTop = state.bodyScroll; cb.addEventListener('scroll', () => { state.bodyScroll = cb.scrollTop; }); }
 
-  // обработчики ячеек: клик и drop
-  calEl.querySelectorAll('.hcell, .ad-cell').forEach((cell) => {
+  // обработчики ячеек: клик и drop. qcell — 15-мин слоты внутри hcell, ad-cell — allday.
+  calEl.querySelectorAll('.qcell, .ad-cell').forEach((cell) => {
     const day = cell.dataset.day;
     const hour = cell.dataset.hour ? +cell.dataset.hour : null;
+    const min = cell.dataset.min != null ? +cell.dataset.min : 0;
     const allday = cell.dataset.allday === '1';
+    const startMin = allday ? null : (hour * 60 + min);
     cell.addEventListener('click', (e) => {
       if (state.placing) {
-        if (placeAllowed(state, day)) placeAt(state, calEl.closest('.cal-root').querySelector('.cal-mount') || calEl.parentElement.parentElement, day, hour, allday);
+        if (placeAllowed(state, day)) placeAt(state, calEl.closest('.cal-root').querySelector('.cal-mount') || calEl.parentElement.parentElement, day, startMin, allday);
       } else if (!isPast(state, day)) {
-        openCreateModal(state, calEl.closest('.cal-root').parentElement.querySelector('.cal-mount') || cell.closest('.cal-mount') || cell.closest('.cal-root'), day, hour);
+        openCreateModal(state, calEl.closest('.cal-root').parentElement.querySelector('.cal-mount') || cell.closest('.cal-mount') || cell.closest('.cal-root'), day, startMin);
       }
     });
     cell.addEventListener('dragover', (e) => { if (state.dragId && allowedFor(state, state.dragId, day)) { e.preventDefault(); cell.classList.add('dragover'); } });
@@ -482,7 +594,7 @@ function renderTimeGrid(state, calEl, scheduled) {
       if (!state.dragId) return;
       const t = state.tasks[state.dragId];
       if (!t || isLocked(t) || !allowedFor(state, state.dragId, day)) { state.dragId = null; return; }
-      moveTaskToDay(state, state.dragId, day, allday ? null : hour, allday);
+      moveTaskToDay(state, state.dragId, day, allday ? null : startMin, allday);
       state.dragId = null;
     });
   });
@@ -576,7 +688,7 @@ function renderMonth(state, calEl, scheduled) {
       e.preventDefault();
       if (!state.dragId) return;
       const t = state.tasks[state.dragId]; if (!t || isLocked(t)) { state.dragId = null; return; }
-      moveTaskToDay(state, state.dragId, day, t.start != null ? Math.floor(t.start / 60) : null, t.allday);
+      moveTaskToDay(state, state.dragId, day, t.start != null ? t.start : null, t.allday);
       state.dragId = null;
     });
   });
@@ -587,6 +699,158 @@ function renderMonth(state, calEl, scheduled) {
     el.addEventListener('dragend', () => { state.dragId = null; });
   });
 }
+/* ─── list view: плоский реестр всех задач с фильтрами ─── */
+function renderList(state, calEl, inbox, scheduled) {
+  const all = [...inbox, ...scheduled];
+  // Фильтры (state.listFilters — {when, author})
+  state.listFilters = state.listFilters || { when: 'all', author: 'all' };
+  const { when, author } = state.listFilters;
+
+  const now = state.today;
+  const nextWeek = ymd(addDays(parseYMD(now), 7));
+  const isOverdue = (t) => !t.done && t.day && t.day < now;
+  const isToday = (t) => t.day === now && !t.done;
+  const isWeek = (t) => t.day && t.day > now && t.day <= nextWeek && !t.done;
+  const isLater = (t) => t.day && t.day > nextWeek && !t.done;
+  const isNoDate = (t) => !t.day && !t.done;
+  const isDone = (t) => t.done;
+
+  let filtered = all;
+  if (when === 'overdue') filtered = all.filter(isOverdue);
+  else if (when === 'today') filtered = all.filter(isToday);
+  else if (when === 'week') filtered = all.filter(isWeek);
+  else if (when === 'later') filtered = all.filter(isLater);
+  else if (when === 'nodate') filtered = all.filter(isNoDate);
+  else if (when === 'done') filtered = all.filter(isDone);
+  // 'all' — не фильтруем
+
+  if (author === 'self') filtered = filtered.filter(t => t.cls === 'mine' || t.author_kind === 'self');
+  else if (author === 'manager') filtered = filtered.filter(t => t.cls === 'manager' || t.author_kind === 'manager');
+  else if (author === 'ai') filtered = filtered.filter(t => t.author_kind === 'system' || t.cls === 'otkl' || t.cls === 'plan' || t.cls === 'srochno');
+
+  // Сортировка: просрочка → сегодня → на неделе → позже → без даты → выполнено
+  const orderKey = (t) => {
+    if (t.done) return 6;
+    if (isOverdue(t)) return 0;
+    if (isToday(t)) return 1;
+    if (isWeek(t)) return 2;
+    if (isLater(t)) return 3;
+    if (isNoDate(t)) return 4;
+    return 5;
+  };
+  filtered.sort((a, b) => {
+    const oa = orderKey(a), ob = orderKey(b);
+    if (oa !== ob) return oa - ob;
+    // внутри группы — по дате+времени
+    const da = (a.day || 'zzzz') + ' ' + (a.start != null ? String(a.start).padStart(4,'0') : '9999');
+    const db = (b.day || 'zzzz') + ' ' + (b.start != null ? String(b.start).padStart(4,'0') : '9999');
+    return da.localeCompare(db);
+  });
+
+  const cntBy = (fn) => all.filter(fn).length;
+  const cnts = {
+    all: all.filter(t => !t.done).length,
+    overdue: cntBy(isOverdue),
+    today: cntBy(isToday),
+    week: cntBy(isWeek),
+    later: cntBy(isLater),
+    nodate: cntBy(isNoDate),
+    done: cntBy(isDone),
+  };
+
+  const filterBtn = (val, label, count, kind) => `<button class="lf-btn ${state.listFilters[kind]===val?'on':''}" data-lf-${kind}="${val}">${label}${count!=null?` <span style="opacity:.7">${count}</span>`:''}</button>`;
+  const whenGroup = `<div class="lf-group">
+    ${filterBtn('all', 'Все', cnts.all, 'when')}
+    ${cnts.overdue ? filterBtn('overdue', '⚠ Просрочено', cnts.overdue, 'when') : ''}
+    ${filterBtn('today', 'Сегодня', cnts.today, 'when')}
+    ${filterBtn('week', 'Неделя', cnts.week, 'when')}
+    ${cnts.later ? filterBtn('later', 'Позже', cnts.later, 'when') : ''}
+    ${cnts.nodate ? filterBtn('nodate', 'Без срока', cnts.nodate, 'when') : ''}
+    ${filterBtn('done', 'Выполнено', cnts.done, 'when')}
+  </div>`;
+  const authorGroup = `<div class="lf-group">
+    ${filterBtn('all', 'Кто угодно', null, 'author')}
+    ${filterBtn('self', '👤 Я', null, 'author')}
+    ${filterBtn('manager', '👔 Менеджер', null, 'author')}
+    ${filterBtn('ai', '🤖 ИИ', null, 'author')}
+  </div>`;
+
+  const monRu = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  const dowRu = ['вс','пн','вт','ср','чт','пт','сб'];
+  const whenLabel = (t) => {
+    if (!t.day) return 'без срока';
+    const d = parseYMD(t.day);
+    const time = t.start != null && !t.allday ? ` ${String(Math.floor(t.start/60)).padStart(2,'0')}:${String(t.start%60).padStart(2,'0')}` : '';
+    if (t.day === now) return `сегодня${time}`;
+    if (t.day < now) {
+      const diff = diffDays(t.day, now);
+      return `${diff} ${diff === 1 ? 'день' : diff < 5 ? 'дня' : 'дней'} назад${time}`;
+    }
+    return `${dowRu[d.getDay()]} ${d.getDate()} ${monRu[d.getMonth()]}${time}`;
+  };
+  const whenCls = (t) => {
+    if (t.done) return '';
+    if (isOverdue(t)) return 'overdue';
+    if (isToday(t)) return 'today';
+    if (isWeek(t)) return 'week';
+    return '';
+  };
+
+  const rows = filtered.map((t) => {
+    const cls = whenCls(t);
+    const done = t.done ? 'done' : '';
+    const overdueRow = isOverdue(t) ? 'overdue' : '';
+    const actions = t.done
+      ? `<button data-act="reopen" data-id="${t.id}" title="Вернуть в работу">↺</button>`
+      : `<button class="lr-done" data-act="done" data-id="${t.id}" title="Выполнено">✓</button>`;
+    return `<div class="list-row ${done} ${overdueRow}" data-open="${t.id}">
+      <span class="lr-dot" style="background:${dotColor(t.cls)}"></span>
+      <div class="lr-body">
+        <div class="lr-title">${typeIcon(t)} ${escHtml(t.title)}</div>
+        <div class="lr-meta">
+          <span class="lr-when ${cls}">${whenLabel(t)}</span>
+          ${t.dur && !t.allday && t.start != null ? `<span>· ${t.dur} мин</span>` : ''}
+          <span>· ${escHtml(authorOf(t))}</span>
+          ${isLocked(t) ? '<span>· 🔒 закреплено</span>' : ''}
+        </div>
+      </div>
+      <div class="lr-actions">${actions}</div>
+    </div>`;
+  }).join('');
+
+  const empty = filtered.length === 0 ? '<div class="list-empty">Задач по этому фильтру нет 🎉</div>' : '';
+
+  calEl.innerHTML = `<div class="list-wrap">
+    <div class="list-filters">${whenGroup}<div class="lf-sep"></div>${authorGroup}</div>
+    <div>${rows}${empty}</div>
+  </div>`;
+
+  // Обработчики фильтров
+  calEl.querySelectorAll('[data-lf-when]').forEach((b) => {
+    b.onclick = () => { state.listFilters.when = b.dataset.lfWhen; render(state, calEl.closest('.cal-mount') || calEl.closest('.cal-root')); };
+  });
+  calEl.querySelectorAll('[data-lf-author]').forEach((b) => {
+    b.onclick = () => { state.listFilters.author = b.dataset.lfAuthor; render(state, calEl.closest('.cal-mount') || calEl.closest('.cal-root')); };
+  });
+  // Клик по строке → детали
+  calEl.querySelectorAll('[data-open]').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('[data-act]')) return;  // клик по кнопке — не открывать
+      openDetail(state, row.closest('.cal-mount') || row.closest('.cal-root'), row.dataset.open);
+    });
+  });
+  // Быстрое ✓ / ↺
+  calEl.querySelectorAll('[data-act]').forEach((b) => {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      const id = b.dataset.id;
+      const act = b.dataset.act;
+      if (act === 'done') await update(ref(state.db, `/tasks/${id}`), { status: 'done', done_at: Date.now() });
+      else if (act === 'reopen') await update(ref(state.db, `/tasks/${id}`), { status: 'active', done_at: null, done_comment: null });
+    };
+  });
+}
+
 function mPill(t) {
   const time = !t.allday && t.start != null ? `${String(Math.floor(t.start / 60)).padStart(2, '0')}:${String(t.start % 60).padStart(2, '0')} ` : '';
   return `<div class="m-pill ev-${t.cls} ${t.done ? 'done' : ''}" data-id="${t.id}" draggable="${isLocked(t) ? 'false' : 'true'}">${typeIcon(t)} ${time}${escHtml(t.short || t.title)}</div>`;
@@ -617,7 +881,7 @@ function renderPanel(state, panelEl, inbox) {
     <button class="btn-cal" style="width:100%;margin-bottom:12px;background:#f1f3f7;color:#2b6cb0" data-create>➕ Создать свою задачу</button>
     ${sorted.length ? cards : '<div class="empty">Все задачи распределены 🎉</div>'}`;
 
-  panelEl.querySelector('[data-create]').onclick = () => openCreateModal(state, panelEl.closest('.cal-mount') || panelEl.closest('.cal-root'), state.today, 9);
+  panelEl.querySelector('[data-create]').onclick = () => openCreateModal(state, panelEl.closest('.cal-mount') || panelEl.closest('.cal-root'), state.today, 9 * 60);
   panelEl.querySelectorAll('.icard').forEach((card) => {
     const id = card.dataset.id;
     card.querySelector('[data-act="place"]').onclick = (e) => { e.stopPropagation(); state.placing = id; render(state, card.closest('.cal-mount')); window.scrollTo({ top: 120, behavior: 'smooth' }); };
@@ -645,17 +909,24 @@ function allowedFor(state, id, dayYMD) {
 }
 function placeAllowed(state, dayYMD) { return state.placing ? allowedFor(state, state.placing, dayYMD) : false; }
 
-async function placeAt(state, mount, dayYMD, hour, allday) {
+async function placeAt(state, mount, dayYMD, startMin, allday) {
   const id = state.placing; if (!id) return;
-  await moveTaskToDay(state, id, dayYMD, allday ? null : hour, allday);
+  await moveTaskToDay(state, id, dayYMD, allday ? null : startMin, allday);
   state.placing = null;
   // render будет вызван автоматически через onValue listener
 }
-async function moveTaskToDay(state, id, dayYMD, hour, allday) {
+// startMin — минуты от полуночи (например 12:15 = 735). null → без времени/allday.
+async function moveTaskToDay(state, id, dayYMD, startMin, allday) {
   const t = state.tasks[id]; if (!t) return;
   const upd = { due_date: dayYMD };
-  if (allday) { upd.due_at = new Date(`${dayYMD}T23:59:59+0${TZ_OFFSET_HOURS}:00`).getTime(); }
-  else if (hour != null) { upd.due_at = new Date(`${dayYMD}T${String(hour).padStart(2, '0')}:00:00+0${TZ_OFFSET_HOURS}:00`).getTime(); upd.duration_min = t.dur || 30; }
+  if (allday) {
+    upd.due_at = new Date(`${dayYMD}T23:59:59+0${TZ_OFFSET_HOURS}:00`).getTime();
+  } else if (startMin != null) {
+    const hh = String(Math.floor(startMin / 60)).padStart(2, '0');
+    const mm = String(startMin % 60).padStart(2, '0');
+    upd.due_at = new Date(`${dayYMD}T${hh}:${mm}:00+0${TZ_OFFSET_HOURS}:00`).getTime();
+    upd.duration_min = t.dur || 30;
+  }
   await update(ref(state.db, `/tasks/${id}`), upd);
 }
 async function unschedule(state, id) {
@@ -682,7 +953,8 @@ function startResize(state, e, id, evEl) {
 }
 
 /* ─── модалка создания ─── */
-function openCreateModal(state, mount, day, hour) {
+// startMin — минуты от полуночи (например 12:15=735). Если null — предзаполняем 9:00.
+function openCreateModal(state, mount, day, startMin) {
   const m = mount.querySelector('[data-modal="create"]'); if (!m) return;
   m.querySelector('[data-mh]').textContent = '➕ Новая задача';
   m.querySelector('[data-nt-title]').value = '';
@@ -699,9 +971,9 @@ function openCreateModal(state, mount, day, hour) {
     opts += `<option value="${dy}" ${day === dy ? 'selected' : ''}>${DOW[dowIdx(dd)]} ${dd.getDate()} ${MON_RU[dd.getMonth()]}</option>`;
   }
   dsel.innerHTML = opts;
-  const startMin = (hour != null ? hour : 9) * 60;
-  m.querySelector('[data-nt-start]').innerHTML = timeOptions(startMin);
-  m.querySelector('[data-nt-end]').innerHTML = timeOptions(startMin + 30);
+  const sMin = (typeof startMin === 'number' ? startMin : 9 * 60);
+  m.querySelector('[data-nt-start]').innerHTML = timeOptions(sMin);
+  m.querySelector('[data-nt-end]').innerHTML = timeOptions(sMin + 30);
   m.dataset.editing = '';
   m.classList.add('on');
   setTimeout(() => m.querySelector('[data-nt-title]').focus(), 50);
@@ -710,9 +982,10 @@ function closeCreateModal(mount) {
   const m = mount.querySelector('[data-modal="create"]'); if (m) m.classList.remove('on');
 }
 function timeOptions(sel) {
+  // Шаг 15 минут — стандарт для календарей (Google/Outlook). Позволяет 12:15/13:45.
   let o = '';
-  for (let m = 0; m < 24 * 60; m += 30) {
-    o += `<option value="${m}" ${m === sel ? 'selected' : ''}>${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}</option>`;
+  for (let m = 0; m < 24 * 60; m += 15) {
+    o += `<option value="${m}" ${m === sel ? 'selected' : ''}>${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}</option>`;
   }
   return o;
 }
@@ -834,7 +1107,7 @@ function openDetail(state, mount, id) {
         cm.querySelector('[data-nt-title]').value = t.title;
         cm.dataset.editing = id;
         // set day/time
-        openCreateModal(state, mount, t.day || state.today, t.start != null ? Math.floor(t.start / 60) : 9);
+        openCreateModal(state, mount, t.day || state.today, t.start != null ? t.start : 9 * 60);
       } else if (act === 'place') { state.placing = id; m.classList.remove('on'); render(state, mount); }
     };
   });
