@@ -192,11 +192,15 @@ let cssInjected = false;
 
 function injectCss() {
   if (cssInjected) return;
+  if (typeof document === 'undefined') return;
   const s = document.createElement('style');
   s.textContent = CSS;
   document.head.appendChild(s);
   cssInjected = true;
 }
+// Инжектим CSS сразу при импорте модуля — чтобы стили .list-row работали
+// на «Главной», где рендерятся плашки задач в новом стиле без открытия календаря.
+injectCss();
 
 /* ─── утилиты дат ─── */
 const DOW = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -1055,6 +1059,37 @@ function openDetail(state, mount, id) {
   tools += `<button class="cal-dm-ic" data-act="close">✕</button>`;
 
   let rows = '';
+  // Inline редактор даты/времени — только для НЕ-locked и НЕ-done задач.
+  // Позволяет прямо в модалке перенести задачу без открытия формы «Редактировать».
+  if (!isLocked(t) && !t.done) {
+    const startD = parseYMD(state.today);
+    let dayOpts = '<option value="">без даты</option>';
+    for (let i = 0; i < 60; i++) {
+      const dd = addDays(startD, i);
+      const dy = ymd(dd);
+      dayOpts += `<option value="${dy}" ${t.day === dy ? 'selected' : ''}>${DOW[dowIdx(dd)]} ${dd.getDate()} ${MON_RU[dd.getMonth()]}</option>`;
+    }
+    const curStart = (t.day && !t.allday && t.start != null) ? t.start : 9 * 60;
+    const alldayChecked = t.day && t.allday ? 'checked' : '';
+    const timeDisplay = (t.day && t.allday) ? 'none' : 'flex';
+    rows += `<div class="cal-dm-row" style="align-items:center;gap:10px;background:#f7f9fc;border-radius:8px;padding:10px 12px;margin:6px 0">
+      <div class="cal-dm-ricon">📅</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="cal-m-sel" data-edit-day style="flex:1;min-width:150px">${dayOpts}</select>
+          <label class="cal-m-check" style="margin:0;font-size:12px"><input type="checkbox" data-edit-allday ${alldayChecked}> Весь день</label>
+        </div>
+        <div data-edit-timerow style="display:${timeDisplay};gap:8px;align-items:center">
+          <span style="font-size:12px;color:#7a8194">Время:</span>
+          <select class="cal-m-sel" data-edit-start style="flex:1;min-width:100px">${timeOptions(curStart)}</select>
+          <span style="font-size:12px;color:#7a8194">длительность</span>
+          <select class="cal-m-sel" data-edit-dur style="width:90px">
+            ${[15,30,45,60,90,120,180,240].map(d=>`<option value="${d}" ${d===(t.dur||30)?'selected':''}>${d} мин</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>`;
+  }
   if (t.event) rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">📌</div><div><b>Мероприятие</b><br><span class="cal-muted">${escHtml(t.recur || 'разовое')}</span></div></div>`;
   else rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">⚠️</div><div><b>Почему задача</b><br><span class="cal-muted">${escHtml(t.src || '')} · ${escHtml(t.srcLabel || '')}</span></div></div>`;
   if (t.group) rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">👥</div><div><b>Массовая</b><br><span class="cal-muted">для всей группы</span></div></div>`;
@@ -1086,6 +1121,38 @@ function openDetail(state, mount, id) {
     ${rows}
     ${comment}
     <div class="cal-dm-actions">${actions}</div>`;
+
+  // Обработчики inline-редактора даты/времени
+  const editDay = card.querySelector('[data-edit-day]');
+  const editAllday = card.querySelector('[data-edit-allday]');
+  const editTimerow = card.querySelector('[data-edit-timerow]');
+  const editStart = card.querySelector('[data-edit-start]');
+  const editDur = card.querySelector('[data-edit-dur]');
+  const saveEdits = async () => {
+    if (!editDay) return;
+    const day = editDay.value || null;
+    if (!day) { await unschedule(state, id); return; }
+    const allday = editAllday.checked;
+    const upd = { due_date: day };
+    if (allday) {
+      upd.due_at = new Date(`${day}T23:59:59+0${TZ_OFFSET_HOURS}:00`).getTime();
+      upd.duration_min = null;
+    } else {
+      const s = +editStart.value;
+      const hh = String(Math.floor(s / 60)).padStart(2, '0');
+      const mm = String(s % 60).padStart(2, '0');
+      upd.due_at = new Date(`${day}T${hh}:${mm}:00+0${TZ_OFFSET_HOURS}:00`).getTime();
+      upd.duration_min = +editDur.value;
+    }
+    await update(ref(state.db, `/tasks/${id}`), upd);
+  };
+  if (editDay) editDay.onchange = saveEdits;
+  if (editAllday) editAllday.onchange = () => {
+    editTimerow.style.display = editAllday.checked ? 'none' : 'flex';
+    saveEdits();
+  };
+  if (editStart) editStart.onchange = saveEdits;
+  if (editDur) editDur.onchange = saveEdits;
 
   card.querySelectorAll('[data-act]').forEach((b) => {
     const act = b.dataset.act;

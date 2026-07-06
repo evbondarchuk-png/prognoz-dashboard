@@ -847,7 +847,9 @@ function tasksMain(d){
  const grp=(arr,t,cls)=>arr.length?`<div class="tg-title ${cls}">${t} · ${arr.length}</div>${arr.slice(0,4).map(taskItem).join('')}`:'';
  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="section-title" style="margin:0">📋 Задачи на сегодня и неделю</div>
  <span onclick="goTab('tasks')" style="font-size:var(--fs-12);color:var(--brand);font-weight:var(--fw-b);cursor:pointer">все ↗</span></div>
- ${grp(exp,'⚠ Просрочено','tg-red')}${grp(today,'Сегодня','tg-red')}${grp(week,'На этой неделе','tg-amber')}</div>`;
+ <div class="cal-root" style="font-family:inherit;color:inherit">
+ ${grp(exp,'⚠ Просрочено','tg-red')}${grp(today,'Сегодня','tg-red')}${grp(week,'На этой неделе','tg-amber')}
+ </div></div>`;
 }
 
 /* ─── ГЛАВНАЯ ─── */
@@ -1319,13 +1321,31 @@ function renderTeam(d){
 
 /* ─── ЗАДАЧИ ─── */
 function taskItem(t){
- const meta=[t.priority!=='normal'?t.priority_label:'',t.due_label||t.due_date||'',t.progress_label].filter(Boolean).join(' · ');
- const actions=t.can_complete
- ? `<button class="task-skip" onclick="skipTask('${esc(t.id)}',event)" title="Отказаться">🚫</button><button class="task-btn" onclick="completeTask('${esc(t.id)}',event)">✓</button>`
- : (t.status==='done'?'<span class="task-done">✓</span>':'');
- const author=t.author_display?`<div class="muted" style="font-size:var(--fs-11)">${esc(t.author_display)}${t.author_reason?` · ${esc(t.author_reason)}`:''}</div>`:'';
- return `<div class="task" onclick="openTaskDetailForMe('${esc(t.id)}',event)" style="cursor:pointer"><div class="task-main"><div class="task-title">${esc(t.title)}</div>${meta?`<div class="muted">${esc(meta)}</div>`:''}${author}</div>
- <div style="display:flex;align-items:center;gap:4px">${actions}</div></div>`;
+ const priority = t.priority || 'normal';
+ const dotColor = priority === 'high' || t.overdue ? '#dc2626'
+   : (t.author_kind === 'manager' ? '#4f46e5' : (t.author_kind === 'self' ? '#0f766e' : '#2b6cb0'));
+ const authorIcon = t.author_kind === 'self' ? '👤' : (t.author_kind === 'manager' ? '👔' : '🤖');
+ const whenCls = t.overdue ? 'overdue' : (t.due_date === new Date().toISOString().slice(0,10) ? 'today' : 'week');
+ const whenLbl = t.due_label || t.due_date || 'без срока';
+ const author = t.author_display ? `<span>· ${esc(t.author_display)}</span>` : '';
+ const reason = t.author_reason ? `<span>· ${esc(t.author_reason)}</span>` : '';
+ const progress = t.progress_label ? `<span>· ${esc(t.progress_label)}</span>` : '';
+ const priBadge = priority === 'high' ? '<span style="color:#dc2626;font-weight:800">⚠</span> ' : '';
+ const actions = t.can_complete
+   ? `<button class="task-skip" onclick="skipTask('${esc(t.id)}',event)" title="Отказаться">🚫</button><button class="lr-done" onclick="completeTask('${esc(t.id)}',event)" title="Выполнено">✓</button>`
+   : (t.status === 'done' ? '<span class="task-done">✓</span>' : '');
+ return `<div class="list-row" onclick="openTaskDetailForMe('${esc(t.id)}',event)">
+   <span class="lr-dot" style="background:${dotColor}"></span>
+   <div class="lr-body">
+     <div class="lr-title">${authorIcon} ${priBadge}${esc(t.title)}</div>
+     <div class="lr-meta">
+       <span class="lr-when ${whenCls}">${esc(whenLbl)}</span>
+       ${progress}
+       ${author}${reason}
+     </div>
+   </div>
+   <div class="lr-actions">${actions}</div>
+ </div>`;
 }
 window.openTaskDetailForMe = async (taskId, ev) => {
   if (ev) ev.stopPropagation();
