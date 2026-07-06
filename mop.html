@@ -414,7 +414,9 @@
 .fp-bar-fact:hover, .fp-bar-forecast:hover{filter:brightness(.92)}
 .fp-bar-fact.narrow, .fp-bar-forecast.narrow{color:transparent}
 .fp-bar.zero-fact::after{content:'0% от плана';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:var(--fs-11);font-weight:var(--fw-b);color:var(--muted);letter-spacing:.2px;pointer-events:none;white-space:nowrap}
-.fp-bar-fact[data-tooltip]:hover::after, .fp-bar-forecast[data-tooltip]:hover::after, .fp-bar[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1f2e;color:#fff;font-size:var(--fs-12);font-weight:var(--fw-sb);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:50;pointer-events:none;letter-spacing:.2px}
+@media (hover: hover) and (pointer: fine){
+  .fp-bar-fact[data-tooltip]:hover::after, .fp-bar-forecast[data-tooltip]:hover::after, .fp-bar[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1f2e;color:#fff;font-size:var(--fs-12);font-weight:var(--fw-sb);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:50;pointer-events:none;letter-spacing:.2px}
+}
 .fp-bar-wrap{display:grid;grid-template-columns:1fr auto;gap:var(--sp-3);align-items:center}
 .fp-bar-outside{display:flex;gap:var(--sp-2);align-items:baseline;font-size:var(--fs-12);white-space:nowrap}
 .fp-bar-outside .o-fact{color:var(--ok);font-weight:var(--fw-b)}
@@ -974,7 +976,7 @@ function renderPrognoz(d){
   prgRenderBars(pt, mode);
 }
 
-window.prgSetMode = function(m){ localStorage.setItem(PRG_MODE_KEY, m); const d=window.CTX&&CTX.data; if(d) renderPrognoz(d); };
+window.prgSetMode = function(m){ localStorage.setItem(PRG_MODE_KEY, m); if(CTX&&CTX.data) renderPrognoz(CTX.data); };
 
 function prgRenderBars(pt, mode){
   const wrap=document.getElementById('prg-bars-wrap'); if(!wrap) return;
