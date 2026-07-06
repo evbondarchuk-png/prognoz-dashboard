@@ -1162,11 +1162,19 @@ function openDetail(state, mount, id) {
         const c = card.querySelector('[data-comment]');
         await update(ref(state.db, `/tasks/${id}`), { status: 'done', done_at: Date.now(), done_comment: c ? c.value.trim() : '' });
         m.classList.remove('on');
+        // На главной блок задач — снапшот из getDashboard, а не listener.
+        // После смены статуса перезагружаем страницу чтобы задача исчезла.
+        if (!document.querySelector('.cal-body')) setTimeout(() => location.reload(), 200);
       } else if (act === 'reopen') {
         await update(ref(state.db, `/tasks/${id}`), { status: 'active', done_at: null, done_comment: null });
         m.classList.remove('on');
+        if (!document.querySelector('.cal-body')) setTimeout(() => location.reload(), 200);
       } else if (act === 'unschedule') { await unschedule(state, id); m.classList.remove('on'); }
-      else if (act === 'del') { await remove(ref(state.db, `/tasks/${id}`)); m.classList.remove('on'); }
+      else if (act === 'del') {
+        await remove(ref(state.db, `/tasks/${id}`));
+        m.classList.remove('on');
+        if (!document.querySelector('.cal-body')) setTimeout(() => location.reload(), 200);
+      }
       else if (act === 'edit') {
         m.classList.remove('on');
         const cm = mount.querySelector('[data-modal="create"]');
