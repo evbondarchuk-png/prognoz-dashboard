@@ -726,7 +726,7 @@ function renderList(state, calEl, inbox, scheduled) {
   else if (when === 'later') filtered = all.filter(isLater);
   else if (when === 'nodate') filtered = all.filter(isNoDate);
   else if (when === 'done') filtered = all.filter(isDone);
-  // 'all' — не фильтруем
+  else filtered = all.filter(t => !t.done);  // 'all' — активные, выполненные видны только во вкладке «Выполнено»
 
   if (author === 'self') filtered = filtered.filter(t => t.cls === 'mine' || t.author_kind === 'self');
   else if (author === 'manager') filtered = filtered.filter(t => t.cls === 'manager' || t.author_kind === 'manager');

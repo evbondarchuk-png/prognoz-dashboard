@@ -736,11 +736,12 @@ function tasksPreview(d){
  const g=d.tasks&&d.tasks.groups; if(!g) return '';
  const exp=(g.expired||[]), today=(g.today||[]), week=(g.week||[]);
  if(!exp.length&&!today.length&&!week.length) return '';
- const grp=(arr,title,cls)=>arr.length?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.slice(0,4).map(taskItem).join('')}`:'';
+ // Просрочено и Сегодня — показываем все (важное), на неделе — с прокруткой.
+ const grp=(arr,title,cls,scroll)=>arr.length?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${scroll ? `<div style="max-height:340px;overflow-y:auto;padding-right:2px">${arr.map(taskItem).join('')}</div>` : arr.map(taskItem).join('')}`:'';
  return `<div class="card"><div class="tp-head"><div class="section-title" style="margin:0">📋 Задачи на сегодня и неделю</div>
  <span class="tp-link" onclick="goTab('tasks')">все задачи ↗</span></div>
  <div class="cal-root" style="font-family:inherit;color:inherit">
- ${grp(exp,'⚠ Просрочено','tg-red')}${grp(today,'Сегодня','tg-red')}${grp(week,'На этой неделе','tg-amber')}
+ ${grp(exp,'⚠ Просрочено','tg-red',false)}${grp(today,'Сегодня','tg-red',false)}${grp(week,'На этой неделе','tg-amber',true)}
  </div></div>`;
 }
 /* ИИ-наставник для Главной: мотиватор с эмоциями, иначе заглушка */
