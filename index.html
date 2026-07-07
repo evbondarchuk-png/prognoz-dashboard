@@ -1084,23 +1084,22 @@ function prgRenderGoalSvg(pt){
   // Ratio для зверя — по ЗАВЕРШЁННЫМ месяцам. Иначе текущий (незаконченный)
   // месяц перекашивает: план учитывается целиком, факт — только за прошедшие дни,
   // и партнёр всегда «черепаха» до конца месяца.
-  // Если ни одного завершённого нет — берём current с пропорцией (день/дней_в_мес).
-  let ratio;
+  let ratio, idx, factVal;
   if (lastCompletedIdx >= 0) {
-    const factVal = factAcc[lastCompletedIdx]||0;
-    const planVal = planAcc[lastCompletedIdx]||1;
+    idx = lastCompletedIdx;
+    factVal = factAcc[idx]||0;
+    const planVal = planAcc[idx]||1;
     ratio = planVal>0 ? factVal/planVal : 0;
   } else {
-    // самое начало цикла — считаем по текущему месяцу пропорционально дню
+    // Самое начало цикла — берём текущий месяц пропорционально дню.
     const today = new Date();
     const daysInMon = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
     const dayPass = today.getDate();
     const curIdx = months.findIndex(m => m.is_current);
-    if (curIdx >= 0) {
-      const curPlan = (months[curIdx].plan_income||0) * dayPass / daysInMon;
-      const factVal = factAcc[curIdx]||0;
-      ratio = curPlan>0 ? factVal/curPlan : 0;
-    } else { ratio = 0; }
+    idx = curIdx >= 0 ? curIdx : 0;
+    factVal = factAcc[idx]||0;
+    const curPlan = (months[idx] && months[idx].plan_income||0) * dayPass / daysInMon;
+    ratio = curPlan>0 ? factVal/curPlan : 0;
   }
   let animal, col, label;
   if (ratio>=1.05) { animal='cheetah'; col='#16a34a'; label='🐆 гепард — опережаешь!'; }
