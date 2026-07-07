@@ -494,10 +494,25 @@ window.showTab=(id,btn)=>{
 window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
 window.openGroup=(code)=>{ location.href='mop.html?mop='+encodeURIComponent(code); };
 window.closeModal=(id)=>document.getElementById(id).classList.remove('on');
-window.completeTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); const b=ev&&ev.target; if(b){b.disabled=true;b.textContent='…';}
- try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); if(b){b.disabled=false;b.textContent='✓';} } };
-window.skipTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); if(!confirm('Отказаться от задачи?'))return;
- try{ await window.__call('updateTaskStatus',{task_id:id,status:'skipped'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); } };
+window.completeTask=async(id,ev)=>{
+ if(ev)ev.stopPropagation();
+ const btn = ev && ev.target && ev.target.closest && ev.target.closest('button');
+ const row = ev && ev.target && ev.target.closest && ev.target.closest('.list-row, .task');
+ if(btn){ btn.disabled=true; btn.textContent='…'; }
+ try{
+  await window.__call('updateTaskStatus',{task_id:id,status:'done'});
+  if(row){ row.style.transition='opacity .2s'; row.style.opacity='0'; setTimeout(()=>row.remove(), 250); }
+ }catch(e){ alert('Не удалось: '+(e.message||e)); if(btn){btn.disabled=false;btn.textContent='✓';} }
+};
+window.skipTask=async(id,ev)=>{
+ if(ev)ev.stopPropagation();
+ if(!confirm('Отказаться от задачи?')) return;
+ const row = ev && ev.target && ev.target.closest && ev.target.closest('.list-row, .task');
+ try{
+  await window.__call('updateTaskStatus',{task_id:id,status:'skipped'});
+  if(row){ row.style.transition='opacity .2s'; row.style.opacity='0'; setTimeout(()=>row.remove(), 250); }
+ }catch(e){ alert('Не удалось: '+(e.message||e)); }
+};
 window.markAllRead=async(silent)=>{
  try{ const r=await window.__call('markNotificationsRead',{mark_all:true});
  document.querySelectorAll('.notif.unread').forEach(n=>n.classList.remove('unread'));

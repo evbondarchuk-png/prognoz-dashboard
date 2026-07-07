@@ -513,10 +513,26 @@ window.markAllRead=async(silent)=>{
 };
 window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
 window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); };
-window.completeTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); const b=ev&&ev.target; if(b){b.disabled=true;b.textContent='…';}
- try{ await window.__call('updateTaskStatus',{task_id:id,status:'done'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); if(b){b.disabled=false;b.textContent='✓';} } };
-window.skipTask=async(id,ev)=>{ if(ev)ev.stopPropagation(); if(!confirm('Отказаться от задачи?'))return;
- try{ await window.__call('updateTaskStatus',{task_id:id,status:'skipped'}); location.reload(); }catch(e){ alert('Не удалось: '+(e.message||e)); } };
+window.completeTask=async(id,ev)=>{
+ if(ev)ev.stopPropagation();
+ const btn = ev && ev.target && ev.target.closest && ev.target.closest('button');
+ const row = ev && ev.target && ev.target.closest && ev.target.closest('.list-row, .task');
+ if(btn){ btn.disabled=true; btn.textContent='…'; }
+ try{
+  await window.__call('updateTaskStatus',{task_id:id,status:'done'});
+  // Убираем строку локально — БЕЗ перезагрузки страницы (getDashboard кэшируется CDN).
+  if(row){ row.style.transition='opacity .2s'; row.style.opacity='0'; setTimeout(()=>row.remove(), 250); }
+ }catch(e){ alert('Не удалось: '+(e.message||e)); if(btn){btn.disabled=false;btn.textContent='✓';} }
+};
+window.skipTask=async(id,ev)=>{
+ if(ev)ev.stopPropagation();
+ if(!confirm('Отказаться от задачи?')) return;
+ const row = ev && ev.target && ev.target.closest && ev.target.closest('.list-row, .task');
+ try{
+  await window.__call('updateTaskStatus',{task_id:id,status:'skipped'});
+  if(row){ row.style.transition='opacity .2s'; row.style.opacity='0'; setTimeout(()=>row.remove(), 250); }
+ }catch(e){ alert('Не удалось: '+(e.message||e)); }
+};
 window.closeModal=(id)=>document.getElementById(id).classList.remove('on');
 
 /* A11: создание задачи */
@@ -1250,7 +1266,7 @@ function renderClients(){
  if(!codes.length){
   // Если клиентов нет — заглушка «Coming Soon»
   document.getElementById('screen-clients').innerHTML=`<div class="acs">
-   <div class="acs-badge">✨ Coming Soon · 01.07.2026</div>
+   <div class="acs-badge">✨ Coming Soon · 01.09.2026</div>
    <div class="acs-title">👥 База клиентов</div>
    <div class="acs-desc"><b>Полный список твоих клиентов — с историей, статусами и подсказками ИИ.</b>
    Подтянем данные из CRM «Этажей»: кто на каком этапе, последнее касание, сделки в работе, объекты в продаже.</div>
@@ -1258,7 +1274,7 @@ function renderClients(){
    <div class="acs-f" style="background:rgba(124,58,237,.06);border-color:rgba(124,58,237,.2)"><b style="color:#7c3aed">✨ Сегментация по статусу</b>горячие · в работе · остывают · покупатели · продавцы</div>
    <div class="acs-f" style="background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2)"><b style="color:#16a34a">✨ ИИ-совет по каждому</b>что обещал, что ждёт, как двигаться дальше</div>
    </div>
-   <div class="acs-tags"><span class="acs-tag">📅 запуск 01 июля 2026</span></div></div>`;
+   <div class="acs-tags"><span class="acs-tag">📅 запуск 01 сентября 2026</span></div></div>`;
   return;
  }
  // Группировка по этапу воронки
