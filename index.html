@@ -1177,6 +1177,21 @@ function prgRenderGoalSvg(pt){
       s += `<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="#fff" stroke="#3b82f6" stroke-width="3"/>`;
     }
   }
+
+  // Прогнозная позиция в светофоре — метка над каждой синей точкой (current + next_month).
+  // Индексы fpts_forecast: [0] = стартовая (последняя past), [1] = current, [2] = next_month.
+  const badge = (px, py, txt) => `<g transform="translate(${px},${py-12})">`
+    + `<rect x="-32" y="-14" width="64" height="18" rx="9" fill="#3b82f6"/>`
+    + `<text x="0" y="-1" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">${txt}</text>`
+    + `</g>`;
+  if (curIdxLocal >= 0 && fpts_forecast.length >= 2) {
+    const pp = months[curIdxLocal] && months[curIdxLocal].predicted_position;
+    if (pp && pp.pos) s += badge(fpts_forecast[1][0], fpts_forecast[1][1], `#${pp.pos}`);
+  }
+  if (nextFutureIdx >= 0 && fpts_forecast.length >= 3) {
+    const pp = months[nextFutureIdx] && months[nextFutureIdx].predicted_position;
+    if (pp && pp.pos) s += badge(fpts_forecast[2][0], fpts_forecast[2][1], `#${pp.pos}`);
+  }
   // Зверь на последней точке
   if (fpts.length>0 && idx<n) {
     const last = [x(idx), y(factVal)];
@@ -1205,11 +1220,24 @@ function prgRenderGoalSvg(pt){
       + `<text x="0" y="20" text-anchor="middle" font-size="10" font-weight="600" fill="${col}">${label}</text>`
       + `</g>`;
   }
+  // Прогноз позиции текстом под графиком
+  const curM = months.find(m => m.is_current);
+  const nxtM = months.find(m => m.is_future);
+  const curPP = curM && curM.predicted_position;
+  const nxtPP = nxtM && nxtM.predicted_position;
+  let posLine = '';
+  if (curPP || nxtPP) {
+    const parts = [];
+    if (curPP) parts.push(`<b>${_monthShortRu(curM.ym)}</b>: место <b style="color:#3b82f6">#${curPP.pos}</b> <span style="color:var(--muted)">(${esc(curPP.category||'')})</span>`);
+    if (nxtPP) parts.push(`<b>${_monthShortRu(nxtM.ym)}</b>: место <b style="color:#3b82f6">#${nxtPP.pos}</b> <span style="color:var(--muted)">(${esc(nxtPP.category||'')})</span>`);
+    posLine = `<div style="margin-top:10px;font-size:12px;color:var(--ink);background:#eff6ff;border:1px solid #cfe3fb;border-radius:8px;padding:9px 12px">📍 <b>По прогнозу дохода твоя позиция в светофоре</b>: ${parts.join(' · ')}</div>`;
+  }
   wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${s}</svg>
     <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--line)">
       <span><i style="display:inline-block;width:11px;height:11px;background:#cbd5e1;border-radius:2px;margin-right:5px;vertical-align:-1px"></i>плановый темп</span>
       <span><i style="display:inline-block;width:11px;height:11px;background:#16a34a;border-radius:2px;margin-right:5px;vertical-align:-1px"></i>мой путь</span>
-    </div>
+      <span><i style="display:inline-block;width:11px;height:11px;background:#3b82f6;border-radius:2px;margin-right:5px;vertical-align:-1px"></i>прогноз</span>
+    </div>${posLine}
     <div style="margin-top:10px;font-size:12px;color:var(--muted);background:#f7f9fc;border-radius:8px;padding:9px 12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">Твой темп — это зверь на графике:
       <span><b style="color:#16a34a">🐆 гепард</b> — опережаешь</span>
       <span><b style="color:#d97706">🐇 заяц</b> — идёшь ровно</span>
