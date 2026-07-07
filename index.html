@@ -933,6 +933,11 @@ function renderPrognoz(d){
   out.push(`<div class="card">
     <div class="section-title">🎯 Как я иду к цели по доходу</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Накопительный доход за цикл vs плановый темп.</div>
+    <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);margin-bottom:6px;flex-wrap:wrap">
+      <span><i style="display:inline-block;width:11px;height:3px;background:#16a34a;vertical-align:middle;margin-right:5px"></i>факт</span>
+      <span><i style="display:inline-block;width:11px;height:3px;background:#3b82f6;vertical-align:middle;margin-right:5px"></i>прогноз (тек. мес + след.)</span>
+      <span><i style="display:inline-block;width:11px;height:3px;background:#cbd5e1;vertical-align:middle;margin-right:5px"></i>план цикла</span>
+    </div>
     <div id="prg-goal-svg"></div>
   </div>`);
 
@@ -1123,16 +1128,55 @@ function prgRenderGoalSvg(pt){
   });
   // плановая линия (пунктир)
   s += `<polyline points="${planAcc.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="#cbd5e1" stroke-width="2.5" stroke-dasharray="6 5"/>`;
-  // факт-линия (синяя) — заполненные точки до последней
-  const fpts = factAcc.map((v,i)=> v==null ? null : [x(i), y(v)]).filter(Boolean);
+  // факт-линия (зелёная) — только по завершённым месяцам
+  const fpts = factAcc.map((v,i)=> {
+    if (v == null) return null;
+    // На линии факта — только past и current, причём current факт (не прогноз)
+    if (months[i] && (months[i].is_past || months[i].is_current)) return [x(i), y(v)];
+    return null;
+  }).filter(Boolean);
   if (fpts.length > 1) {
     const area = `${fpts[0][0]},${y(0)} ${fpts.map(p=>p.join(',')).join(' ')} ${fpts[fpts.length-1][0]},${y(0)}`;
     s += `<polygon points="${area}" fill="#16a34a" opacity="0.10"/>`;
     s += `<polyline points="${fpts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>`;
   }
-  fpts.forEach((p,i)=>{
+  fpts.forEach((p)=>{
     s += `<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="#fff" stroke="#16a34a" stroke-width="3"/>`;
   });
+
+  // ── Прогнозная линия (синяя) ──
+  // От последней past точки → current (fact + прогноз-остаток к концу мес) → next_month (прогноз ЗП).
+  // Показываем «куда партнёр придёт если сохранит темп».
+  const fpts_forecast = [];
+  let baseAcc = 0;
+  let baseIdx = -1;
+  months.forEach((m, i) => {
+    if (m.is_past) { baseAcc += m.fact_income||0; baseIdx = i; }
+  });
+  // Стартуем от последней завершённой точки факта (или от 0,0 если ничего не завершено)
+  if (baseIdx >= 0) fpts_forecast.push([x(baseIdx), y(baseAcc)]);
+  else fpts_forecast.push([x(0), y(0)]);
+  let accF = baseAcc;
+  const curIdxLocal = months.findIndex(m => m.is_current);
+  if (curIdxLocal >= 0) {
+    // forecast_income текущего = ИТОГО к концу месяца (bэк уже включил факт + прогноз-остаток)
+    const curFc = Math.max(months[curIdxLocal].forecast_income||0, months[curIdxLocal].fact_income||0);
+    accF += curFc;
+    fpts_forecast.push([x(curIdxLocal), y(accF)]);
+  }
+  const nextFutureIdx = months.findIndex(m => m.is_future);
+  if (nextFutureIdx >= 0 && (months[nextFutureIdx].forecast_income||0) > 0) {
+    accF += months[nextFutureIdx].forecast_income||0;
+    fpts_forecast.push([x(nextFutureIdx), y(accF)]);
+  }
+  if (fpts_forecast.length > 1) {
+    s += `<polyline points="${fpts_forecast.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="0" stroke-linecap="round" opacity="0.85"/>`;
+    // точки прогноза (только новые, без стартовой которая уже нарисована зелёной)
+    for (let i = 1; i < fpts_forecast.length; i++) {
+      const p = fpts_forecast[i];
+      s += `<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="#fff" stroke="#3b82f6" stroke-width="3"/>`;
+    }
+  }
   // Зверь на последней точке
   if (fpts.length>0 && idx<n) {
     const last = [x(idx), y(factVal)];
