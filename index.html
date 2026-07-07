@@ -670,7 +670,6 @@ function renderHero(d){
  <div class="hero-name">${esc(u.name)}</div>
  <div class="hero-sub">${meta.join(' · ')}</div>
  ${sfMini}</div></div>
- ${ach?`<div class="achievements">${ach}</div>`:''}
  ${track}
  ${valBar}
  </div>`;
@@ -1066,9 +1065,8 @@ function prgRenderBars(pt, mode){
       <span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:linear-gradient(180deg,#22c55e,#16a34a)"></i>факт</span>
       <span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:linear-gradient(180deg,#3b82f6,#1e63d9)"></i>прогноз</span>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding-top:8px;flex-wrap:wrap;gap:8px">
-      <span style="color:var(--muted)">За цикл: <b style="color:var(--ink)">${_prgFmtK(factTotal)}</b> из ${_prgFmtK(planTotal)} ${isDohod?'ЗП':'вала'} · прогноз след: <b style="color:var(--ink)">${_prgFmtK(fcstNext)}</b></span>
-      <span style="font-weight:700;color:${factTotal>=planTotal*0.9?'var(--ok)':'var(--warn)'}">${factTotal>=planTotal?'▲ опережаем план':factTotal>=planTotal*0.7?'≈ в плане':'▼ отстаём'}</span>
+    <div style="font-size:12px;padding-top:8px;color:var(--muted)">
+      За цикл: <b style="color:var(--ink)">${_prgFmtK(factTotal)}</b> из ${_prgFmtK(planTotal)} ${isDohod?'ЗП':'вала'} · прогноз след: <b style="color:var(--ink)">${_prgFmtK(fcstNext)}</b>
     </div>
   </div>`;
 }
