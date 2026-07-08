@@ -1078,6 +1078,7 @@ function teamRowCommon(m){
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">${esc(m.meta||'')}</div></div></div></td>
     <td><span class="t-ir ${_irStatus(irM)}" data-tip="${esc(irTip)}">${irM}%</span></td>
+    <td><span class="t-ir ${irW!=null?_irStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
@@ -1153,7 +1154,8 @@ function renderGroups(d){
    <div class="team-panel active" data-team-panel="common">
      <div class="scroll-wrap"><table class="team-table">
        <thead><tr><th>Старший партнёр</th>
-         <th class="t-sort" data-sort-key="ir" style="cursor:pointer">ИР${sortKey==='ir'?' ↓':''}</th>
+         <th class="t-sort" data-sort-key="ir" style="cursor:pointer">ИР мес${sortKey==='ir'?' ↓':''}</th>
+         <th>ИР нед</th>
          <th>План вала</th>
          <th class="t-sort" data-sort-key="fact" style="cursor:pointer">Факт вала${sortKey==='fact'?' ↓':''}</th>
          <th class="t-sort" data-sort-key="forecast" style="cursor:pointer">Прогноз${sortKey==='forecast'?' ↓':''}</th>
