@@ -758,11 +758,12 @@ window.openTileModal=function(kind){
    return `<div style="margin-bottom:14px"><b style="color:${c.color}">${esc(c.label)} · ${list.length}</b>${list.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+list.map(m=>'<li>'+esc(m.name)+' — '+Math.round(m.stazh_months*10)/10+' мес</li>').join('')+'</ul>':''}</div>`;
   }).join('');
  } else if(kind==='tasks'){
-  const items=Array.isArray(d.tasks)?d.tasks:[];
-  const now=Date.now();
-  const done=items.filter(t=>t&&t.status==='done');
-  const overdue=items.filter(t=>t&&t.status!=='done'&&t.due_at&&t.due_at<now-86400000);
-  const open=items.filter(t=>t&&t.status!=='done'&&!(t.due_at&&t.due_at<now-86400000));
+  // d.tasks = { groups:{today,week,later,expired,done_recent}, counts } — берём из тех же
+  // групп, что и плитка (_tasksStat). Раньше ждали массив (Array.isArray) → всегда 0.
+  const g=(d.tasks&&d.tasks.groups)||{};
+  const done=g.done_recent||[];
+  const overdue=g.expired||[];
+  const open=[...(g.today||[]),...(g.week||[]),...(g.later||[])];
   title='Задачи — разбор';
   body=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:10px">
    <div><b style="color:var(--ok)">Сделано</b><div style="font-size:var(--fs-22);font-weight:var(--fw-eb)">${done.length}</div></div>
