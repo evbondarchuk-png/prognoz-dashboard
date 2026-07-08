@@ -11,13 +11,19 @@
 
 - **«Прогноз»** — существующий v1 на https://prognoz.info . Всё что описано
   ниже в этом файле относится к нему. Репо `prognoz-dashboard`.
-- **«Премиум»** — новый v2 (в разработке). Другой поддомен (уточняется),
-  отдельный репозиторий, но **общий бэкенд** с Прогнозом (те же Cloud
-  Functions в `prognoz-archive`, та же RTDB). Не путать!
+- **«Премиум»** — v2, **запущен 2026-07-07** на **https://premium.prognoz.info**,
+  репо `prognoz-premium`, но **общий бэкенд** с Прогнозом (те же Cloud Functions
+  в `prognoz-archive`, та же RTDB). Не путать! **Детали Премиума, ассистента
+  «Прогноша» и MAX-бота — в `/Users/egor/prognoz-premium/CLAUDE.md`.**
 
 Когда Егор говорит «правим Прогноз» / «правим Премиум» — это два разных
 фронта. Бэкенд общий, любая правка в `prognoz-functions/functions/` влияет
 на оба сразу.
+
+**Новое на бэке (07–08.07.2026), общее для обоих фронтов:**
+`functions/maxBot.js` (MAX-бот, webhook, TLS Минцифры → нативный https),
+`functions/prognosha.js` (`askPrognosha` — ассистент Премиума на YandexGPT).
+Секреты `MAX_BOT_TOKEN`, `YANDEX_*` (живые), `SMTP_PASSWORD`.
 
 ---
 
