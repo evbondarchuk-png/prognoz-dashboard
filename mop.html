@@ -891,7 +891,7 @@ function renderMain(d){
      buyer: typeof a.ir_v2_month_buyer==='number' ? a.ir_v2_month_buyer : irHist.now.buyer,
      seller: typeof a.ir_v2_month_seller==='number' ? a.ir_v2_month_seller : irHist.now.seller };
  }
- out.push(renderIrCard({ir_history:irHist, isPartner:false, periodLabel:a.period_label}));
+ /* карточка «Индекс развития» убрана — дублирует плитку ИР сверху + бейджи воронки; оставлена только у риелтора (index.html) */
  out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'группы')}</div>`);
  out.push(tasksMain(d));
  if(d.ai_coach&&d.ai_coach.motivator_text){
