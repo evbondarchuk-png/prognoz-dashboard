@@ -974,20 +974,24 @@ function prgRenderBars(pt, mode){
   const max=Math.max(...vals.map(v=>Math.max(v.fact,v.fcst,v.plan)),1);
   const cols=vals.map(v=>{
     const planH=Math.round((v.plan||0)/max*100);
-    const factH=Math.round((v.fact||0)/max*100);
-    const fcstH=v.fcst>0?Math.round(v.fcst/max*100):0;
-    const isForecast=v.is_future||(v.is_current&&v.fcst>v.fact);
-    const barH=isForecast?fcstH:factH;
-    const barColor=v.is_past?'linear-gradient(180deg,#22c55e,#16a34a)':v.is_current?'linear-gradient(180deg,#10b981,#0e7a4f)':'linear-gradient(180deg,#3b82f6,#1e63d9)';
-    const showVal=v.fact>0?v.fact:(v.fcst>0?v.fcst:0);
+    const fact=v.fact||0, fcst=v.fcst||0;
+    const factH=Math.round(fact/max*100);
+    // прогноз-остаток: текущий месяц = сверх факта, будущее = весь прогноз, прошлое = 0
+    const fcstExtra=v.is_future?fcst:(v.is_current?Math.max(0,fcst-fact):0);
+    const fcstH=fcstExtra>0?Math.round(fcstExtra/max*100):0;
+    const total=v.is_future?fcst:(v.is_current?Math.max(fcst,fact):fact);
+    const factGrad=v.is_past?'linear-gradient(180deg,#22c55e,#16a34a)':'linear-gradient(180deg,#10b981,#0e7a4f)';
+    const fcstGrad='linear-gradient(180deg,#3b82f6,#1e63d9)';
     const cap=v.is_current?'сейчас':(v.is_future?'прогноз':'факт');
+    const seg=(bottom,h,grad,val)=>`<div style="position:absolute;bottom:${bottom}%;left:0;right:0;height:${h}%;border-radius:6px;background:${grad};display:flex;align-items:flex-start;justify-content:center;padding-top:6px"><span style="color:#fff;font-size:12px;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.15)">${_prgFmtK(val)}</span></div>`;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;height:100%">
       <div style="font-size:9px;color:${v.is_current?'var(--brand)':'transparent'};text-transform:uppercase;letter-spacing:.4px;font-weight:700">${cap}</div>
       <div style="position:relative;flex:1;width:100%;background:#f1f5f9;border-radius:6px;overflow:hidden;min-height:120px">
         <div style="position:absolute;bottom:0;left:0;right:0;height:${planH}%;background:repeating-linear-gradient(45deg,#cbd5e1 0,#cbd5e1 4px,#e2e8f0 4px,#e2e8f0 8px);border-radius:6px;opacity:.7"></div>
-        ${barH>0?`<div style="position:absolute;bottom:0;left:0;right:0;height:${barH}%;border-radius:6px;background:${barColor};display:flex;align-items:flex-start;justify-content:center;padding-top:6px"><span style="color:#fff;font-size:12px;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.15)">${_prgFmtK(showVal)}</span></div>`:''}
+        ${factH>0?seg(0,factH,factGrad,fact):''}
+        ${fcstH>0?seg(factH,fcstH,fcstGrad,fcstExtra):''}
       </div>
-      <div style="font-size:11px;font-weight:700;color:var(--ink);line-height:1.3">${_prgFmtK(showVal)} / ${_prgFmtK(v.plan)}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--ink);line-height:1.3">${_prgFmtK(total)} / ${_prgFmtK(v.plan)}</div>
       <div style="font-size:11px;color:${v.is_current?'var(--brand)':'var(--muted)'};font-weight:600;text-transform:uppercase">${_monthShortRu(v.ym)}</div>
     </div>`;
   }).join('');
