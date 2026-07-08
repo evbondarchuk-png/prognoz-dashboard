@@ -495,6 +495,12 @@ function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return
 // Ожидаемый ИР на СЕГОДНЯ — пропорционально дню внутри недельного цикла (д7=25%..конец=100%).
 function _expectedIrNow(){ const n=new Date(), d=n.getDate(), last=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(); const B=[0,7,14,21,last], T=[0,25,50,75,100]; for(let i=1;i<B.length;i++){ if(d<=B[i]) return T[i-1]+(T[i]-T[i-1])*(d-B[i-1])/(B[i]-B[i-1]); } return 100; }
 function _irMonthColor(p){ const e=_expectedIrNow(); return p>=e?'var(--ok)':p>=e*0.7?'var(--warn)':'var(--bad)'; }
+function _irMonthStatus(p){ const e=_expectedIrNow(); return p>=e?'ok':p>=e*0.7?'warn':'bad'; }
+function _irSideBadge(fs){
+  var ps=(fs.ir==null||fs.ir_status==='no_data')?'no_data':(_irMonthStatus(fs.ir)==='ok'?'green':_irMonthStatus(fs.ir)==='warn'?'yellow':'red');
+  var pl=ps==='no_data'?(fs.ir_status_label||'нет данных'):({green:'в норме',yellow:'в риске',red:'провал'}[ps]);
+  return '<span class="status-badge '+(SB[ps]||'sb-no_data')+'">ИР '+fs.ir+'% · '+esc(pl)+'</span>';
+}
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
 
 window.showTab=(id,btn)=>{
@@ -732,13 +738,13 @@ function stageCard(side,st){
 function funnelSide(side,fs,icon){ if(!fs)return'';
  return `<div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
  <div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>
- <span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div>
+ ${_irSideBadge(fs)}</div>
  <div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div>
  ${(fs.stages||[]).map(st=>stageCard(side,st)).join('')}</div>`;
 }
 /* Парная сетка: каждый i-й этап покупателя в одной строке grid с i-м этапом продавца → align-items:stretch выровняет высоту автоматически */
 function renderFunnelsPaired(buyer,seller){
- const head=(fs,icon,side)=>`<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[fs.ir_status]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(fs.ir_status_label||'')}</span></div><div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div></div>`;
+ const head=(fs,icon,side)=>`<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>${_irSideBadge(fs)}</div><div class="fs-legend"><span><b>факт</b> за месяц</span><span>/ <b>план</b> месяца</span><span>· % выполнения</span></div></div>`;
  const bs=(buyer.stages||[]).map(st=>stageCard('buyer',st));
  const ss=(seller.stages||[]).map(st=>stageCard('seller',st));
  const rows=Math.max(bs.length,ss.length);
