@@ -892,8 +892,7 @@ function renderMain(d){
      seller: typeof a.ir_v2_month_seller==='number' ? a.ir_v2_month_seller : irHist.now.seller };
  }
  /* карточка «Индекс развития» убрана — дублирует плитку ИР сверху + бейджи воронки; оставлена только у риелтора (index.html) */
- out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'группы')}</div>`);
- out.push(tasksMain(d));
+ // Сводка от ИИ — первой (над воронкой): «как дела на сегодня по группе».
  if(d.ai_coach&&d.ai_coach.motivator_text){
  out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">💬</div><div class="ai-h">ИИ-<span>наставник</span></div></div>
  <div class="ai-text" style="color:#fff">${esc(d.ai_coach.motivator_text)}</div>
@@ -903,6 +902,8 @@ function renderMain(d){
  <div class="ai-text">Скоро здесь появится <b>разбор группы от ИИ</b>: кто тянет вверх, кому нужна помощь, что сделать на этой неделе.</div>
  <div class="ai-note">на YandexGPT — после слёта</div></div>`);
  }
+ out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'группы')}</div>`);
+ out.push(tasksMain(d));
  } else out.push(`<div class="banner">Нет агрегатов группы — возможно, ночной пересчёт ещё не прошёл.</div>`);
  document.getElementById('screen-main').innerHTML=out.join('');
 }

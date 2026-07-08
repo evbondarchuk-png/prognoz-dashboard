@@ -854,6 +854,8 @@ function renderMain(d){
      f.seller.ir_status_label = sideLbl[f.seller.ir_status];
    }
  }
+ // Сводка от ИИ — над воронкой: «как дела на сегодня».
+ out.push(aiCardMain(d));
  out.push(`<div class="card">${renderFunnelsPaired(f.buyer,f.seller)}</div>`);
  if(!(d.ai_coach&&d.ai_coach.motivator_text)){
  const rec=d.coach?.buyer?.recommendation_for_realtor||d.coach?.seller?.recommendation_for_realtor;
@@ -861,7 +863,6 @@ function renderMain(d){
  }
  } else out.push(`<div class="banner">Нет данных воронки — поставь цель, чтобы увидеть план и факт.</div>`);
  out.push(tasksPreview(d));
- out.push(aiCardMain(d));
  out.push(helpCard(d));
  document.getElementById('screen-main').innerHTML=out.join('');
 }
