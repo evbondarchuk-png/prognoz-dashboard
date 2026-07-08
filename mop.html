@@ -1175,12 +1175,35 @@ function g0Row(m){
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span></div></td>
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
 }
+// Hover-попап: ИР по завершённым неделям тек.месяца (данные из m.ir_weeks_month + текущая неделя).
+function showIrWeeks(el){
+  var pop=document.getElementById('irWeekPop');
+  if(!pop){
+    var st=document.createElement('style');
+    st.textContent='.ir-week-pop{position:absolute;z-index:9999;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:10px 12px;display:none;pointer-events:none}.ir-week-pop .iwp-ttl{font-size:11px;color:#6b7280;margin-bottom:6px;font-weight:600}.ir-week-pop .iwp-grid{display:flex;gap:12px}.ir-week-pop .iwp-cell{text-align:center;min-width:34px}.ir-week-pop .iwp-cell.cur{border-left:1px solid #e5e7eb;padding-left:12px}.ir-week-pop .iwp-lbl{font-size:10px;color:#9ca3af;margin-bottom:2px}.ir-week-pop .iwp-val{font-size:16px;font-weight:800}.ir-week-pop .iwp-empty{font-size:12px;color:#9ca3af}';
+    document.head.appendChild(st);
+    pop=document.createElement('div');pop.id='irWeekPop';pop.className='ir-week-pop';document.body.appendChild(pop);
+  }
+  var raw=el.getAttribute('data-weeks')||'',parts=raw.split('|').filter(Boolean),cur=null,weeks=[];
+  parts.forEach(function(p){var kv=p.split(':');if(kv[0]==='cur')cur=kv[1];else weeks.push({n:kv[0],v:kv[1]});});
+  function cellHtml(label,v,isCur){var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;var c=!has?'#9ca3af':n>=70?'#16a34a':n>=50?'#d97706':'#dc2626';return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div></div>';}
+  var cells=weeks.map(function(w){return cellHtml('Нед '+w.n,w.v,false);}).join('');
+  if(cur!=null)cells+=cellHtml('Тек.',cur,true);
+  if(!cells)cells='<div class="iwp-empty">Завершённых недель ещё нет</div>';
+  pop.innerHTML='<div class="iwp-ttl">ИР по неделям месяца</div><div class="iwp-grid">'+cells+'</div>';
+  var r=el.getBoundingClientRect();
+  pop.style.display='block';
+  pop.style.left=Math.max(8,r.left+window.scrollX)+'px';
+  pop.style.top=(r.bottom+window.scrollY+6)+'px';
+}
+function hideIrWeeks(){var p=document.getElementById('irWeekPop');if(p)p.style.display='none';}
 function teamRowCommon(m,idx){
   // TZ-A32 §7: в столбце ИР — МЕСЯЧНЫЙ (ir_v2_month_total), цвет по нему,
   // tooltip с недельным значением (ir_v2_week_total).
   const irM = (typeof m.ir_v2_month_total==='number') ? m.ir_v2_month_total : (m.ir_month||0);
   const irW = (typeof m.ir_v2_week_total==='number') ? m.ir_v2_week_total : null;
   const irTip = irW!=null ? `недельный ИР: ${irW}% · текущая неделя` : 'нет недельного ИР';
+  const wkData=(m.ir_weeks_month||[]).map(w=>w.weekN+':'+(w.ir_pct==null?'':w.ir_pct)).join('|')+(irW!=null?'|cur:'+irW:'');
   const plan=m.plan_month||0;
   const fact=m.fact_month||0;
   const forecast=m.forecast_month||0;
@@ -1192,7 +1215,7 @@ function teamRowCommon(m,idx){
       <div class="t-group-avatar">${esc(_avatar(m.name))}</div>
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}${_trafficBadge(m.traffic_position)}</div></div></div></td>
-    <td><span class="t-ir ${_irStatus(irM)}" data-tip="${esc(irTip)}">${irM}%</span></td>
+    <td><span class="t-ir ${_irStatus(irM)}" data-weeks="${wkData}" onmouseenter="showIrWeeks(this)" onmouseleave="hideIrWeeks()" style="cursor:help" title="ИР по неделям месяца">${irM}%</span></td>
     <td><span class="t-ir ${irW!=null?_irStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
