@@ -1092,7 +1092,7 @@ function _irStatus(p){ return p>=70?'ok':p>=50?'warn':'bad'; }
 // ИР МЕСЯЦА красим по темпу недельных циклов (нед1=25%..нед4=100%, допуск 0.9), а не плоским 70%.
 // Ожидаемый ИР на СЕГОДНЯ — пропорционально дню внутри недельного цикла (д7=25%,д14=50%,д21=75%,конец=100%).
 function _expectedIrNow(){ const n=new Date(), d=n.getDate(), last=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(); const B=[0,7,14,21,last], T=[0,25,50,75,100]; for(let i=1;i<B.length;i++){ if(d<=B[i]) return T[i-1]+(T[i]-T[i-1])*(d-B[i-1])/(B[i]-B[i-1]); } return 100; }
-function _irMonthStatus(p){ const e=_expectedIrNow(); return p>=e*0.9?'ok':p>=e*0.7?'warn':'bad'; }
+function _irMonthStatus(p){ const e=_expectedIrNow(); return p>=e?'ok':p>=e*0.7?'warn':'bad'; }
 function _irMonthColor(p){ const s=_irMonthStatus(p); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 function _pctStatus(p){ return p>=100?'ok':p>=70?'warn':'bad'; }
 function _fmtK(n){ const a=Math.abs(n); if(a>=1000000)return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=1000)return Math.round(n/1000)+' тыс'; return String(Math.round(n||0)); }
