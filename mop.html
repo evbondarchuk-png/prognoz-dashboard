@@ -1176,7 +1176,7 @@ function g0Row(m){
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
 }
 // Hover-попап: ИР по завершённым неделям тек.месяца (данные из m.ir_weeks_month + текущая неделя).
-function showIrWeeks(el){
+window.showIrWeeks=function(el){
   var pop=document.getElementById('irWeekPop');
   if(!pop){
     var st=document.createElement('style');
@@ -1196,7 +1196,7 @@ function showIrWeeks(el){
   pop.style.left=Math.max(8,r.left+window.scrollX)+'px';
   pop.style.top=(r.bottom+window.scrollY+6)+'px';
 }
-function hideIrWeeks(){var p=document.getElementById('irWeekPop');if(p)p.style.display='none';}
+window.hideIrWeeks=function(){var p=document.getElementById('irWeekPop');if(p)p.style.display='none';};
 function teamRowCommon(m,idx){
   // TZ-A32 §7: в столбце ИР — МЕСЯЧНЫЙ (ir_v2_month_total), цвет по нему,
   // tooltip с недельным значением (ir_v2_week_total).
