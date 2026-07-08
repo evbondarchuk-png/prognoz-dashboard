@@ -1187,7 +1187,23 @@ function renderGroups(d){
      </table></div>
    </div>
    <div class="team-panel" data-team-panel="weeks">
-     <div class="muted" style="padding:var(--sp-5);text-align:center">Эскалация Н1–Н4 появится после пересчёта недельных снимков.</div>
+     ${(()=>{
+       const rows=(d.week_risk_by_mop||[]);
+       if(!rows.length) return `<div class="muted" style="padding:var(--sp-5);text-align:center">🎉 Сегодня никто в отделе не в стрике по неделям.</div>`;
+       const LC={1:'#d97706',2:'#ea580c',3:'#dc2626',4:'#b91c1c'};
+       const badge=(n,lv)=> n>0?`<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:var(--fs-12);font-weight:var(--fw-b);color:#fff;background:${LC[lv]};margin-left:6px">Н${lv}: ${n}</span>`:'';
+       const totalR=rows.reduce((s,g)=>s+(g.total||0),0);
+       return `<div class="muted" style="margin-bottom:var(--sp-3)">В стрике сегодня: <b>${totalR}</b> риелторов в ${rows.length} ${rows.length===1?'группе':'группах'}. Н2 → задача менеджеру, Н3/Н4 → эскалация РОПу.</div>`+
+         rows.map(g=>`<div style="border:1px solid var(--line,#e5e7eb);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+             <span style="font-weight:var(--fw-b);cursor:pointer" onclick="location.href='mop.html?mop=${esc(g.mop_code)}'">${esc(g.mop_name)}</span>
+             <span>${badge(g.n1,1)}${badge(g.n2,2)}${badge(g.n3,3)}${badge(g.n4,4)}</span>
+           </div>
+           <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+             ${(g.realtors||[]).map(r=>`<span onclick="location.href='index.html?agent=${esc(r.code)}'" style="display:inline-flex;align-items:center;gap:5px;background:var(--brand-soft,#eef2ff);border-radius:8px;padding:3px 9px;font-size:var(--fs-12);cursor:pointer" title="Открыть кабинет риелтора"><b style="color:${LC[Math.min(r.streak,4)]}">${esc(r.level)}</b> ${esc(r.name)}</span>`).join('')}
+           </div>
+         </div>`).join('');
+     })()}
    </div>
    <div class="team-panel" data-team-panel="months">
      <div class="muted" style="margin-bottom:var(--sp-3)">Выполнение ИР по месяцам для каждой группы.</div>
