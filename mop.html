@@ -1123,26 +1123,24 @@ function _statusBarCls(m){
 // Учитывает: длину стрика + сохраняет ли партнёр свой средний доход.
 // «Держит уровень» = прогнозный доход тек.мес ≥ 80% исторического среднего.
 // В этом случае формулировка мягче: «план завышен относительно обычного темпа».
-// Подпись «В риске (неделя)» (вариант B): ведём от недельной ИР + контекст по доходу и стрику.
 function riskWeekSummary(m){
-  const wir = (typeof m.ir_v2_week_total==='number' ? m.ir_v2_week_total : m.ir_month);
   const streak = m.weeks_in_risk_streak || 0;
   const forecastInc = m.income_forecast_current || 0;
   const avgInc = m.avg_monthly_income || 0;
   const kFmt = v => Math.round(v/1000) + 'к';
   const holds = avgInc > 0 && forecastInc >= avgInc * 0.8;
-  const streakNote = streak >= 2 ? ` Уже <b>${streak} нед подряд</b> ниже темпа.` : '';
-  const base = `Недельная ИР <b>${wir!=null?Math.round(wir):'—'}%</b> — ниже нормы.${streakNote}`;
-  if (avgInc === 0) return `${base} Исторических данных о доходе пока мало — понаблюдать.`;
-  if (holds) return `${base} Но <b>доход держит ~${kFmt(avgInc)}₽</b> — возможно, план выше обычного темпа; обсудить приоритет.`;
-  return `${base} <b>Доход просел до ~${kFmt(forecastInc)}₽</b> (норма ${kFmt(avgInc)}₽). Уточнить активность.`;
-}
-// Бейдж недельной ИР для строки риска.
-function _weekIrBadge(m){
-  const wir = (typeof m.ir_v2_week_total==='number' ? m.ir_v2_week_total : m.ir_month);
-  if (wir==null) return '<span class="status-badge-team nd">—</span>';
-  const cls = wir>=70?'ok':wir>=50?'w1':'w3';
-  return `<span class="status-badge-team ${cls}">${Math.round(wir)}%</span>`;
+  const wLabel = streak >= 3 ? `${streak} нед подряд` : streak === 2 ? '2 нед подряд' : '1 неделя';
+  if (avgInc === 0) {
+    return `${wLabel} ниже плана. Исторических данных о доходе пока мало — понаблюдать.`;
+  }
+  if (holds) {
+    if (streak >= 3) return `${wLabel} не выполняет план, <b>но держит средний доход ~${kFmt(avgInc)}₽</b>. План выше обычного темпа — обсудить приоритет: рост или стабильность.`;
+    if (streak === 2) return `${wLabel} ниже плана, но <b>доход держит на уровне ~${kFmt(avgInc)}₽</b>. Понаблюдать ещё неделю.`;
+    return `Одна плохая неделя, <b>доход на уровне ~${kFmt(avgInc)}₽</b>. Возможен разовый спад.`;
+  }
+  if (streak >= 3) return `${wLabel} ниже плана, <b>доход просел до ${kFmt(forecastInc)}₽</b> (обычно ${kFmt(avgInc)}₽). Разобрать причину лично.`;
+  if (streak === 2) return `${wLabel} ниже плана, <b>доход снижается до ~${kFmt(forecastInc)}₽</b> (норма ${kFmt(avgInc)}₽). Уточнить, что мешает.`;
+  return `Одна плохая неделя, <b>доход снизился до ~${kFmt(forecastInc)}₽</b> (норма ${kFmt(avgInc)}₽). Уточнить активность.`;
 }
 function weekRiskRow(m){
   const summary = riskWeekSummary(m);
@@ -1157,7 +1155,7 @@ function weekRiskRow(m){
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}</div>
         <div class="risk-summary">${summary}</div>
       </div></div></td>
-    <td class="center">${_weekIrBadge(m)}</td>
+    <td class="center">${_statusBadge(m)}</td>
     <td class="center"><div class="t-pair" style="align-items:center"><span class="t-pair-main">${_fmtK(fact)}</span></div></td>
     <td class="center"><div class="t-pair" style="align-items:center"><span class="t-pair-main">${_fmtK(forecast)}</span></div></td>
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
@@ -1300,16 +1298,14 @@ function renderTeam(d){
    </div>
    <div class="team-panel" data-team-panel="weeks">
      ${(()=>{
-       // Вариант B (Егор 08.07): «в риске (неделя)» = недельная ИР v2 ниже порога — та же
-       // метрика, что плитка «Выполняют ИР ≥70%». Новички/Группа 0/сам МОП не флагаются.
-       const WK=Math.round(((d&&d.n_risk&&d.n_risk.floor)||0.7)*100);
-       const wIr=m=>(typeof m.ir_v2_week_total==='number'?m.ir_v2_week_total:m.ir_month);
-       const inRisk=sorted.filter(m=>!m.is_self && !m.is_group_zero && !(typeof m.stazh_months==='number'&&m.stazh_months<1) && typeof wIr(m)==='number' && wIr(m)<WK);
-       inRisk.sort((a,b)=>(wIr(a)||0)-(wIr(b)||0));
-       if(!inRisk.length) return `<div class="muted" style="padding:var(--sp-5);text-align:center">🎉 Никто из команды не в риске: у всех недельная ИР ≥${WK}% (или новички/Группа 0).</div>`;
-       return `<div class="muted" style="margin-bottom:var(--sp-3)">Партнёры с недельной ИР ниже <b>${WK}%</b> (текущая неделя, с учётом темпа) — те же, кто вне плитки «Выполняют ИР ≥${WK}%». Худшие сверху.</div>
+       // TZ-A30 §3 + TZ-A32 §5: партнёры со streak ≥ 1 (кроме самого МОПа-информационного, новичков, Группы 0).
+       // NB: раньше был фильтр m.role==='realtor', но role в team_cards.members не приходит → все отсеивались.
+       const inRisk=sorted.filter(m=>!m.is_self && !m.is_group_zero && !(typeof m.stazh_months==='number'&&m.stazh_months<1) && (m.weeks_in_risk_streak||0)>=1);
+       inRisk.sort((a,b)=>(b.weeks_in_risk_streak||0)-(a.weeks_in_risk_streak||0));
+       if(!inRisk.length) return `<div class="muted" style="padding:var(--sp-5);text-align:center">🎉 Никто из команды не в риске по неделям. Все либо в норме (≥70% последнюю завершённую неделю), либо новички/Группа 0.</div>`;
+       return `<div class="muted" style="margin-bottom:var(--sp-3)">Партнёры с подряд идущими «плохими» неделями (ИР v2 ниже ${Math.round(((d&&d.n_risk&&d.n_risk.floor)||0.7)*100)}%). Текущая (незакрытая) неделя в стрик не входит.</div>
         <div class="scroll-wrap"><table class="team-table">
-          <thead><tr><th>Партнёр · что происходит</th><th class="center">ИР нед</th><th class="center">Факт</th><th class="center">Прогноз</th><th></th></tr></thead>
+          <thead><tr><th>Партнёр · что происходит</th><th class="center">Стрик</th><th class="center">Факт</th><th class="center">Прогноз</th><th></th></tr></thead>
           <tbody>${inRisk.map(weekRiskRow).join('')}</tbody>
         </table></div>`;
      })()}
