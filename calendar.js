@@ -16,6 +16,9 @@
  */
 
 import { ref, query, orderByChild, equalTo, onValue, update, set, push, remove, get } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
 const TZ_OFFSET_HOURS = 5; // YekaterinburgUTC+5
 
@@ -312,6 +315,8 @@ export async function mountCalendar(rootEl, opts) {
     dragId: null,
     bodyScroll: 8 * 42,
     tasks: {},  // id → task (адаптировано)
+    gcalEvents: {},  // id → событие Google Calendar (адаптировано), опционально
+    gcalLinked: false,
     ownerCode,
     mode,
     db,
@@ -338,6 +343,24 @@ export async function mountCalendar(rootEl, opts) {
     console.error('[calendar] onValue error', err);
     mount.innerHTML = '<div style="padding:20px;color:#dc2626">Не удалось загрузить задачи: <code>' + escHtml(err.message || String(err)) + '</code><br><small>Возможно RTDB rules не разрешают чтение /tasks с фильтром. Проверь правила базы.</small></div>';
   });
+
+  // TZ-A38: события Google Calendar — только для СВОЕГО календаря (backend
+  // всегда возвращает календарь текущего auth.uid, не ownerCode). Опционально:
+  // если не подключено или ошибка — просто не показываем, без баннера.
+  try {
+    const authUid = getAuth(getApp()).currentUser && getAuth(getApp()).currentUser.uid;
+    if (authUid && authUid === ownerCode) {
+      const fn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'listGoogleCalendarEvents', { timeout: 20000 });
+      fn({}).then((r) => {
+        const data = r.data || {};
+        state.gcalLinked = !!data.linked;
+        state.gcalEvents = {};
+        (data.events || []).forEach((ev) => { state.gcalEvents[ev.id] = ev; });
+        console.log('[calendar] gcal events loaded:', (data.events || []).length);
+        render(state, mount);
+      }).catch((e) => { console.warn('[calendar] gcal events skipped', e && e.message); });
+    }
+  } catch (e) { console.warn('[calendar] gcal init skipped', e && e.message); }
 }
 
 /* ─── адаптеры ─── */
@@ -431,7 +454,9 @@ function partitionTasks(state) {
   const inbox = all.filter((t) => !t.done && !t.day);
   // С day → scheduled (включая done — они остаются с зачёркиванием)
   const scheduled = all.filter((t) => t.day);
-  return { inbox, scheduled };
+  // TZ-A38: события Google Calendar — всегда с day, всегда в scheduled, никогда в inbox.
+  const gcal = Object.values(state.gcalEvents || {}).filter(Boolean);
+  return { inbox, scheduled: scheduled.concat(gcal) };
 }
 
 /* ─── рендер ─── */
@@ -440,7 +465,14 @@ function render(state, mount) {
   const { inbox, scheduled } = partitionTasks(state);
   const periodLbl = labelForPeriod(state);
 
+  const gbarHtml = state.gcalLinked ? `
+    <div class="gbar">
+      <div class="gmark">G</div>
+      <div class="gtext"><b>Google Calendar подключён</b><small><span class="gdot"></span>встречи показаны рядом с задачами</small></div>
+    </div>` : '';
+
   mount.innerHTML = `
+    ${gbarHtml}
     <div class="toolbar">
       <div class="views">
         <button class="vbtn ${state.view==='list'?'on':''}" data-v="list">📋 Список</button>
@@ -809,9 +841,10 @@ function renderList(state, calEl, inbox, scheduled) {
     const cls = whenCls(t);
     const done = t.done ? 'done' : '';
     const overdueRow = isOverdue(t) ? 'overdue' : '';
-    const actions = t.done
-      ? `<button data-act="reopen" data-id="${t.id}" title="Вернуть в работу">↺</button>`
-      : `<button class="lr-done" data-act="done" data-id="${t.id}" title="Выполнено">✓</button>`;
+    const actions = t.event ? ''
+      : t.done
+        ? `<button data-act="reopen" data-id="${t.id}" title="Вернуть в работу">↺</button>`
+        : `<button class="lr-done" data-act="done" data-id="${t.id}" title="Выполнено">✓</button>`;
     return `<div class="list-row ${done} ${overdueRow}" data-open="${t.id}">
       <span class="lr-dot" style="background:${dotColor(t.cls)}"></span>
       <div class="lr-body">
@@ -1045,7 +1078,7 @@ async function saveNewTask(state, mount) {
 
 /* ─── модалка детали ─── */
 function openDetail(state, mount, id) {
-  const t = state.tasks[id]; if (!t) return;
+  const t = state.tasks[id] || (state.gcalEvents && state.gcalEvents[id]); if (!t) return;
   const m = mount.querySelector('[data-modal="detail"]'); if (!m) return;
   const card = m.querySelector('[data-detail-card]');
   const tool = t.tool ? TOOLS[t.tool] : null;
