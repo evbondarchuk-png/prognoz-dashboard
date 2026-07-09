@@ -1451,6 +1451,18 @@ window.openTaskDetailForMe = async (taskId, ev) => {
     } });
   } catch (e) { console.error('[task-detail] failed', e); }
 };
+window.connectGoogleCalendar = async (ev) => {
+ const btn = ev && ev.target && ev.target.closest && ev.target.closest('button');
+ if (btn) { btn.disabled = true; btn.textContent = '…'; }
+ try {
+  const r = await window.__call('googleCalendarAuthStart', {});
+  if (r && r.url) window.open(r.url, '_blank', 'noopener');
+ } catch (e) {
+  alert('Не удалось подключить: ' + (e.message || e));
+ } finally {
+  if (btn) { btn.disabled = false; btn.textContent = 'Подключить'; }
+ }
+};
 // TZ-A38: панель подключений (бот MAX «Прогноша» + Google Calendar) наверху таба «Задачи».
 function renderIntegrationsPanel(integ){
  integ = integ || {};
@@ -1472,7 +1484,7 @@ function renderIntegrationsPanel(integ){
      ${row('🤖','Прогноша в MAX', mb.linked?'Бот присылает брифинги и задачи':'Задачи, брифинг и напоминания в мессенджере MAX', mb.linked,
        `<a href="${esc(maxUrl)}" target="_blank" rel="noopener" class="btn-primary" style="text-decoration:none;font-size:12px;padding:8px 14px">Подключить</a>`)}
      ${row('📅','Google Calendar', gc.linked?'Прогноша может ставить встречи':'Прогноша сможет сам ставить встречи в календарь', gc.linked,
-       `<button class="btn-secondary" style="font-size:12px;padding:8px 14px" disabled title="Скоро">Скоро</button>`)}
+       `<button class="btn-primary" style="font-size:12px;padding:8px 14px" onclick="connectGoogleCalendar(event)">Подключить</button>`)}
    </div>
  </div>`;
 }
