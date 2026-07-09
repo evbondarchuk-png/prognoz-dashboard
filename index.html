@@ -307,7 +307,7 @@
  .task-btn:hover{background:var(--ok-bg)} .task-done{color:var(--ok)}
  /* превью задач + помощь */
  .tp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
- .tp-head .tp-link{font-size:var(--fs-12);color:var(--brand);font-weight:var(--fw-b);cursor:pointer}
+ .tp-head .tp-link,.tp-link{font-size:var(--fs-12);color:var(--brand);font-weight:var(--fw-b);cursor:pointer}
  .help-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px solid #fca5a5;background:#fef2f2;color:#b91c1c;border-radius:12px;font-weight:var(--fw-b);font-size:var(--fs-14);cursor:pointer;font-family:inherit;margin-bottom:14px}
  .help-btn:hover{background:#fee2e2}
  .mgr-card{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface-2);border-radius:12px;margin-bottom:14px}
@@ -757,17 +757,33 @@ function renderFunnelsPaired(buyer,seller){
  return `<div class="funnel-grid-paired">${cells.join('')}</div>`;
 }
 
-/* превью задач (сегодня + на неделе) для Главной */
+/* превью задач (сегодня + на неделе) для Главной.
+   Не дублирует весь таб «Задачи и календарь» — там разбираются полностью.
+   Здесь только: просрочки не старше 2 дней (иначе список Главной раздувается
+   старым хвостом), сегодняшние задачи целиком, и небольшой кусочек недельных
+   с ссылкой «+ещё» на полный таб. */
 function tasksPreview(d){
  const g=d.tasks&&d.tasks.groups; if(!g) return '';
- const exp=(g.expired||[]), today=(g.today||[]), week=(g.week||[]);
- if(!exp.length&&!today.length&&!week.length) return '';
- // Просрочено и Сегодня — показываем все (важное), на неделе — с прокруткой.
- const grp=(arr,title,cls,scroll)=>arr.length?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${scroll ? `<div style="max-height:340px;overflow-y:auto;padding-right:2px">${arr.map(taskItem).join('')}</div>` : arr.map(taskItem).join('')}`:'';
- return `<div class="card"><div class="tp-head"><div class="section-title" style="margin:0">📋 Задачи на сегодня и неделю</div>
+ const todayStr=new Date().toISOString().slice(0,10);
+ const daysOverdue=(due)=>due?Math.round((Date.parse(todayStr+'T00:00:00Z')-Date.parse(due+'T00:00:00Z'))/86400000):0;
+ const expAll=(g.expired||[]);
+ const exp=expAll.filter(t=>daysOverdue(t.due_date)<=2);
+ const expHiddenOld=expAll.length-exp.length;
+ const today=(g.today||[]);
+ const weekAll=(g.week||[]);
+ const WEEK_LIMIT=3;
+ const week=weekAll.slice(0,WEEK_LIMIT);
+ const weekMore=weekAll.length-week.length;
+ if(!exp.length&&!today.length&&!weekAll.length) return '';
+ const grp=(arr,title,cls)=>arr.length?`<div class="tg-title ${cls}">${title} · ${arr.length}</div>${arr.map(taskItem).join('')}`:'';
+ const moreBits=[];
+ if(weekMore>0) moreBits.push(`+${weekMore} на неделе`);
+ if(expHiddenOld>0) moreBits.push(`+${expHiddenOld} старых просрочек`);
+ const moreLine=moreBits.length?`<div class="tp-link" style="margin-top:8px" onclick="goTab('tasks')">${moreBits.join(', ')} — все в «Задачи и календарь» ↗</div>`:'';
+ return `<div class="card"><div class="tp-head"><div class="section-title" style="margin:0">📋 Задачи на сегодня</div>
  <span class="tp-link" onclick="goTab('tasks')">все задачи ↗</span></div>
  <div class="cal-root" style="font-family:inherit;color:inherit">
- ${grp(exp,'⚠ Просрочено','tg-red',false)}${grp(today,'Сегодня','tg-red',false)}${grp(week,'На этой неделе','tg-amber',true)}
+ ${grp(exp,'⚠ Просрочено','tg-red')}${grp(today,'Сегодня','tg-red')}${grp(week,'На этой неделе','tg-amber')}${moreLine}
  </div></div>`;
 }
 /* ИИ-наставник для Главной: мотиватор с эмоциями, иначе заглушка */
