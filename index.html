@@ -483,11 +483,12 @@ import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.j
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 import { mountCalendar, openTaskDetail } from './calendar.js';
+import { initAssistant } from './assistant.js?v=1';
 
 const INCOME_SHARE=0.48;
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
 const SIDE_COLOR={buyer:'#3b82f6',seller:'#10b981'};
-const CTX={data:null,target:null};
+const CTX={data:null,target:null,me:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtShort=(n)=>{ n=Number(n)||0; const a=Math.abs(n); if(a<1000)return String(Math.round(n)); if(a<1e6)return Math.round(n/1000)+'к'; return (Math.round(n/1e5)/10).toString().replace('.',',')+' млн'; };
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
@@ -1624,11 +1625,15 @@ window.openHof=()=>{
  document.getElementById('modalHof').classList.add('on');
 };
 
-function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); }
+function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards();
+ // Прогноша — только в СВОЁМ кабинете (данные ИИ строятся по auth.uid, не по ?agent=).
+ if(CTX.target===CTX.me) initAssistant(d);
+}
 
 (async ()=>{
  const me=await requireAuth();
  document.getElementById('logoutBtn').onclick=logout;
+ CTX.me=me.code;
  const params=new URLSearchParams(location.search);
  const targetCode=params.get('agent')||me.code;
  CTX.target=targetCode;
