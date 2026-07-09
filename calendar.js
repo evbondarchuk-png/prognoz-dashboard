@@ -749,7 +749,9 @@ function renderList(state, calEl, inbox, scheduled) {
 
   const now = state.today;
   const nextWeek = ymd(addDays(parseYMD(now), 7));
-  const isOverdue = (t) => !t.done && t.day && t.day < now;
+  // События календаря (Google) — не задачи, у них нет понятия «просрочено»,
+  // прошедшая встреча — это просто прошедшая встреча, не висящий долг.
+  const isOverdue = (t) => !t.done && !t.event && t.day && t.day < now;
   const isToday = (t) => t.day === now && !t.done;
   const isWeek = (t) => t.day && t.day > now && t.day <= nextWeek && !t.done;
   const isLater = (t) => t.day && t.day > nextWeek && !t.done;
