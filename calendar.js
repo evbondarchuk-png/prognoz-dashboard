@@ -105,7 +105,7 @@ const CSS = `
 .cal-root .list-group{margin-top:10px}
 .cal-root .list-group-h{font-size:11px;color:#7a8194;text-transform:uppercase;letter-spacing:.05em;font-weight:800;padding:8px 12px;background:#f7f9fc;border-radius:6px}
 .cal-root .list-empty{padding:30px 20px;text-align:center;color:#7a8194;font-size:13px}
-.cal-root .ev{border-radius:6px;padding:0 8px;font-size:11px;cursor:grab;border-left:3px solid;position:relative;display:flex;align-items:center;overflow:hidden}
+.cal-root .ev{border-radius:6px;padding:0 8px;font-size:11px;cursor:grab;border-left:3px solid;position:relative;display:flex;align-items:center;overflow:hidden;box-shadow:0 0 0 2px #fff,0 1px 2px rgba(20,30,55,.14)}
 .cal-root .ev.timed{position:absolute;left:2px;right:2px;align-items:flex-start;padding-top:2px}
 .cal-root .ev:active{cursor:grabbing}
 .cal-root .ev .ev-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0;padding-right:16px}
@@ -136,7 +136,7 @@ const CSS = `
 .cal-root .m-pill.done,.cal-root .m-bar.done{opacity:.55}
 .cal-root .m-pill.done .ev-t,.cal-root .m-pill.done,.cal-root .m-bar.done{text-decoration:line-through}
 .cal-root .m-bars{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
-.cal-root .m-bar{position:absolute;height:17px;line-height:15px;border-radius:5px;border-left:3px solid;font-size:10px;font-weight:600;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:auto;cursor:grab;box-sizing:border-box}
+.cal-root .m-bar{position:absolute;height:17px;line-height:15px;border-radius:5px;border-left:3px solid;font-size:10px;font-weight:600;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:auto;cursor:grab;box-sizing:border-box;box-shadow:0 0 0 2px #fff}
 .cal-root .m-bar-resize{position:absolute;right:0;top:0;bottom:0;width:9px;cursor:ew-resize}
 .cal-root .panel{background:#fff;border:1px solid #e6e8ee;border-radius:12px;box-shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);padding:14px}
 .cal-root .panel-h{font-size:13px;font-weight:800;display:flex;align-items:center;gap:7px;margin-bottom:4px}
