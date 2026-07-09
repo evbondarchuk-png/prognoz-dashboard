@@ -1451,21 +1451,51 @@ window.openTaskDetailForMe = async (taskId, ev) => {
     } });
   } catch (e) { console.error('[task-detail] failed', e); }
 };
+// TZ-A38: панель подключений (бот MAX «Прогноша» + Google Calendar) наверху таба «Задачи».
+function renderIntegrationsPanel(integ){
+ integ = integ || {};
+ const mb = integ.max_bot || {};
+ const gc = integ.google_calendar || {};
+ const maxUrl = mb.link_url || 'https://max.ru/id450130862328_bot';
+ const row = (icon, title, sub, linked, actionHtml) => `
+  <div style="flex:1;min-width:220px;display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e6e8ee;border-radius:10px">
+    <span style="font-size:20px">${icon}</span>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:13px">${title}</div>
+      <div class="muted" style="font-size:12px">${sub}</div>
+    </div>
+    ${linked ? '<span class="badge badge-ok">✓ Подключено</span>' : actionHtml}
+  </div>`;
+ return `<div class="card integ-panel" style="margin-bottom:14px">
+   <div class="section-title">🔗 Подключения</div>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+     ${row('🤖','Прогноша в MAX', mb.linked?'Бот присылает брифинги и задачи':'Задачи, брифинг и напоминания в мессенджере MAX', mb.linked,
+       `<a href="${esc(maxUrl)}" target="_blank" rel="noopener" class="btn-primary" style="text-decoration:none;font-size:12px;padding:8px 14px">Подключить</a>`)}
+     ${row('📅','Google Calendar', gc.linked?'Прогноша может ставить встречи':'Прогноша сможет сам ставить встречи в календарь', gc.linked,
+       `<button class="btn-secondary" style="font-size:12px;padding:8px 14px" disabled title="Скоро">Скоро</button>`)}
+   </div>
+ </div>`;
+}
 // TZ-A31 Фаза 1: вкладка «Задачи» = календарь из calendar.js
 function renderTasks(d){
  const root = document.getElementById('screen-tasks');
  if (root && !root.dataset.calMounted) {
    root.dataset.calMounted = '1';
-   root.innerHTML = '<div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div>';
+   root.innerHTML = renderIntegrationsPanel(d.integrations) + '<div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
    (async () => {
      try {
        const db = getDatabase(getApp());
-       await mountCalendar(root, { db, ownerCode: CTX.target, mode: 'partner' });
+       const mountPoint = document.getElementById('calMountPoint');
+       await mountCalendar(mountPoint, { db, ownerCode: CTX.target, mode: 'partner' });
      } catch (e) {
        console.error('[calendar] mount failed', e);
-       root.innerHTML = '<div class="banner" style="margin:20px;padding:16px">Календарь не запустился: <code>'+esc(e.message||String(e))+'</code><br><small>Открой DevTools → Console для деталей</small></div>';
+       const mp = document.getElementById('calMountPoint');
+       if (mp) mp.innerHTML = '<div class="banner" style="margin:20px;padding:16px">Календарь не запустился: <code>'+esc(e.message||String(e))+'</code><br><small>Открой DevTools → Console для деталей</small></div>';
      }
    })();
+ } else if (root) {
+   const panel = root.querySelector('.integ-panel');
+   if (panel) panel.outerHTML = renderIntegrationsPanel(d.integrations);
  }
  // Бейдж количества задач у таба — считаем сами из d.tasks (для совместимости)
  const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
