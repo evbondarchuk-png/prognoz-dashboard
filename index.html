@@ -1442,9 +1442,13 @@ function taskItem(t){
 }
 window.openTaskDetailForMe = async (taskId, ev) => {
   if (ev) ev.stopPropagation();
+  const row = ev && ev.target && ev.target.closest && ev.target.closest('.list-row, .task');
   try {
     const db = getDatabase(getApp());
-    await openTaskDetail({ db, ownerCode: CTX.target, taskId });
+    await openTaskDetail({ db, ownerCode: CTX.target, taskId, onChanged: () => {
+      // Убираем строку локально — БЕЗ перезагрузки страницы (см. completeTask/skipTask).
+      if (row) { row.style.transition = 'opacity .2s'; row.style.opacity = '0'; setTimeout(() => row.remove(), 250); }
+    } });
   } catch (e) { console.error('[task-detail] failed', e); }
 };
 // TZ-A31 Фаза 1: вкладка «Задачи» = календарь из calendar.js

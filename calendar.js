@@ -30,6 +30,8 @@ const CSS = `
 .cal-root .views{display:flex;gap:4px;background:#f1f3f7;border:1px solid #e6e8ee;border-radius:10px;padding:4px}
 .cal-root .vbtn{font-size:13px;font-weight:600;color:#7a8194;padding:7px 13px;border-radius:7px;border:none;background:transparent;cursor:pointer;font-family:inherit}
 .cal-root .vbtn.on{background:#fff;color:#2b6cb0;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.cal-root .views-sep{width:1px;align-self:stretch;background:#dde1e8;margin:2px 2px}
+.cal-root .views-anchor{font-size:13px;padding:0 2px 0 4px;opacity:.55;display:flex;align-items:center}
 .cal-root .tlabel{font-weight:800;font-size:15px}
 .cal-root .cnav{display:flex;gap:4px}
 .cal-root .cnav button{width:30px;height:30px;border:1px solid #e6e8ee;background:#fff;border-radius:8px;cursor:pointer;color:#7a8194;font-size:15px}
@@ -225,7 +227,7 @@ function eqYMD(a, b) { return a === b; }
  *   openTaskDetail({ db, ownerCode, taskId });
  * Модалка создаётся в document.body один раз и переиспользуется.
  */
-export async function openTaskDetail({ db, ownerCode, taskId }) {
+export async function openTaskDetail({ db, ownerCode, taskId, onChanged }) {
   injectCss();
   // Разово подгружаем tools при первом вызове.
   if (!TOOLS || Object.keys(TOOLS).length === 0) {
@@ -273,6 +275,7 @@ export async function openTaskDetail({ db, ownerCode, taskId }) {
     dragId: null,
     bodyScroll: 0,
     nowMin: new Date().getHours() * 60 + new Date().getMinutes(),
+    onChanged: onChanged || null,
   };
   const mount = portal.querySelector('.cal-mount');
   openDetail(state, mount, taskId);
@@ -441,6 +444,8 @@ function render(state, mount) {
     <div class="toolbar">
       <div class="views">
         <button class="vbtn ${state.view==='list'?'on':''}" data-v="list">📋 Список</button>
+        <span class="views-sep"></span>
+        <span class="views-anchor" title="Календарь">🗓</span>
         <button class="vbtn ${state.view==='day'?'on':''}" data-v="day">День</button>
         <button class="vbtn ${state.view==='3'?'on':''}" data-v="3">3 дня</button>
         <button class="vbtn ${state.view==='week'?'on':''}" data-v="week">Неделя</button>
@@ -1163,17 +1168,17 @@ function openDetail(state, mount, id) {
         await update(ref(state.db, `/tasks/${id}`), { status: 'done', done_at: Date.now(), done_comment: c ? c.value.trim() : '' });
         m.classList.remove('on');
         // На главной блок задач — снапшот из getDashboard, а не listener.
-        // После смены статуса перезагружаем страницу чтобы задача исчезла.
-        if (!document.querySelector('.cal-body')) setTimeout(() => location.reload(), 200);
+        // Без .cal-body (портал модалки на Главной) — просим вызывающего убрать строку локально.
+        if (!document.querySelector('.cal-body') && state.onChanged) state.onChanged(id, act);
       } else if (act === 'reopen') {
         await update(ref(state.db, `/tasks/${id}`), { status: 'active', done_at: null, done_comment: null });
         m.classList.remove('on');
-        if (!document.querySelector('.cal-body')) setTimeout(() => location.reload(), 200);
+        if (!document.querySelector('.cal-body') && state.onChanged) state.onChanged(id, act);
       } else if (act === 'unschedule') { await unschedule(state, id); m.classList.remove('on'); }
       else if (act === 'del') {
         await remove(ref(state.db, `/tasks/${id}`));
         m.classList.remove('on');
-        if (!document.querySelector('.cal-body')) setTimeout(() => location.reload(), 200);
+        if (!document.querySelector('.cal-body') && state.onChanged) state.onChanged(id, act);
       }
       else if (act === 'edit') {
         m.classList.remove('on');
