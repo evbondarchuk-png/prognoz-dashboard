@@ -893,7 +893,11 @@ function renderMain(d){
  }
  /* карточка «Индекс развития» убрана — дублирует плитку ИР сверху + бейджи воронки; оставлена только у риелтора (index.html) */
  // Сводка от ИИ — первой (над воронкой): «как дела на сегодня по группе».
- if(d.ai_coach&&d.ai_coach.motivator_text){
+ if(d.ai_summary&&d.ai_summary.text){
+ out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Разбор группы от <span>ИИ</span></div></div>
+ <div class="ai-text">${esc(d.ai_summary.text).replace(/\n/g,'<br>')}</div>
+ <div class="ai-note">YandexGPT${d.ai_summary.date?' · '+esc(d.ai_summary.date):''}</div></div>`);
+ } else if(d.ai_coach&&d.ai_coach.motivator_text){
  out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">💬</div><div class="ai-h">ИИ-<span>наставник</span></div></div>
  <div class="ai-text" style="color:#fff">${esc(d.ai_coach.motivator_text)}</div>
  <div class="ai-note">YandexGPT · лично тебе</div></div>`);
