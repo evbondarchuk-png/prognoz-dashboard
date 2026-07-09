@@ -838,7 +838,7 @@ function renderPrognoz(d){
     return;
   }
   const scopeLbl = 'компании';
-  let mode = localStorage.getItem(PRG_MODE_KEY) || 'val';
+  let mode = 'val';
   if (!['dohod','val'].includes(mode)) mode='val';
   const cur = pt.monthly.find(m=>m.is_current) || pt.monthly[pt.monthly.length-1];
   const valFact = cur.fact_revenue||0, valPlan = cur.plan_revenue||0;
@@ -866,7 +866,6 @@ function renderPrognoz(d){
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Помесячный вал компании vs план (сумма отделов). Зелёное — факт, синее — прогноз, штриховка — план.</div>
     <div style="display:inline-flex;background:var(--surface-2,#f1f3f7);border-radius:999px;padding:3px;gap:2px;margin-bottom:12px">
       <button onclick="prgSetMode('val')" style="border:none;background:${mode==='val'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='val'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer">Вал (оборот)</button>
-      <button onclick="prgSetMode('dohod')" style="border:none;background:${mode==='dohod'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='dohod'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer">Доход (≈48%)</button>
     </div>
     <div id="prg-bars-wrap"></div>
   </div>`);
