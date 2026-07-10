@@ -1332,6 +1332,8 @@ function f12Seller(a,segs){ if(!a)return'';
 }
 /* ─── РАДАР ВОРОНКИ (TZ-A40) ─── */
 let __radarSeg='all';
+let __radarZone='current'; // current | target
+function radarActive(){ return __radarZone==='target'&&CTX.data.funnel_radar_target?CTX.data.funnel_radar_target:CTX.data.funnel_radar; }
 const RADAR={cx:180,cy:165,R:112,N:6};
 function radarPt(i,v){const a=-Math.PI/2+i*2*Math.PI/RADAR.N,r=RADAR.R*Math.min(100,v)/100;return [RADAR.cx+r*Math.cos(a),RADAR.cy+r*Math.sin(a)];}
 function radarAvg(a){return Math.round(a.reduce((x,y)=>x+y,0)/a.length);}
@@ -1369,7 +1371,7 @@ function radarZone(elId,valId,vals){
  const g=radarAvg(vals)>=70;zb.innerHTML='<span class="radar-zone '+(g?'green':'yellow')+'">'+(g?'зелёная':'жёлтая')+'</span>';
 }
 function paintRadar(){
- const R=CTX.data&&CTX.data.funnel_radar; if(!R) return;
+ const R=radarActive(); if(!R) return;
  const seg=R.segments.find(s=>s.id===__radarSeg)||R.segments[0];
  radarDraw('rsvg-buyer',seg.buyer,SIDE_COLOR.buyer,'rgba(59,130,246,.12)',R.axis_labels,R.target);
  radarDraw('rsvg-seller',seg.seller,SIDE_COLOR.seller,'rgba(16,185,129,.12)',R.axis_labels,R.target);
@@ -1381,14 +1383,23 @@ function paintRadar(){
  if(note){
   if(!seg.buyer&&!seg.seller){note.innerHTML='💡 По сегменту «'+esc(seg.name)+'» пока нет данных — воронка не набрана.';}
   else{const gb=seg.buyer?radarGapList(seg.buyer,R.axis_labels,R.target)[0]:null;const gs=seg.seller?radarGapList(seg.seller,R.axis_labels,R.target)[0]:null;
-   note.innerHTML='💡 «'+esc(seg.name)+'»: главный провал'+(gb?' у покупателя — <b>'+esc(gb.k.toLowerCase())+'</b>':'')+(gb&&gs?', ':'')+(gs?'у продавца — <b>'+esc(gs.k.toLowerCase())+'</b>':'')+'. Ниже — как это подтянуть.';}
+   const scope=__radarZone==='target'?('целевой зоны'+(R.zone_label?' «'+esc(R.zone_label)+'»':'')):'твоей зоны';
+   note.innerHTML='💡 «'+esc(seg.name)+'» относительно '+scope+': главный провал'+(gb?' у покупателя — <b>'+esc(gb.k.toLowerCase())+'</b>':'')+(gb&&gs?', ':'')+(gs?'у продавца — <b>'+esc(gs.k.toLowerCase())+'</b>':'')+'. Ниже — как это подтянуть.';}
  }
 }
 window.radarSeg=(id)=>{__radarSeg=id;document.querySelectorAll('#radarSegs button').forEach(b=>b.classList.toggle('on',b.dataset.seg===id));paintRadar();};
+window.radarZone=(z)=>{__radarZone=z;document.querySelectorAll('#radarZones button').forEach(b=>b.classList.toggle('on',b.dataset.z===z));paintRadar();};
 function radarCard(R){
  const tabs=R.segments.map(s=>`<button data-seg="${esc(s.id)}" class="${s.id===__radarSeg?'on':''}" onclick="radarSeg('${esc(s.id)}')">${esc(s.name)}</button>`).join('');
+ const hasTarget=!!(CTX.data&&CTX.data.funnel_radar_target);
+ const tgtLabel=hasTarget&&CTX.data.funnel_radar_target.zone_label?esc(CTX.data.funnel_radar_target.zone_label):'следующая зона';
+ const zoneToggle=hasTarget?`<div class="radar-segs" id="radarZones" style="margin-bottom:10px">
+   <button data-z="current" class="${__radarZone==='current'?'on':''}" onclick="radarZone('current')">🚦 Моя зона</button>
+   <button data-z="target" class="${__radarZone==='target'?'on':''}" onclick="radarZone('target')">🎯 Целевая: ${tgtLabel}</button>
+  </div>`:'';
  return `<div class="card"><div class="section-title">🕸 Радар воронки</div>
   <div class="muted" style="margin:-6px 0 10px">6 показателей · слева покупатель, справа продавец · зелёное кольцо — норма ≥70% зоны</div>
+  ${zoneToggle}
   <div class="radar-segs" id="radarSegs">${tabs}</div>
   <div class="radar-legend">
    <span><i style="width:12px;height:12px;background:rgba(22,163,74,.14);border:1px solid var(--ok);border-radius:3px;display:inline-block"></i>Целевая зона (≥70%)</span>
