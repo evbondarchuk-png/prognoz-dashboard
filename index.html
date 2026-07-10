@@ -438,6 +438,30 @@
 .hero-stat-fpf-meta .plan{color:var(--ink-soft)}
 .hero-stat-fpf-bar{margin-top:var(--sp-2)}
 
+/* TZ-A40 радар воронки */
+.radar-segs{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 12px}
+.radar-segs button{border:1px solid var(--line);background:var(--surface);font-family:inherit;font-size:12px;font-weight:var(--fw-b);color:var(--muted);padding:7px 13px;border-radius:var(--r-pill);cursor:pointer}
+.radar-segs button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.radar-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--muted);margin-bottom:10px}
+.radar-legend span{display:flex;align-items:center;gap:5px}
+.radar-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.radar-pair{grid-template-columns:1fr}}
+.radar-side{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px}
+.radar-side-h{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.radar-side-h b{font-size:14px;font-weight:var(--fw-eb)}
+.radar-side-h .rv{margin-left:auto;text-align:right;font-size:22px;font-weight:var(--fw-eb);line-height:1}
+.radar-zone{display:inline-block;font-size:10px;font-weight:var(--fw-eb);padding:1px 7px;border-radius:var(--r-pill);margin-left:4px}
+.radar-zone.green{background:var(--ok-bg);color:var(--ok)}.radar-zone.yellow{background:var(--warn-bg);color:var(--warn)}
+.radar-gaps{margin-top:6px;border-top:1px solid var(--line);padding-top:9px}
+.radar-gaps-h{font-size:10px;font-weight:var(--fw-eb);text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
+.radar-gap{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0}
+.radar-gap .k{flex:1}.radar-gap .track{width:52px;height:6px;background:var(--bad-bg);border-radius:4px;overflow:hidden}
+.radar-gap .track i{display:block;height:100%;background:var(--bad);border-radius:4px}
+.radar-gap .dd{width:30px;text-align:right;color:var(--bad);font-weight:var(--fw-eb)}
+.radar-okempty{font-size:12px;color:var(--ok);background:var(--ok-bg);border-radius:9px;padding:8px 10px}
+.radar-nodata{font-size:12px;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:9px;padding:8px 10px;text-align:center}
+.radar-note{background:var(--brand-soft);border-radius:var(--r-md);padding:10px 12px;font-size:12.5px;color:var(--brand-hover);margin-top:12px}
+
 </style>
 </head>
 <body>
@@ -1306,6 +1330,81 @@ function f12Seller(a,segs){ if(!a)return'';
  +f12Stage('seller','Задатки','/мес',a.deposits,a.conv_dep,false,null)
  +f12Stage('seller','Сделки','/мес',a.deals,a.conv_deal,false,sr);
 }
+/* ─── РАДАР ВОРОНКИ (TZ-A40) ─── */
+let __radarSeg='all';
+const RADAR={cx:180,cy:165,R:112,N:6};
+function radarPt(i,v){const a=-Math.PI/2+i*2*Math.PI/RADAR.N,r=RADAR.R*Math.min(100,v)/100;return [RADAR.cx+r*Math.cos(a),RADAR.cy+r*Math.sin(a)];}
+function radarAvg(a){return Math.round(a.reduce((x,y)=>x+y,0)/a.length);}
+function radarDraw(elId,vals,color,fill,labels,target){
+ const el=document.getElementById(elId); if(!el) return;
+ const p=[];
+ [25,50,75,100].forEach(g=>{p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,g).join(',')).join(' ')+'" fill="none" stroke="var(--line)"/>');});
+ labels.forEach((lab,i)=>{
+  const e=radarPt(i,100);p.push('<line x1="'+RADAR.cx+'" y1="'+RADAR.cy+'" x2="'+e[0]+'" y2="'+e[1]+'" stroke="var(--line)"/>');
+  const lp=radarPt(i,122),anchor=Math.abs(lp[0]-RADAR.cx)<8?'middle':(lp[0]<RADAR.cx?'end':'start');
+  const words=lab.split(' ');let tx='';words.forEach((w,wi)=>{tx+='<tspan x="'+lp[0]+'" dy="'+(wi===0?0:10)+'">'+esc(w)+'</tspan>';});
+  p.push('<text x="'+lp[0]+'" y="'+(lp[1]-(words.length-1)*4.5)+'" text-anchor="'+anchor+'" font-size="9" fill="var(--muted)">'+tx+'</text>');
+ });
+ p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,target).join(',')).join(' ')+'" fill="rgba(22,163,74,.12)" stroke="var(--ok)" stroke-width="1.5"/>');
+ if(vals){
+  p.push('<polygon points="'+vals.map((v,i)=>radarPt(i,v).join(',')).join(' ')+'" fill="'+fill+'" stroke="'+color+'" stroke-width="2.5"/>');
+  vals.forEach((v,i)=>{const dt=radarPt(i,v);p.push('<circle cx="'+dt[0]+'" cy="'+dt[1]+'" r="3.2" fill="'+color+'" stroke="#fff" stroke-width="1.5"/>');});
+ }else{ p.push('<text x="'+RADAR.cx+'" y="'+RADAR.cy+'" text-anchor="middle" font-size="12" fill="var(--muted)">нет данных</text>'); }
+ el.innerHTML=p.join('');
+}
+function radarGapList(vals,labels,target){return labels.map((k,i)=>({k,d:target-vals[i]})).filter(g=>g.d>0).sort((a,b)=>b.d-a.d);}
+function radarRenderGaps(elId,vals,labels,target){
+ const box=document.getElementById(elId); if(!box) return;
+ if(!vals){box.innerHTML='<div class="radar-nodata">В этом сегменте нет данных.</div>';return;}
+ const gs=radarGapList(vals,labels,target);
+ if(!gs.length){box.innerHTML='<div class="radar-okempty">✓ Все показатели в зелёной зоне.</div>';return;}
+ box.innerHTML=gs.map(g=>{const w=Math.min(100,g.d/40*100);
+  return '<div class="radar-gap"><span class="k">'+esc(g.k)+'</span><span class="track"><i style="width:'+w+'%"></i></span><span class="dd">−'+g.d+'</span></div>';}).join('');
+}
+function radarZone(elId,valId,vals){
+ const zb=document.getElementById(elId),vb=document.getElementById(valId);
+ if(vb) vb.textContent=vals?radarAvg(vals)+'%':'—';
+ if(!zb) return;
+ if(!vals){zb.innerHTML='';return;}
+ const g=radarAvg(vals)>=70;zb.innerHTML='<span class="radar-zone '+(g?'green':'yellow')+'">'+(g?'зелёная':'жёлтая')+'</span>';
+}
+function paintRadar(){
+ const R=CTX.data&&CTX.data.funnel_radar; if(!R) return;
+ const seg=R.segments.find(s=>s.id===__radarSeg)||R.segments[0];
+ radarDraw('rsvg-buyer',seg.buyer,SIDE_COLOR.buyer,'rgba(59,130,246,.12)',R.axis_labels,R.target);
+ radarDraw('rsvg-seller',seg.seller,SIDE_COLOR.seller,'rgba(16,185,129,.12)',R.axis_labels,R.target);
+ radarZone('rz-buyer','rv-buyer',seg.buyer);
+ radarZone('rz-seller','rv-seller',seg.seller);
+ radarRenderGaps('rg-buyer',seg.buyer,R.axis_labels,R.target);
+ radarRenderGaps('rg-seller',seg.seller,R.axis_labels,R.target);
+ const note=document.getElementById('radarNote');
+ if(note){
+  if(!seg.buyer&&!seg.seller){note.innerHTML='💡 По сегменту «'+esc(seg.name)+'» пока нет данных — воронка не набрана.';}
+  else{const gb=seg.buyer?radarGapList(seg.buyer,R.axis_labels,R.target)[0]:null;const gs=seg.seller?radarGapList(seg.seller,R.axis_labels,R.target)[0]:null;
+   note.innerHTML='💡 «'+esc(seg.name)+'»: главный провал'+(gb?' у покупателя — <b>'+esc(gb.k.toLowerCase())+'</b>':'')+(gb&&gs?', ':'')+(gs?'у продавца — <b>'+esc(gs.k.toLowerCase())+'</b>':'')+'. Ниже — как это подтянуть.';}
+ }
+}
+window.radarSeg=(id)=>{__radarSeg=id;document.querySelectorAll('#radarSegs button').forEach(b=>b.classList.toggle('on',b.dataset.seg===id));paintRadar();};
+function radarCard(R){
+ const tabs=R.segments.map(s=>`<button data-seg="${esc(s.id)}" class="${s.id===__radarSeg?'on':''}" onclick="radarSeg('${esc(s.id)}')">${esc(s.name)}</button>`).join('');
+ return `<div class="card"><div class="section-title">🕸 Радар воронки</div>
+  <div class="muted" style="margin:-6px 0 10px">6 показателей · слева покупатель, справа продавец · зелёное кольцо — норма ≥70% зоны</div>
+  <div class="radar-segs" id="radarSegs">${tabs}</div>
+  <div class="radar-legend">
+   <span><i style="width:12px;height:12px;background:rgba(22,163,74,.14);border:1px solid var(--ok);border-radius:3px;display:inline-block"></i>Целевая зона (≥70%)</span>
+   <span>Число справа — средний индекс воронки</span>
+  </div>
+  <div class="radar-pair">
+   <div class="radar-side"><div class="radar-side-h"><span>🛒</span><b>Покупатель</b><span class="rv" id="rv-buyer" style="color:${SIDE_COLOR.buyer}">—</span><span id="rz-buyer"></span></div>
+    <svg id="rsvg-buyer" viewBox="0 0 360 340" width="100%"></svg>
+    <div class="radar-gaps"><div class="radar-gaps-h">До зелёной не хватает</div><div id="rg-buyer"></div></div></div>
+   <div class="radar-side"><div class="radar-side-h"><span>🏠</span><b>Продавец</b><span class="rv" id="rv-seller" style="color:${SIDE_COLOR.seller}">—</span><span id="rz-seller"></span></div>
+    <svg id="rsvg-seller" viewBox="0 0 360 340" width="100%"></svg>
+    <div class="radar-gaps"><div class="radar-gaps-h">До зелёной не хватает</div><div id="rg-seller"></div></div></div>
+  </div>
+  <div class="radar-note" id="radarNote"></div></div>`;
+}
+
 function renderCoach(d){
  const out=[];
  const f12=d.funnel12m;
@@ -1338,7 +1437,13 @@ function renderCoach(d){
  <div class="ai-text">Скоро здесь появится <b>персональный совет от ИИ</b>. Сейчас работает базовая диагностика — смотри слабые места выше.</div>
  <div class="ai-note">на YandexGPT — после слёта</div></div>`);
  }
+ // TZ-A40: радар воронки — самой верхней картой (над ИИ и текстом).
+ if(d.funnel_radar&&d.funnel_radar.segments){
+  if(!d.funnel_radar.segments.some(s=>s.id===__radarSeg)) __radarSeg='all';
+  out.unshift(radarCard(d.funnel_radar));
+ }
  document.getElementById('screen-coach').innerHTML=out.join('');
+ if(d.funnel_radar&&d.funnel_radar.segments) paintRadar();
 }
 
 /* ─── КЛИЕНТЫ ─── */
