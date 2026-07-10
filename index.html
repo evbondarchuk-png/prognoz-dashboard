@@ -1641,10 +1641,7 @@ window.openHof=()=>{
  document.getElementById('modalHof').classList.add('on');
 };
 
-function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards();
- // Прогноша — только в СВОЁМ кабинете (данные ИИ строятся по auth.uid, не по ?agent=).
- if(CTX.target===CTX.me) initAssistant(d);
-}
+function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); }
 
 (async ()=>{
  const me=await requireAuth();
@@ -1663,6 +1660,10 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  render(d);
  }catch(e){ document.getElementById('hero').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e); }
  document.getElementById('overlay').classList.add('hidden');
+ // Прогноша — отдельно от render(), чтобы ошибка в рендере не убирала ассистента.
+ // Только в СВОЁМ кабинете (данные ИИ строятся по auth.uid, не по ?agent=).
+ try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
+ catch(e){ console.error('[prognosha] init failed', e); }
 })();
 
 /* TZ-A26: утилиты трёхчастной воронки */
