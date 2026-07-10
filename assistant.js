@@ -289,7 +289,8 @@ window.__pClose = () => toggleSheet(false);
 function renderBrief() {
   const d = ctxData;
   if (!d) return;
-  const ir = (d.ir_v2 && d.ir_v2.week && d.ir_v2.week.ir_total) || 0;
+  // Партнёр — личный ИР недели; руководитель — ИР команды (d.ir_v2_week_total).
+  const ir = (d.ir_v2 && d.ir_v2.week && d.ir_v2.week.ir_total) || d.ir_v2_week_total || 0;
   const fc = d.forecast || {};
   const cm = fc.current_month || {};
   const factRev = cm.fact_revenue || 0;

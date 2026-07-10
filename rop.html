@@ -444,12 +444,13 @@ import { requireAuth, logout } from './auth-guard.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 import { mountCalendar, openTaskDetail } from './calendar.js';
+import { initAssistant } from './assistant.js?v=1';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
 const STC={green:'#16a34a',yellow:'#d97706',red:'#dc2626',no_data:'#cbd0db'};
 const SIDE_COLOR={buyer:'#3b82f6',seller:'#10b981'};
-const CTX={data:null,target:null};
+const CTX={data:null,target:null,me:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
 function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
@@ -1309,6 +1310,7 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups
 (async ()=>{
  const me=await requireAuth();
  document.getElementById('logoutBtn').onclick=logout;
+ CTX.me=me.code;
  const params=new URLSearchParams(location.search);
  const targetCode=params.get('rop')||me.code;
  CTX.target=targetCode;
@@ -1322,6 +1324,9 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups
  render(d);
  }catch(e){ document.getElementById('hero').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e); }
  document.getElementById('overlay').classList.add('hidden');
+ // Прогноша — только в СВОЁМ кабинете (не при просмотре чужого отдела через ?rop=).
+ try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
+ catch(e){ console.error('[prognosha] init failed', e); }
 })();
 
 /* TZ-A26: утилиты трёхчастной воронки */
