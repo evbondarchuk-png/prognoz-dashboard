@@ -1470,6 +1470,11 @@ window.openTaskDetailForMe = async (taskId, ev) => {
 };
 window.connectGoogleCalendar = async (ev) => {
  const btn = ev && ev.target && ev.target.closest && ev.target.closest('button');
+ // Пока приложение не прошло верификацию Google — при подключении показывается
+ // экран «Google hasn't verified this app». Предупреждаем заранее, чтобы риэлтор
+ // не испугался и знал, куда нажимать.
+ const ok = confirm('Сейчас откроется вход в Google.\n\nGoogle может показать экран «Приложение не проверено» — это нормально, наше приложение просто ещё на проверке.\n\nНа этом экране нажми внизу «Дополнительные настройки» (Advanced) → «Перейти на страницу…» (Go to…), потом разреши доступ к календарю.\n\nПродолжить?');
+ if (!ok) return;
  if (btn) { btn.disabled = true; btn.textContent = '…'; }
  try {
   const r = await window.__call('googleCalendarAuthStart', {});
