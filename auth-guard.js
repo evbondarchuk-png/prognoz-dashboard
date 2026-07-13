@@ -68,16 +68,25 @@ export function requireAuth(opts = {}) {
         location.href = 'index.html';
         return;
       }
-      // Авто-роутинг по роли (если зашёл на index.html без явного ?agent=).
-      // Сессия Firebase сохранена локально, поэтому при возврате на сайт
-      // пользователь часто попадает на index.html — а МОП/РОП/АУП должны
-      // открываться на своих кабинетах. Свой кабинет риелтора руководители
-      // всё равно могут открыть явно: index.html?agent=<свой_код>.
+      // Авто-роутинг по роли.
+      // 1) С index.html без ?agent= — МОП/РОП/АУП кидаем на их кабинет
+      //    (сессия Firebase сохранена локально → часто попадают на index.html).
+      // 2) Если пользователь попал на кабинет ВЫШЕ своей роли (напр. МОП на
+      //    rop.html по старой/шаренной ссылке) — кидаем в его кабинет, иначе
+      //    getDashboard вернёт «no access» и будет белый экран.
+      // Руководители могут открывать кабинеты НИЖЕ явным дриллом (?agent/?mop/?rop).
       const path = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-      const hasAgentParam = new URLSearchParams(location.search).has('agent');
-      const homeByRole = { mop: 'mop.html', rop: 'rop.html', aup: 'aup.html', admin: 'aup.html' };
-      const home = homeByRole[userInfo.role];
-      if (home && path === 'index.html' && !hasAgentParam) {
+      const params = new URLSearchParams(location.search);
+      const homeByRole = { realtor: 'index.html', mop: 'mop.html', rop: 'rop.html', aup: 'aup.html', admin: 'aup.html' };
+      const home = homeByRole[userInfo.role] || 'index.html';
+      const RANK = { 'index.html': 1, 'mop.html': 2, 'rop.html': 3, 'aup.html': 4 };
+      const userRank = RANK[home] || 1;
+      const pageRank = RANK[path] || 1;
+      const hasDrill = params.has('agent') || params.has('mop') || params.has('rop');
+      // Кабинет выше своей роли → всегда домой. index.html без дрилла → домой.
+      const tooHigh = pageRank > userRank;
+      const idxRedirect = path === 'index.html' && userRank > 1 && !hasDrill;
+      if (home !== path && (tooHigh || idxRedirect)) {
         settled = true; unsub();
         location.href = home;
         return;
