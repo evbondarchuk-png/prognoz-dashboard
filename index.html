@@ -1330,88 +1330,86 @@ function f12Seller(a,segs){ if(!a)return'';
  +f12Stage('seller','Задатки','/мес',a.deposits,a.conv_dep,false,null)
  +f12Stage('seller','Сделки','/мес',a.deals,a.conv_deal,false,sr);
 }
-/* ─── РАДАР ВОРОНКИ (TZ-A40) ─── */
+/* ─── РАДАР ВОРОНКИ (TZ-A40) ─── две паутинки на одном графике: я + целевая зона */
 let __radarSeg='all';
-let __radarZone='current'; // current | target
-function radarActive(){ return __radarZone==='target'&&CTX.data.funnel_radar_target?CTX.data.funnel_radar_target:CTX.data.funnel_radar; }
 const RADAR={cx:180,cy:165,R:112,N:6};
-function radarPt(i,v){const a=-Math.PI/2+i*2*Math.PI/RADAR.N,r=RADAR.R*Math.min(100,v)/100;return [RADAR.cx+r*Math.cos(a),RADAR.cy+r*Math.sin(a)];}
+function radarPt(i,v,scale){const a=-Math.PI/2+i*2*Math.PI/RADAR.N,r=RADAR.R*Math.min(scale,Math.max(0,v))/scale;return [RADAR.cx+r*Math.cos(a),RADAR.cy+r*Math.sin(a)];}
 function radarAvg(a){return Math.round(a.reduce((x,y)=>x+y,0)/a.length);}
-function radarDraw(elId,vals,color,fill,labels,target){
+function radarPoly(vals,scale){return vals.map((v,i)=>radarPt(i,v,scale).join(',')).join(' ');}
+function radarDraw(elId,mine,ref,color,fill,labels,scale){
  const el=document.getElementById(elId); if(!el) return;
  const p=[];
- [25,50,75,100].forEach(g=>{p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,g).join(',')).join(' ')+'" fill="none" stroke="var(--line)"/>');});
+ // сетка колец 33/66/100 и оси
+ [scale/3,scale*2/3,scale].forEach(g=>{p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,g,scale).join(',')).join(' ')+'" fill="none" stroke="var(--line)"/>');});
  labels.forEach((lab,i)=>{
-  const e=radarPt(i,100);p.push('<line x1="'+RADAR.cx+'" y1="'+RADAR.cy+'" x2="'+e[0]+'" y2="'+e[1]+'" stroke="var(--line)"/>');
-  const lp=radarPt(i,122),anchor=Math.abs(lp[0]-RADAR.cx)<8?'middle':(lp[0]<RADAR.cx?'end':'start');
+  const e=radarPt(i,scale,scale);p.push('<line x1="'+RADAR.cx+'" y1="'+RADAR.cy+'" x2="'+e[0]+'" y2="'+e[1]+'" stroke="var(--line)"/>');
+  const lp=radarPt(i,scale*1.12,scale),anchor=Math.abs(lp[0]-RADAR.cx)<8?'middle':(lp[0]<RADAR.cx?'end':'start');
   const words=lab.split(' ');let tx='';words.forEach((w,wi)=>{tx+='<tspan x="'+lp[0]+'" dy="'+(wi===0?0:10)+'">'+esc(w)+'</tspan>';});
   p.push('<text x="'+lp[0]+'" y="'+(lp[1]-(words.length-1)*4.5)+'" text-anchor="'+anchor+'" font-size="9" fill="var(--muted)">'+tx+'</text>');
  });
- p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,target).join(',')).join(' ')+'" fill="rgba(22,163,74,.12)" stroke="var(--ok)" stroke-width="1.5"/>');
- if(vals){
-  p.push('<polygon points="'+vals.map((v,i)=>radarPt(i,v).join(',')).join(' ')+'" fill="'+fill+'" stroke="'+color+'" stroke-width="2.5"/>');
-  vals.forEach((v,i)=>{const dt=radarPt(i,v);p.push('<circle cx="'+dt[0]+'" cy="'+dt[1]+'" r="3.2" fill="'+color+'" stroke="#fff" stroke-width="1.5"/>');});
+ // внешнее зелёное кольцо (100%) = целевая зона
+ p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,scale,scale).join(',')).join(' ')+'" fill="rgba(22,163,74,.07)" stroke="var(--ok)" stroke-width="2" stroke-dasharray="5 3"/>');
+ // норма МОЕЙ зоны относительно целевой (серый пунктир) — контекст, где я «дома»
+ if(ref){ p.push('<polygon points="'+radarPoly(ref,scale)+'" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>'); }
+ // моя паутинка (цветная заливка)
+ if(mine){
+  p.push('<polygon points="'+radarPoly(mine,scale)+'" fill="'+fill+'" stroke="'+color+'" stroke-width="2.5"/>');
+  mine.forEach((v,i)=>{const dt=radarPt(i,v,scale);p.push('<circle cx="'+dt[0]+'" cy="'+dt[1]+'" r="3.2" fill="'+color+'" stroke="#fff" stroke-width="1.5"/>');});
  }else{ p.push('<text x="'+RADAR.cx+'" y="'+RADAR.cy+'" text-anchor="middle" font-size="12" fill="var(--muted)">нет данных</text>'); }
  el.innerHTML=p.join('');
 }
-function radarGapList(vals,labels,target){return labels.map((k,i)=>({k,d:target-vals[i]})).filter(g=>g.d>0).sort((a,b)=>b.d-a.d);}
-function radarRenderGaps(elId,vals,labels,target){
+// разрыв до цели: 100 − mine[i] (всё в % от целевой зоны, одна шкала с радаром)
+function radarGapList(mine,labels){if(!mine)return [];return labels.map((k,i)=>({k,d:100-mine[i]})).filter(g=>g.d>0).sort((a,b)=>b.d-a.d);}
+function radarRenderGaps(elId,mine,labels){
  const box=document.getElementById(elId); if(!box) return;
- if(!vals){box.innerHTML='<div class="radar-nodata">В этом сегменте нет данных.</div>';return;}
- const gs=radarGapList(vals,labels,target);
- if(!gs.length){box.innerHTML='<div class="radar-okempty">✓ Все показатели в зелёной зоне.</div>';return;}
- box.innerHTML=gs.map(g=>{const w=Math.min(100,g.d/40*100);
-  return '<div class="radar-gap"><span class="k">'+esc(g.k)+'</span><span class="track"><i style="width:'+w+'%"></i></span><span class="dd">−'+g.d+'</span></div>';}).join('');
+ if(!mine){box.innerHTML='<div class="radar-nodata">В этом сегменте нет данных.</div>';return;}
+ const gs=radarGapList(mine,labels);
+ if(!gs.length){box.innerHTML='<div class="radar-okempty">✓ По всем осям ты уже на уровне целевой зоны.</div>';return;}
+ box.innerHTML=gs.map(g=>{return '<div class="radar-gap"><span class="k">'+esc(g.k)+'</span><span class="track"><i style="width:'+g.d+'%"></i></span><span class="dd">−'+g.d+'</span></div>';}).join('');
 }
-function radarZone(elId,valId,vals){
- const zb=document.getElementById(elId),vb=document.getElementById(valId);
- if(vb) vb.textContent=vals?radarAvg(vals)+'%':'—';
- if(!zb) return;
- if(!vals){zb.innerHTML='';return;}
- const g=radarAvg(vals)>=70;zb.innerHTML='<span class="radar-zone '+(g?'green':'yellow')+'">'+(g?'зелёная':'жёлтая')+'</span>';
-}
+function radarBadge(valId,mine){const vb=document.getElementById(valId);if(vb)vb.textContent=mine?radarAvg(mine)+'%':'—';}
 function paintRadar(){
- const R=radarActive(); if(!R) return;
+ const R=CTX.data&&CTX.data.funnel_radar; if(!R) return;
  const seg=R.segments.find(s=>s.id===__radarSeg)||R.segments[0];
- radarDraw('rsvg-buyer',seg.buyer,SIDE_COLOR.buyer,'rgba(59,130,246,.12)',R.axis_labels,R.target);
- radarDraw('rsvg-seller',seg.seller,SIDE_COLOR.seller,'rgba(16,185,129,.12)',R.axis_labels,R.target);
- radarZone('rz-buyer','rv-buyer',seg.buyer);
- radarZone('rz-seller','rv-seller',seg.seller);
- radarRenderGaps('rg-buyer',seg.buyer,R.axis_labels,R.target);
- radarRenderGaps('rg-seller',seg.seller,R.axis_labels,R.target);
+ const sc=R.scale_max||100;
+ radarDraw('rsvg-buyer',seg.buyer&&seg.buyer.mine,seg.buyer&&seg.buyer.ref,SIDE_COLOR.buyer,'rgba(59,130,246,.14)',R.axis_labels,sc);
+ radarDraw('rsvg-seller',seg.seller&&seg.seller.mine,seg.seller&&seg.seller.ref,SIDE_COLOR.seller,'rgba(16,185,129,.14)',R.axis_labels,sc);
+ radarBadge('rv-buyer',seg.buyer&&seg.buyer.mine);
+ radarBadge('rv-seller',seg.seller&&seg.seller.mine);
+ radarRenderGaps('rg-buyer',seg.buyer&&seg.buyer.mine,R.axis_labels);
+ radarRenderGaps('rg-seller',seg.seller&&seg.seller.mine,R.axis_labels);
  const note=document.getElementById('radarNote');
  if(note){
-  if(!seg.buyer&&!seg.seller){note.innerHTML='💡 По сегменту «'+esc(seg.name)+'» пока нет данных — воронка не набрана.';}
-  else{const gb=seg.buyer?radarGapList(seg.buyer,R.axis_labels,R.target)[0]:null;const gs=seg.seller?radarGapList(seg.seller,R.axis_labels,R.target)[0]:null;
-   const scope=__radarZone==='target'?('целевой зоны'+(R.zone_label?' «'+esc(R.zone_label)+'»':'')):'твоей зоны';
-   note.innerHTML='💡 «'+esc(seg.name)+'» относительно '+scope+': главный провал'+(gb?' у покупателя — <b>'+esc(gb.k.toLowerCase())+'</b>':'')+(gb&&gs?', ':'')+(gs?'у продавца — <b>'+esc(gs.k.toLowerCase())+'</b>':'')+'. Ниже — как это подтянуть.';}
+  const mb=seg.buyer&&seg.buyer.mine, ms=seg.seller&&seg.seller.mine;
+  const target=R.has_goal?(R.goal_zone_label?('целевой зоны «'+esc(R.goal_zone_label)+'»'):'целевой зоны'):'нормы твоей зоны';
+  if(!mb&&!ms){note.innerHTML='💡 По сегменту «'+esc(seg.name)+'» пока нет данных — воронка не набрана.';}
+  else{const gb=radarGapList(mb,R.axis_labels)[0];const gs=radarGapList(ms,R.axis_labels)[0];
+   if(gb||gs) note.innerHTML='💡 «'+esc(seg.name)+'»: чтобы дорасти до '+target+', подтяни'+(gb?' у покупателя — <b>'+esc(gb.k.toLowerCase())+'</b>':'')+(gb&&gs?', ':'')+(gs?'у продавца — <b>'+esc(gs.k.toLowerCase())+'</b>':'')+'.';
+   else note.innerHTML='💡 «'+esc(seg.name)+'»: по этому сегменту ты уже на уровне '+target+' 👍';}
  }
 }
 window.radarSeg=(id)=>{__radarSeg=id;document.querySelectorAll('#radarSegs button').forEach(b=>b.classList.toggle('on',b.dataset.seg===id));paintRadar();};
-window.radarZone=(z)=>{__radarZone=z;document.querySelectorAll('#radarZones button').forEach(b=>b.classList.toggle('on',b.dataset.z===z));paintRadar();};
 function radarCard(R){
  const tabs=R.segments.map(s=>`<button data-seg="${esc(s.id)}" class="${s.id===__radarSeg?'on':''}" onclick="radarSeg('${esc(s.id)}')">${esc(s.name)}</button>`).join('');
- const hasTarget=!!(CTX.data&&CTX.data.funnel_radar_target);
- const tgtLabel=hasTarget&&CTX.data.funnel_radar_target.zone_label?esc(CTX.data.funnel_radar_target.zone_label):'следующая зона';
- const zoneToggle=hasTarget?`<div class="radar-segs" id="radarZones" style="margin-bottom:10px">
-   <button data-z="current" class="${__radarZone==='current'?'on':''}" onclick="radarZone('current')">🚦 Моя зона</button>
-   <button data-z="target" class="${__radarZone==='target'?'on':''}" onclick="radarZone('target')">🎯 Целевая: ${tgtLabel}</button>
-  </div>`:'';
- return `<div class="card"><div class="section-title">🕸 Радар воронки</div>
-  <div class="muted" style="margin:-6px 0 10px">6 показателей · слева покупатель, справа продавец · зелёное кольцо — норма ≥70% зоны</div>
-  ${zoneToggle}
+ const goalLbl=R.goal_zone_label?esc(R.goal_zone_label):'целевая зона';
+ const desc=R.has_goal
+  ? `Заливка — ты сейчас. Зелёное кольцо — порог зелёной зоны для целевой зоны${R.goal_zone_label?' «'+goalLbl+'»':''} (достаточный уровень, 70% её нормы). Дотянул до кольца — готов расти.`
+  : `Заливка — ты сейчас. Зелёное кольцо — порог зелёной зоны твоей зоны (достаточный уровень). Число справа — средний % по 6 осям.`;
+ return `<div class="card"><div class="section-title">🕸 Радар воронки · я → цель</div>
+  <div class="muted" style="margin:-6px 0 10px">${desc}</div>
   <div class="radar-segs" id="radarSegs">${tabs}</div>
   <div class="radar-legend">
-   <span><i style="width:12px;height:12px;background:rgba(22,163,74,.14);border:1px solid var(--ok);border-radius:3px;display:inline-block"></i>Целевая зона (≥70%)</span>
-   <span>Число справа — средний индекс воронки</span>
+   <span><i style="width:14px;height:3px;background:${SIDE_COLOR.buyer};border-radius:2px;display:inline-block"></i>Ты (покупатель)</span>
+   <span><i style="width:14px;height:3px;background:${SIDE_COLOR.seller};border-radius:2px;display:inline-block"></i>Ты (продавец)</span>
+   <span><i style="width:14px;height:0;border-top:2px dashed var(--ok);display:inline-block"></i>Порог зелёной зоны (100%)</span>
   </div>
   <div class="radar-pair">
-   <div class="radar-side"><div class="radar-side-h"><span>🛒</span><b>Покупатель</b><span class="rv" id="rv-buyer" style="color:${SIDE_COLOR.buyer}">—</span><span id="rz-buyer"></span></div>
+   <div class="radar-side"><div class="radar-side-h"><span>🛒</span><b>Покупатель</b><span class="rv" id="rv-buyer" style="color:${SIDE_COLOR.buyer}">—</span></div>
     <svg id="rsvg-buyer" viewBox="0 0 360 340" width="100%"></svg>
-    <div class="radar-gaps"><div class="radar-gaps-h">До зелёной не хватает</div><div id="rg-buyer"></div></div></div>
-   <div class="radar-side"><div class="radar-side-h"><span>🏠</span><b>Продавец</b><span class="rv" id="rv-seller" style="color:${SIDE_COLOR.seller}">—</span><span id="rz-seller"></span></div>
+    <div class="radar-gaps"><div class="radar-gaps-h">До целевой зоны не хватает</div><div id="rg-buyer"></div></div></div>
+   <div class="radar-side"><div class="radar-side-h"><span>🏠</span><b>Продавец</b><span class="rv" id="rv-seller" style="color:${SIDE_COLOR.seller}">—</span></div>
     <svg id="rsvg-seller" viewBox="0 0 360 340" width="100%"></svg>
-    <div class="radar-gaps"><div class="radar-gaps-h">До зелёной не хватает</div><div id="rg-seller"></div></div></div>
+    <div class="radar-gaps"><div class="radar-gaps-h">До целевой зоны не хватает</div><div id="rg-seller"></div></div></div>
   </div>
   <div class="radar-note" id="radarNote"></div></div>`;
 }
