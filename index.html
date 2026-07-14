@@ -454,10 +454,12 @@
 .radar-zone.green{background:var(--ok-bg);color:var(--ok)}.radar-zone.yellow{background:var(--warn-bg);color:var(--warn)}
 .radar-gaps{margin-top:6px;border-top:1px solid var(--line);padding-top:9px}
 .radar-gaps-h{font-size:10px;font-weight:var(--fw-eb);text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
-.radar-gap{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0}
-.radar-gap .k{flex:1}.radar-gap .track{width:52px;height:6px;background:var(--bad-bg);border-radius:4px;overflow:hidden}
-.radar-gap .track i{display:block;height:100%;background:var(--bad);border-radius:4px}
-.radar-gap .dd{width:30px;text-align:right;color:var(--bad);font-weight:var(--fw-eb)}
+.radar-gap{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line-2,#f0f2f5)}
+.radar-gap .k{flex:1}.radar-gap .k small{color:var(--muted);font-weight:var(--fw-r);font-size:11px}
+.radar-gap .dd{text-align:right;color:var(--bad);font-weight:var(--fw-eb);white-space:nowrap}
+.radar-gap .dd.ok{color:var(--ok)}
+.radar-gap.done{padding:2px 0;opacity:.7}
+.radar-gap.done .k{color:var(--ok);font-weight:var(--fw-sb)}
 .radar-okempty{font-size:12px;color:var(--ok);background:var(--ok-bg);border-radius:9px;padding:8px 10px}
 .radar-nodata{font-size:12px;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:9px;padding:8px 10px;text-align:center}
 .radar-note{background:var(--brand-soft);border-radius:var(--r-md);padding:10px 12px;font-size:12.5px;color:var(--brand-hover);margin-top:12px}
@@ -661,7 +663,7 @@ function renderHero(d){
  </div>
  <div class="it-bar"><div class="it-bar-fill" style="width:${pct}%"></div></div>
  <div class="it-foot">
- <span class="it-link" onclick="openEditGoal()">изменить цель</span>
+ ${g.can_edit===false?`<span class="it-link" style="opacity:.55;cursor:default" title="${esc(g.edit_block_reason||'')}">🔒 цель меняет руководитель</span>`:`<span class="it-link" onclick="openEditGoal()">изменить цель</span>`}
  <span class="it-link" onclick="openHof()">🏆 Зал славы</span>
  <span>${toGoal}${autoTxt?' · '+autoTxt:''}</span>
  ${dp?`<span>⏱ ${dp.passed} / ${dp.total} дней пути</span>`:''}
@@ -712,8 +714,9 @@ function renderHero(d){
  // авто-цель баннер
  const gb=document.getElementById('goalBanner');
  if(g&&g.is_auto&&localStorage.getItem('goal_banner_dismissed')!=='1'){
+ const tail=g.can_edit===false?'Менять сейчас может только руководитель.':'Можешь изменить цель в любой момент — <span class="gb-edit" onclick="openEditGoal()">изменить</span>';
  gb.innerHTML=`<div class="goal-banner"><span>ℹ️</span>
- <span>Система поставила прогнозный доход на основе твоей работы. Можешь изменить цель в любой момент — <span class="gb-edit" onclick="openEditGoal()">изменить</span></span>
+ <span>Система поставила прогнозный доход на основе твоей работы. ${tail}</span>
  <span class="gb-x" onclick="dismissGoalBanner()">✕</span></div>`;
  } else gb.innerHTML='';
 }
@@ -997,11 +1000,12 @@ function renderPrognoz(d){
     const goalLbl = goal.target_revenue_month_short || _prgFmtFull(goal.target_revenue_month);
     const changeTxt = goal.change_count>0 ? `менял ${goal.change_count} раз` : 'не менял';
     out.push(`<div class="card">
-      <div class="section-title">💵 Цель по доходу (ставишь сам)</div>
+      <div class="section-title">💵 Цель по доходу${goal.can_edit===false?'':' (ставишь сам)'}</div>
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div><div style="font-size:18px;font-weight:800">${esc(goalLbl)} ₽</div><div style="font-size:11px;color:var(--muted)">текущая цель${goal.is_auto?' (авто)':''}</div></div>
         <div style="font-size:12px;color:var(--muted)">${changeTxt}</div>
-        ${goal.can_change?'<button class="b-secondary" onclick="openEditGoal()" style="margin-left:auto;font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2,#f1f3f7);cursor:pointer">Изменить</button>':''}
+        ${goal.can_change&&goal.can_edit!==false?'<button class="b-secondary" onclick="openEditGoal()" style="margin-left:auto;font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2,#f1f3f7);cursor:pointer">Изменить</button>':''}
+        ${goal.can_edit===false?'<span style="margin-left:auto;font-size:11px;color:var(--muted)" title="'+esc(goal.edit_block_reason||'')+'">🔒 меняет руководитель</span>':''}
       </div>
     </div>`);
   }
@@ -1338,7 +1342,7 @@ const RADAR={cx:180,cy:165,R:112,N:6};
 function radarPt(i,v,scale){const a=-Math.PI/2+i*2*Math.PI/RADAR.N,r=RADAR.R*Math.min(scale,Math.max(0,v))/scale;return [RADAR.cx+r*Math.cos(a),RADAR.cy+r*Math.sin(a)];}
 function radarAvg(a){return Math.round(a.reduce((x,y)=>x+y,0)/a.length);}
 function radarPoly(vals,scale){return vals.map((v,i)=>radarPt(i,v,scale).join(',')).join(' ');}
-function radarDraw(elId,mine,ref,color,fill,labels,scale){
+function radarDraw(elId,mine,color,fill,labels,scale,thPct){
  const el=document.getElementById(elId); if(!el) return;
  const p=[];
  // сетка колец 33/66/100 и оси
@@ -1349,10 +1353,10 @@ function radarDraw(elId,mine,ref,color,fill,labels,scale){
   const words=lab.split(' ');let tx='';words.forEach((w,wi)=>{tx+='<tspan x="'+lp[0]+'" dy="'+(wi===0?0:10)+'">'+esc(w)+'</tspan>';});
   p.push('<text x="'+lp[0]+'" y="'+(lp[1]-(words.length-1)*4.5)+'" text-anchor="'+anchor+'" font-size="9" fill="var(--muted)">'+tx+'</text>');
  });
- // внешнее зелёное кольцо (100%) = целевая зона
- p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,scale,scale).join(',')).join(' ')+'" fill="rgba(22,163,74,.07)" stroke="var(--ok)" stroke-width="2" stroke-dasharray="5 3"/>');
- // норма МОЕЙ зоны относительно целевой (серый пунктир) — контекст, где я «дома»
- if(ref){ p.push('<polygon points="'+radarPoly(ref,scale)+'" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>'); }
+ // маркер порога зелёной зоны (70%) — тонкий зелёный пунктир внутри
+ if(thPct){ p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,thPct,scale).join(',')).join(' ')+'" fill="none" stroke="var(--ok)" stroke-width="1" stroke-dasharray="2 3" opacity=".6"/>'); }
+ // внешнее зелёное кольцо (100%) = уровень грейда
+ p.push('<polygon points="'+labels.map((_,i)=>radarPt(i,scale,scale).join(',')).join(' ')+'" fill="rgba(22,163,74,.06)" stroke="var(--ok)" stroke-width="2" stroke-dasharray="5 3"/>');
  // моя паутинка (цветная заливка)
  if(mine){
   p.push('<polygon points="'+radarPoly(mine,scale)+'" fill="'+fill+'" stroke="'+color+'" stroke-width="2.5"/>');
@@ -1360,83 +1364,85 @@ function radarDraw(elId,mine,ref,color,fill,labels,scale){
  }else{ p.push('<text x="'+RADAR.cx+'" y="'+RADAR.cy+'" text-anchor="middle" font-size="12" fill="var(--muted)">нет данных</text>'); }
  el.innerHTML=p.join('');
 }
-// разрыв до цели: 100 − mine[i] (всё в % от целевой зоны, одна шкала с радаром)
-function radarGapList(mine,labels){if(!mine)return [];return labels.map((k,i)=>({k,d:100-mine[i]})).filter(g=>g.d>0).sort((a,b)=>b.d-a.d);}
-function radarRenderGaps(elId,mine,labels){
+function radarFmt(v){v=Math.round(v*10)/10;return (Math.abs(v-Math.round(v))<0.05)?String(Math.round(v)):String(v);}
+// mine[] для радара из факта и нормы (в % от нормы грейда, кап 100)
+function radarMine(fact,norm){if(!fact||!norm)return null;return norm.map((n,i)=>n>0?Math.min(100,Math.round(fact[i]/n*100)):0);}
+// список: абсолютная разница «норма − факт» по каждой оси, ✓ если факт≥нормы
+function radarRenderGaps(elId,fact,norm,labels,units){
  const box=document.getElementById(elId); if(!box) return;
- if(!mine){box.innerHTML='<div class="radar-nodata">В этом сегменте нет данных.</div>';return;}
- const gs=radarGapList(mine,labels);
- if(!gs.length){box.innerHTML='<div class="radar-okempty">✓ По всем осям ты уже на уровне целевой зоны.</div>';return;}
- box.innerHTML=gs.map(g=>{return '<div class="radar-gap"><span class="k">'+esc(g.k)+'</span><span class="track"><i style="width:'+g.d+'%"></i></span><span class="dd">−'+g.d+'</span></div>';}).join('');
+ if(!fact||!norm){box.innerHTML='<div class="radar-nodata">В этом сегменте нет данных.</div>';return;}
+ // сортируем: сначала невыполненные (по величине разницы), потом выполненные
+ const rows=labels.map((lab,i)=>{
+  const diff=norm[i]-fact[i], done=fact[i]>=norm[i]-0.05, unit=units[i]==='%'?'%':'';
+  return {lab,diff,done,unit,fact:fact[i],norm:norm[i]};
+ }).sort((a,b)=>(a.done-b.done)||(b.diff-a.diff));
+ box.innerHTML=rows.map(r=>{
+  if(r.done) return '<div class="radar-gap done"><span class="k">✓ '+esc(r.lab)+'</span><span class="dd ok">есть</span></div>';
+  return '<div class="radar-gap"><span class="k">'+esc(r.lab)+' <small>'+radarFmt(r.fact)+'→'+radarFmt(r.norm)+r.unit+'</small></span><span class="dd">+'+radarFmt(r.diff)+r.unit+'</span></div>';
+ }).join('');
 }
 function radarBadge(valId,mine){const vb=document.getElementById(valId);if(vb)vb.textContent=mine?radarAvg(mine)+'%':'—';}
 function paintRadar(){
  const R=CTX.data&&CTX.data.funnel_radar; if(!R||!R.zones) return;
  const z=radarZoneObj(); if(!z) return;
- const seg=z.segments.find(s=>s.id===__radarSeg)||z.segments[0];
- const sc=R.scale_max||100;
- const mb=seg.buyer||null, ms=seg.seller||null; // теперь это сразу mine[] или null
- radarDraw('rsvg-buyer',mb,null,SIDE_COLOR.buyer,'rgba(59,130,246,.14)',R.axis_labels,sc);
- radarDraw('rsvg-seller',ms,null,SIDE_COLOR.seller,'rgba(16,185,129,.14)',R.axis_labels,sc);
- radarBadge('rv-buyer',mb);
- radarBadge('rv-seller',ms);
- radarRenderGaps('rg-buyer',mb,R.axis_labels);
- radarRenderGaps('rg-seller',ms,R.axis_labels);
+ const seg=__radarSeg, sc=R.scale_max||100, u=R.axis_units;
+ const fB=R.facts[seg]&&R.facts[seg].buyer, nB=z.norms[seg]&&z.norms[seg].buyer;
+ const fS=R.facts[seg]&&R.facts[seg].seller, nS=z.norms[seg]&&z.norms[seg].seller;
+ const mB=radarMine(fB,nB), mS=radarMine(fS,nS);
+ radarDraw('rsvg-buyer',mB,SIDE_COLOR.buyer,'rgba(59,130,246,.14)',R.axis_labels,sc,R.threshold_pct);
+ radarDraw('rsvg-seller',mS,SIDE_COLOR.seller,'rgba(16,185,129,.14)',R.axis_labels,sc,R.threshold_pct);
+ radarBadge('rv-buyer',mB);
+ radarBadge('rv-seller',mS);
+ radarRenderGaps('rg-buyer',fB,nB,R.axis_labels,u);
+ radarRenderGaps('rg-seller',fS,nS,R.axis_labels,u);
+ const segName=SEG_NAMES[seg]||seg;
  const note=document.getElementById('radarNote');
  if(note){
   const gradeLbl=(z.label||'грейд').replace('🎯 ','');
-  if(!mb&&!ms){note.innerHTML='💡 По сегменту «'+esc(seg.name)+'» пока нет данных — воронка не набрана.';}
-  else{const gb=radarGapList(mb,R.axis_labels)[0];const gs=radarGapList(ms,R.axis_labels)[0];
-   if(gb||gs) note.innerHTML='💡 «'+esc(seg.name)+'» относительно «'+esc(gradeLbl)+'»: подтяни'+(gb?' у покупателя — <b>'+esc(gb.k.toLowerCase())+'</b>':'')+(gb&&gs?', ':'')+(gs?'у продавца — <b>'+esc(gs.k.toLowerCase())+'</b>':'')+'.';
-   else note.innerHTML='💡 «'+esc(seg.name)+'»: по этому сегменту ты уже на уровне «'+esc(gradeLbl)+'» 👍';}
+  const top=(f,n)=>{if(!f||!n)return null;let best=null;n.forEach((nn,i)=>{const d=nn-f[i];if(d>0&&(!best||d>best.d))best={k:R.axis_labels[i],d};});return best;};
+  const gb=top(fB,nB), gs=top(fS,nS);
+  if(!fB&&!fS){note.innerHTML='💡 По сегменту «'+esc(segName)+'» пока нет данных — воронка не набрана.';}
+  else if(gb||gs) note.innerHTML='💡 «'+esc(segName)+'» относительно «'+esc(gradeLbl)+'»: главный рост'+(gb?' у покупателя — <b>'+esc(gb.k.toLowerCase())+'</b>':'')+(gb&&gs?', ':'')+(gs?'у продавца — <b>'+esc(gs.k.toLowerCase())+'</b>':'')+'.';
+  else note.innerHTML='💡 «'+esc(segName)+'»: по этому сегменту ты уже на уровне «'+esc(gradeLbl)+'» 👍';
  }
 }
+const SEG_NAMES={all:'Общая воронка',vtorichnaya:'Вторичная',novostroyki:'Новостройки',zagorodnaya:'Загородная',kommercheskaya:'Коммерческая',garazhi:'Гаражи'};
 window.radarSeg=(id)=>{__radarSeg=id;document.querySelectorAll('#radarSegs button').forEach(b=>b.classList.toggle('on',b.dataset.seg===id));paintRadar();};
 window.radarZone=(id)=>{__radarZone=id;document.querySelectorAll('#radarZones button').forEach(b=>b.classList.toggle('on',b.dataset.z===id));paintRadar();};
 function radarCard(R){
  // грейды-кнопки (сравнение)
  if(!__radarZone){const def=R.zones.find(z=>z.is_default)||R.zones[0];__radarZone=def&&def.id;}
  const zoneBtns=R.zones.map(z=>`<button data-z="${esc(z.id)}" class="${z.id===__radarZone?'on':''}" onclick="radarZone('${esc(z.id)}')">${esc(z.label)}</button>`).join('');
- const segs=R.zones[0].segments;
- const tabs=segs.map(s=>`<button data-seg="${esc(s.id)}" class="${s.id===__radarSeg?'on':''}" onclick="radarSeg('${esc(s.id)}')">${esc(s.name)}</button>`).join('');
+ const segIds=Object.keys(R.facts);
+ const tabs=segIds.map(id=>`<button data-seg="${esc(id)}" class="${id===__radarSeg?'on':''}" onclick="radarSeg('${esc(id)}')">${esc(SEG_NAMES[id]||id)}</button>`).join('');
  return `<div class="card"><div class="section-title">🕸 Радар воронки · сравни себя с грейдом</div>
-  <div class="muted" style="margin:-6px 0 10px">Заливка — ты сейчас. Зелёное кольцо — порог зелёной зоны выбранного грейда (70% его нормы). Дотянул до кольца — на уровне этого грейда.</div>
+  <div class="muted" style="margin:-6px 0 10px">Заливка — ты сейчас (в % от нормы грейда). Зелёное кольцо — уровень грейда (100%), тонкий пунктир внутри — порог зелёной зоны (70%). Числа справа — <b>абсолютная разница «твой факт за 12 мес → норма грейда»</b>: сколько нужно добрать.</div>
   <div class="radar-segs" id="radarZones" style="margin-bottom:8px">${zoneBtns}</div>
   <div class="radar-segs" id="radarSegs">${tabs}</div>
   <div class="radar-legend">
    <span><i style="width:14px;height:3px;background:${SIDE_COLOR.buyer};border-radius:2px;display:inline-block"></i>Ты (покупатель)</span>
    <span><i style="width:14px;height:3px;background:${SIDE_COLOR.seller};border-radius:2px;display:inline-block"></i>Ты (продавец)</span>
-   <span><i style="width:14px;height:0;border-top:2px dashed var(--ok);display:inline-block"></i>Порог грейда (100%)</span>
+   <span><i style="width:14px;height:0;border-top:2px dashed var(--ok);display:inline-block"></i>Уровень грейда</span>
   </div>
   <div class="radar-pair">
    <div class="radar-side"><div class="radar-side-h"><span>🛒</span><b>Покупатель</b><span class="rv" id="rv-buyer" style="color:${SIDE_COLOR.buyer}">—</span></div>
     <svg id="rsvg-buyer" viewBox="0 0 360 340" width="100%"></svg>
-    <div class="radar-gaps"><div class="radar-gaps-h">До грейда не хватает</div><div id="rg-buyer"></div></div></div>
+    <div class="radar-gaps"><div class="radar-gaps-h">Сколько добрать до грейда</div><div id="rg-buyer"></div></div></div>
    <div class="radar-side"><div class="radar-side-h"><span>🏠</span><b>Продавец</b><span class="rv" id="rv-seller" style="color:${SIDE_COLOR.seller}">—</span></div>
     <svg id="rsvg-seller" viewBox="0 0 360 340" width="100%"></svg>
-    <div class="radar-gaps"><div class="radar-gaps-h">До грейда не хватает</div><div id="rg-seller"></div></div></div>
+    <div class="radar-gaps"><div class="radar-gaps-h">Сколько добрать до грейда</div><div id="rg-seller"></div></div></div>
   </div>
   <div class="radar-note" id="radarNote"></div></div>`;
 }
 
 function renderCoach(d){
  const out=[];
- const f12=d.funnel12m;
- if(f12){
- const st=d.user&&d.user.stazh_months; const m=(st!=null&&st<12)?st:12;
- const per=`в среднем за ${m} ${plural(m,'месяц','месяца','месяцев')} работы`;
- out.push(`<div class="card"><div class="section-title">📈 Как ты работаешь</div>
- <div class="muted" style="margin:-6px 0 12px">${per} · конверсии показывают, где теряются клиенты</div>
- <div class="funnel-side"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR.buyer}"></span><div style="font-weight:var(--fw-b)">🛒 Покупатель</div></div></div>
- ${f12Buyer(f12.buyer&&f12.buyer.all, f12.buyer&&f12.buyer.segments)}</div>
- <div class="funnel-side" style="margin-top:10px"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR.seller}"></span><div style="font-weight:var(--fw-b)">🏠 Продавец</div></div></div>
- ${f12Seller(f12.seller&&f12.seller.all, f12.seller&&f12.seller.segments)}</div></div>`);
- }
+ // Блок «Как ты работаешь» (12-мес воронка) удалён — его заменил радар воронки.
  if(d.coach&&(d.coach.buyer||d.coach.seller)){
  out.push(`<div class="card"><div class="section-title">🎓 Диагностика · твоя зона</div>
  ${coachSide('buyer',d.coach.buyer,'Покупатель')}${coachSide('seller',d.coach.seller,'Продавец')}
  <div class="muted" style="margin-top:8px">Относительно твоей зоны${d.coach.zone_label?': '+esc(d.coach.zone_label):''} — где ты сейчас</div></div>`);
- } else if(!f12) out.push(`<div class="card"><div class="section-title">🎓 Диагностика</div><div class="soon"><span class="soon-ic">🎓</span>Диагностика появится после ночного расчёта.</div></div>`);
+ }
  if(d.coach_target&&(d.coach_target.buyer||d.coach_target.seller)){
  out.push(`<div class="card" style="border-color:#cfe1f5"><div class="section-title">🎯 Что подтянуть для целевой зоны${d.coach_target.zone_label?' · '+esc(d.coach_target.zone_label):''}</div>
  <div class="muted" style="margin:-6px 0 10px">Куда ты стремишься — сравнение с нормами следующей зоны, а не твоей текущей</div>
@@ -1452,10 +1458,9 @@ function renderCoach(d){
  <div class="ai-note">на YandexGPT — после слёта</div></div>`);
  }
  // TZ-A40: радар воронки — самой верхней картой (над ИИ и текстом).
- const hasRadar=d.funnel_radar&&d.funnel_radar.zones&&d.funnel_radar.zones.length;
+ const hasRadar=d.funnel_radar&&d.funnel_radar.zones&&d.funnel_radar.zones.length&&d.funnel_radar.facts;
  if(hasRadar){
-  const segs=d.funnel_radar.zones[0].segments;
-  if(!segs.some(s=>s.id===__radarSeg)) __radarSeg='all';
+  if(!d.funnel_radar.facts[__radarSeg]) __radarSeg='all';
   out.unshift(radarCard(d.funnel_radar));
  }
  document.getElementById('screen-coach').innerHTML=out.join('');
@@ -1739,13 +1744,15 @@ window.openEditGoal=()=>{
  ];
  if(inc!=null){ presets.push({v:inc+50000,t:'Текущий доход + 50к (рекомендуемая)',s:fmtShort(inc+50000)+' ₽/мес'});
  presets.push({v:inc+100000,t:'Текущий доход + 100к (амбициозная)',s:fmtShort(inc+100000)+' ₽/мес'}); }
- const locked=g&&!g.can_change;
+ const noEdit=g&&g.can_edit===false;
+ const locked=noEdit||(g&&!g.can_change);
+ const lockMsg=noEdit?(g.edit_block_reason||'Смена цели временно доступна только через руководителя'):(g&&g.next_change_block_reason||'Цель можно менять не чаще раза в месяц.');
  document.getElementById('modalGoalBody').innerHTML=`
  <div class="modal-head"><div class="modal-title">🎯 Изменить цель по доходу</div><button class="modal-x" onclick="closeModal('modalGoal')">✕</button></div>
- <input class="goal-input" id="goalInput" type="number" inputmode="numeric" value="${cur}" />
- ${presets.map(p=>`<button class="preset" onclick="document.getElementById('goalInput').value=${p.v}"><span>${esc(p.t)}</span><b>${esc(p.s)}</b></button>`).join('')}
- <button class="modal-save" id="goalSaveBtn" ${locked?'disabled':''} onclick="saveGoal()">${locked?'⚠ Менять пока нельзя':'Сохранить и пересчитать план'}</button>
- ${locked?`<div class="modal-warn">${esc(g.next_change_block_reason||'Цель можно менять не чаще раза в месяц.')}</div>`:`<div class="modal-warn">⏱ Менять цель можно не чаще раза в месяц. План пересчитается под новую цель.</div>`}`;
+ <input class="goal-input" id="goalInput" type="number" inputmode="numeric" value="${cur}" ${locked?'disabled':''} />
+ ${presets.map(p=>`<button class="preset" ${locked?'disabled':''} onclick="document.getElementById('goalInput').value=${p.v}"><span>${esc(p.t)}</span><b>${esc(p.s)}</b></button>`).join('')}
+ <button class="modal-save" id="goalSaveBtn" ${locked?'disabled':''} onclick="saveGoal()">${locked?(noEdit?'🔒 Меняет руководитель':'⚠ Менять пока нельзя'):'Сохранить и пересчитать план'}</button>
+ ${locked?`<div class="modal-warn">${esc(lockMsg)}</div>`:`<div class="modal-warn">⏱ Менять цель можно не чаще раза в месяц. План пересчитается под новую цель.</div>`}`;
  document.getElementById('modalGoal').classList.add('on');
 };
 window.saveGoal=async()=>{
