@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Статистика Прогноши · Прогноз</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="importmap">
+{ "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
+</script>
+<script src="/metrika.js"></script>
+<style>
+:root{
+  --bg:#f4f5f7; --surface:#fff; --surface-2:#f1f3f7; --line:#e6e8ee;
+  --shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);
+  --ink:#1a1f2e; --muted:#7a8194; --muted-2:#a8aebd;
+  --brand:#2b6cb0; --brand-soft:#eaf2fb; --buyer:#3b82f6; --seller:#10b981; --gold:#f59e0b;
+  --ok:#16a34a; --ok-bg:#e9f6ec; --warn:#d97706; --warn-bg:#fdf3e3; --bad:#dc2626;
+  --fox:#ea7a3b; --fox-bg:#fdefe4;
+  --r:12px; --r-sm:8px; --pill:999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;padding-bottom:40px}
+.app-header{background:var(--surface);border-bottom:1px solid var(--line);padding:0 18px;display:flex;align-items:center;gap:12px;height:54px;position:sticky;top:0;z-index:50}
+.app-header .logo{font-weight:800;color:var(--brand)}.app-header .logo span{color:var(--muted);font-weight:500}
+.app-header .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.app-header select,.app-header button{font-size:12px;font-weight:700;color:var(--brand);background:var(--brand-soft);border:none;border-radius:var(--pill);padding:8px 14px;cursor:pointer;font-family:inherit}
+.wrap{max-width:1000px;margin:18px auto;padding:0 16px}
+.loading{text-align:center;padding:60px 20px;color:var(--muted)}
+.loading .sp{display:inline-block;width:32px;height:32px;border:3px solid var(--surface-2);border-top-color:var(--fox);border-radius:50%;animation:sp 1s linear infinite;margin-bottom:12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+h1{font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.kpi .n{font-size:26px;font-weight:800;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .n.fox{color:var(--fox)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.card h2{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.bar-row .lbl{flex:0 0 40%;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row .track{flex:1;height:16px;background:var(--surface-2);border-radius:var(--pill);overflow:hidden}
+.bar-row .fill{height:100%;border-radius:var(--pill);background:var(--fox)}
+.bar-row .val{flex:0 0 auto;font-weight:700;color:var(--muted);min-width:32px;text-align:right}
+.spark{display:flex;align-items:flex-end;gap:3px;height:60px;margin-top:4px}
+.spark .b{flex:1;background:var(--brand-soft);border-radius:3px 3px 0 0;min-height:2px;position:relative}
+.spark .b:hover{background:var(--fox)}
+.spark-x{display:flex;gap:3px;margin-top:4px}
+.spark-x span{flex:1;text-align:center;font-size:9px;color:var(--muted-2);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700}
+td.num,th.num{text-align:right}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--pill)}
+.chip.web{background:var(--brand-soft);color:var(--brand)}
+.chip.max{background:#f3effe;color:#7c3aed}
+.chip.meeting{background:var(--ok-bg);color:var(--ok)}
+.chip.chat{background:var(--surface-2);color:var(--muted)}
+.q{color:var(--ink)}
+.q-meta{color:var(--muted-2);font-size:11px}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="logo">Прогноз <span>· статистика Прогноши</span></div>
+  <div class="actions">
+    <select id="period" onchange="reload()">
+      <option value="7">7 дней</option>
+      <option value="30" selected>30 дней</option>
+      <option value="90">90 дней</option>
+      <option value="365">Год</option>
+    </select>
+    <button onclick="location.href='aup.html'">← Кабинет</button>
+  </div>
+</div>
+
+<div class="wrap" id="root">
+  <div class="loading"><div class="sp"></div><div>Загружаю статистику…</div></div>
+</div>
+
+<script type="module">
+import { requireAuth } from './auth-guard.js';
+import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+
+const root = document.getElementById('root');
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts); return d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+function shortDay(d){ const p=(d||'').split('-'); return p.length===3?p[2]+'.'+p[1]:d; }
+
+// Доступ только руководству компании (АУП/админ) — совпадает с правами
+// prognoshaStatsAdmin. Остальных auth-guard вернёт в их кабинет.
+await requireAuth({ allowedRoles: ['aup', 'admin'] });
+
+window.reload = load;
+load();
+
+async function load(){
+  root.innerHTML = '<div class="loading"><div class="sp"></div><div>Загружаю статистику…</div></div>';
+  const days = Number(document.getElementById('period').value)||30;
+  try{
+    const fns = getFunctions(getApp(), 'europe-west1');
+    const fn = httpsCallable(fns, 'prognoshaStatsAdmin', { timeout: 60000 });
+    const { data } = await fn({ days });
+    render(data);
+  }catch(e){
+    const msg = (e && e.message) || String(e);
+    const denied = /permission|denied|admin/i.test(msg);
+    root.innerHTML = '<div class="empty">'+(denied
+      ? '🔒 Статистика Прогноши доступна только руководству (АУП/админ).'
+      : 'Не удалось загрузить: '+esc(msg))+'</div>';
+  }
+}
+
+function render(d){
+  if(!d || !d.ok){ root.innerHTML='<div class="empty">Нет данных.</div>'; return; }
+  const total=d.total||0;
+  if(total===0){
+    root.innerHTML = head(d) + '<div class="empty">За выбранный период обращений к Прогноше ещё не было.<br><span class="muted">Данные появятся, когда сотрудники начнут задавать вопросы в кабинете или MAX-чате.</span></div>';
+    return;
+  }
+  const maxDay = Math.max(1, ...(d.by_day||[]).map(x=>x.count));
+  const spark = (d.by_day||[]).map(x=>`<div class="b" style="height:${Math.round(x.count/maxDay*100)}%" title="${esc(x.date)}: ${x.count}"></div>`).join('');
+  const sparkX = (d.by_day||[]).map(x=>`<span>${esc(shortDay(x.date))}</span>`).join('');
+
+  const chP = d.by_channel||{web:0,max:0};
+  const chTotal = (chP.web||0)+(chP.max||0)||1;
+  const knd = d.by_kind||{chat:0,meeting:0};
+
+  const roleName={realtor:'Партнёры',mop:'Старшие',rop:'Управляющие',aup:'АУП',admin:'Админы','—':'Прочие'};
+  const roleRows = Object.entries(d.by_role||{}).sort((a,b)=>b[1]-a[1]);
+  const roleMax = Math.max(1,...roleRows.map(r=>r[1]));
+
+  const topicMax = Math.max(1,...(d.top_topics||[]).map(t=>t.count));
+
+  root.innerHTML = head(d)
+  + `<div class="kpis">
+      <div class="kpi"><div class="n fox">${total}</div><div class="l">обращений всего</div></div>
+      <div class="kpi"><div class="n">${d.unique_users||0}</div><div class="l">уникальных сотрудников</div></div>
+      <div class="kpi"><div class="n">${knd.chat||0}</div><div class="l">вопросов</div></div>
+      <div class="kpi"><div class="n">${knd.meeting||0}</div><div class="l">встреч поставлено</div></div>
+    </div>`
+  + `<div class="card" style="margin-bottom:14px">
+      <h2>📅 Обращения по дням</h2>
+      <div class="spark">${spark}</div>
+      <div class="spark-x">${sparkX}</div>
+    </div>`
+  + `<div class="grid2">
+      <div class="card">
+        <h2>📡 По каналам</h2>
+        ${barRow('Кабинет (веб)', chP.web||0, chTotal)}
+        ${barRow('MAX-чат', chP.max||0, chTotal)}
+      </div>
+      <div class="card">
+        <h2>👥 По ролям</h2>
+        ${roleRows.length? roleRows.map(([r,n])=>barRow(roleName[r]||r, n, roleMax)).join('') : '<div class="muted">—</div>'}
+      </div>
+    </div>`
+  + `<div class="grid2">
+      <div class="card">
+        <h2>💬 О чём спрашивают</h2>
+        ${(d.top_topics||[]).length? (d.top_topics).map(t=>barRow(t.label, t.count, topicMax)).join('') : '<div class="muted">Пока темы не определены (общие вопросы).</div>'}
+        <div class="q-meta" style="margin-top:8px">Тема определяется по ключевым словам вопроса; у одного вопроса может быть несколько тем.</div>
+      </div>
+      <div class="card">
+        <h2>🏆 Кто чаще пользуется</h2>
+        <table><thead><tr><th>Сотрудник</th><th>Роль</th><th class="num">Обращений</th></tr></thead><tbody>
+        ${(d.top_users||[]).map(u=>`<tr><td>${esc(u.name)}</td><td class="muted">${esc(roleName[u.role]||u.role)}</td><td class="num">${u.count}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>`
+  + `<div class="card">
+      <h2>🕑 Последние обращения</h2>
+      <table><thead><tr><th>Когда</th><th>Кто</th><th>Канал</th><th>Тип</th><th>Вопрос</th></tr></thead><tbody>
+      ${(d.recent||[]).map(r=>`<tr>
+        <td class="q-meta" style="white-space:nowrap">${esc(fmtDate(r.ts))}</td>
+        <td>${esc(r.name)}</td>
+        <td><span class="chip ${r.channel==='max'?'max':'web'}">${r.channel==='max'?'MAX':'веб'}</span></td>
+        <td><span class="chip ${r.kind==='meeting'?'meeting':'chat'}">${r.kind==='meeting'?'встреча':'вопрос'}</span></td>
+        <td class="q">${esc(r.question)}</td>
+      </tr>`).join('')}
+      </tbody></table>
+    </div>`;
+}
+
+function head(d){
+  return `<h1>🦊 Статистика Прогноши</h1>
+    <div class="sub">За последние ${d.days||30} дн. · веб-кабинет + MAX-чат вместе. Тестовые вызовы не учитываются.</div>`;
+}
+function barRow(label, val, max){
+  const pct = max>0? Math.round(val/max*100):0;
+  return `<div class="bar-row"><div class="lbl" title="${esc(label)}">${esc(label)}</div>
+    <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+    <div class="val">${val}</div></div>`;
+}
+</script>
+</body>
+</html>
