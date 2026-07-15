@@ -29,9 +29,40 @@
     trackHash: true,         // учитывать переходы между табами (#hash), если появятся
   });
 
-  // Кабинеты — по сути SPA с табами внутри одной страницы. Чтобы Метрика видела
-  // переходы между табами как отдельные «просмотры», прокидываем hit при смене
-  // таба. Хелпер безопасен: если Метрика не загрузилась — молча ничего не делает.
+  // Какой это кабинет — по имени HTML-файла (у каждого кабинета свой файл).
+  function cabName() {
+    var p = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    return ({
+      'index.html': 'partner', '': 'partner',
+      'mop.html': 'mop', 'rop.html': 'rop', 'aup.html': 'aup', 'login.html': 'login',
+    })[p] || 'other';
+  }
+  function cabLabel(cab) {
+    return ({ partner: 'Партнёр', mop: 'Старший партнёр', rop: 'Управляющий партнёр', aup: 'АУП', login: 'Вход' })[cab] || cab;
+  }
+  var CAB = cabName();
+
+  // Отчёт «по кабинетам» — параметр визита. В Метрике: Отчёты → Посетители →
+  // Параметры визитов → «Кабинет».
+  try { if (window.ym) ym(YM_COUNTER_ID, 'params', { 'Кабинет': cabLabel(CAB) }); } catch (e) {}
+
+  var TAB_LABEL = {
+    main: 'Главная', prognoz: 'Прогноз', coach: 'Тренер', clients: 'Клиенты',
+    tasks: 'Задачи и календарь', svetofor: 'Светофор',
+    team: 'Команда', groups: 'Старшие партнёры', depts: 'Отделы',
+  };
+
+  // Кабинеты — SPA с табами внутри одной страницы (URL не меняется). Шлём
+  // виртуальный «просмотр» при переключении таба, чтобы Метрика строила дерево
+  // /cab/{кабинет}/{таб} (Отчёты → Содержание → Популярное). Безопасно: если
+  // Метрика не загрузилась — молча ничего не делает.
+  window.ymTab = function (tabId) {
+    var t = tabId || 'main';
+    var url = location.origin + '/cab/' + CAB + '/' + t;
+    try { if (window.ym) ym(YM_COUNTER_ID, 'hit', url, { title: cabLabel(CAB) + ' — ' + (TAB_LABEL[t] || t) }); } catch (e) {}
+  };
+
+  // Общий хелпер (произвольный виртуальный просмотр), на будущее.
   window.ymHit = function (url) {
     try { if (window.ym) ym(YM_COUNTER_ID, 'hit', url || location.href); } catch (e) {}
   };

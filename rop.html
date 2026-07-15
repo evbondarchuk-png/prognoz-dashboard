@@ -486,6 +486,7 @@ function fcHero(fc){
 }
 
 window.showTab=(id,btn)=>{
+ if(window.ymTab)ymTab(id);
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));
  document.getElementById('screen-'+id).classList.add('on'); btn.classList.add('on');
