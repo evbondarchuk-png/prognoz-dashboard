@@ -120,7 +120,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sa
 .prog div{height:100%;background:var(--ok);border-radius:4px}
 
 .trow{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-left-width:3px;border-radius:var(--r-sm);margin-top:7px;flex-wrap:wrap}
-.trow.done{border-left-color:var(--ok)}.trow.prog{border-left-color:var(--warn)}
+.trow.done{border-left-color:var(--ok)}.trow.tactive{border-left-color:var(--warn)}
 .trow.over{border-left-color:var(--bad)}.trow.event{border-left-color:var(--brand)}
 .trow .tco{font-size:15px;flex-shrink:0}
 .trow .trc{flex:1 1 200px;min-width:0;overflow:hidden}
@@ -214,7 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sa
 .vfp-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}.vfp-top .vn{font-weight:600}.vfp-top .vv b{font-weight:800}.vfp-top .vv small{color:var(--muted)}
 .vfp-track{height:16px;background:var(--surface-2);border-radius:5px;overflow:hidden;display:flex;position:relative}
 .vfp-fact{height:100%;background:var(--ok)}
-.vfp-fc{height:100%;background:var(--gold)}
+.vfp-fc{height:100%;background:var(--buyer)}
 .vfp-plan{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55}
 /* ── таблица наград ── */
 table.aw{width:100%;border-collapse:collapse;font-size:13px}
@@ -230,7 +230,7 @@ table.aw td.aw-reason{color:var(--muted)}
 /* ── прогноз/стек на графике вала ── */
 .bstk{width:70%;max-width:42px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:6px 6px 0 0;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .seg-fact{background:linear-gradient(180deg,#22c55e,#16a34a)}
-.seg-fc{background:linear-gradient(180deg,#fbbf24,#f59e0b)}
+.seg-fc{background:linear-gradient(180deg,#60a5fa,#2b6cb0)}
 /* ── табы внутри секции ── */
 .ptab-bar{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px;margin-bottom:14px;flex-wrap:wrap}
 .ptab-btn{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);padding:6px 15px;border-radius:999px;cursor:pointer}
@@ -387,7 +387,7 @@ function sparkPlanVsFact(history, asIncome) {
   return `<div class="spark">${bars.join('')}</div>
     <div class="plegend">
       <span><i style="background:linear-gradient(180deg,#22c55e,#16a34a)"></i>факт ${asIncome ? 'дохода' : 'вала'}</span>
-      ${hasFc ? '<span><i style="background:linear-gradient(180deg,#fbbf24,#f59e0b)"></i>прогноз</span>' : ''}
+      ${hasFc ? '<span><i style="background:linear-gradient(180deg,#60a5fa,#2b6cb0)"></i>прогноз</span>' : ''}
       <span><i style="border-top:3px dashed var(--plan);height:0;background:none;width:18px"></i>план месяца${asIncome ? ' (доход)' : ''}</span>
       <span><i style="background:repeating-linear-gradient(45deg,#e5e7eb 0,#e5e7eb 4px,#f3f4f6 4px,#f3f4f6 8px);border:1px dashed var(--muted-2)"></i>будущее</span>
     </div>`;
@@ -424,8 +424,7 @@ window.histSwitchTab = function(btn, mode) {
 function sparkIr(history) {
   const months = history.cycle_months || [];
   const ir = history.ir_by_month || [];
-  const dept = history.ir_dept_by_month || null; // [{ym,ir}] — средний ИР отдела
-  const hasDept = dept && dept.some(x => x && x.ir != null);
+  const deptAvg = (history.dept_avg != null) ? history.dept_avg : null; // средний ИР отдела (сейчас)
   const today = new Date();
   const todayYm = today.toISOString().slice(0, 7);
   const bars = months.map((ym, i) => {
@@ -437,21 +436,20 @@ function sparkIr(history) {
     if (isCurrent) cls.push('cur');
     if (isFuture) cls.push('future');
     const color = v == null ? '#cbd5e1' : v >= 70 ? '#16a34a' : v >= 50 ? '#d97706' : '#dc2626';
-    const dv = dept && dept[i] ? dept[i].ir : null;
-    const deptTick = dv != null ? `<div class="ptick" style="bottom:calc(${Math.max(3, dv)}% + 24px);border-top-color:#2b6cb0;border-top-style:solid"></div>` : '';
     return `<div class="${cls.join(' ')}">
       <div class="v">${v != null ? v + '%' : '—'}</div>
-      ${deptTick}
       <div class="b" style="height:${h}%;background:linear-gradient(180deg,${color}cc,${color})"></div>
       <div class="l">${monthShort(ym)}</div>
     </div>`;
   });
-  return `<div class="spark"><div class="norm" style="top:calc(20px + (100% - 44px) * 0.3)"><span>норма 70%</span></div>${bars.join('')}</div>
+  const normLine = `<div class="norm" style="top:calc(20px + (100% - 44px) * 0.3)"><span>норма 70%</span></div>`;
+  const deptLine = deptAvg != null ? `<div class="norm" style="top:calc(20px + (100% - 44px) * ${(1 - deptAvg / 100).toFixed(3)});border-top-color:#2b6cb0"><span style="color:#2b6cb0;left:0;right:auto">ср. отдел ${deptAvg}%</span></div>` : '';
+  return `<div class="spark">${normLine}${deptLine}${bars.join('')}</div>
     <div class="plegend">
       <span><i style="background:linear-gradient(180deg,#16a34a,#16a34a)"></i>≥70% — норма</span>
       <span><i style="background:linear-gradient(180deg,#d97706,#d97706)"></i>50-70% — риск</span>
       <span><i style="background:linear-gradient(180deg,#dc2626,#dc2626)"></i>&lt;50% — провал</span>
-      ${hasDept ? '<span><i style="border-top:3px solid #2b6cb0;height:0;background:none;width:18px"></i>средний ИР отдела</span>' : ''}
+      ${deptAvg != null ? '<span><i style="border-top:3px dashed #2b6cb0;height:0;background:none;width:18px"></i>средний ИР отдела</span>' : ''}
     </div>`;
 }
 
@@ -578,7 +576,7 @@ function tasksHTML(t) {
   if (!items.length) return chips + '<div class="muted">За период задачи не ставились.</div>';
   const rows = items.slice(0, 12).map((it) => {
     const over = it.status === 'expired' || (it.due_at && it.due_at < Date.now() - 86400000);
-    const cls = it.status === 'done' ? 'done' : over ? 'over' : 'prog';
+    const cls = it.status === 'done' ? 'done' : over ? 'over' : 'tactive';
     const ico = it.author_kind === 'scenario' ? '🤖' : it.author_kind === 'manager' ? '👔' : '👤';
     const st = it.status === 'done' ? '✅ Выполнено' : over ? '⚠️ Просрочено' : '⏳ В работе';
     const stCls = it.status === 'done' ? 'st-done' : over ? 'st-over' : 'st-prog';
@@ -715,21 +713,52 @@ function statTilesHTML(h) {
     <div class="ir-tile"><div class="tk">ИР недели</div><div class="tv" style="color:${clr(irW)}">${irW != null ? irW + '%' : '—'}${deltaTxt}</div><div class="tn">за неделю</div></div>
   </div>`;
 }
-// сравнение групп внутри отдела (ИР месяца)
+// человеческая выжимка по плану/прогнозу/цели (с эмодзи)
+function planSummaryHTML(g) {
+  if (!g) return '';
+  const parts = [];
+  if (g.plan_revenue_month > 0) {
+    const pctF = g.plan_pct != null ? g.plan_pct : 0;
+    const factPct = Math.round(g.fact_revenue_month / g.plan_revenue_month * 100);
+    const clr = pctF >= 100 ? 'var(--ok)' : pctF >= 80 ? 'var(--warn)' : 'var(--bad)';
+    parts.push(`💰 <b>План вала группы</b> — ${fmtK(g.plan_revenue_month)} ₽. Уже в кассе ${fmtK(g.fact_revenue_month)} ₽ (${factPct}%), с прогнозом дойдём до ${fmtK(g.forecast_revenue_month)} ₽ — это <b style="color:${clr}">${pctF}%</b> плана.${g.gap_to_plan > 0 ? ` До плана не хватает ${fmtK(g.gap_to_plan)} ₽ — есть за что бороться.` : ' План перекрыт прогнозом 🎉'}`);
+  }
+  if (g.next_month_plan > 0) {
+    const p = Math.round(g.next_month_forecast / g.next_month_plan * 100);
+    parts.push(`📅 <b>Следующий месяц</b> — план ${fmtK(g.next_month_plan)} ₽, прогноз пока ${fmtK(g.next_month_forecast)} ₽ (${p}%). ${p < 70 ? 'Стоит заранее наполнять воронку.' : 'Задел неплохой.'}`);
+  }
+  if (g.ir_current != null) {
+    const d = g.ir_target_pct - g.ir_current;
+    parts.push(`🎯 <b>ИР группы</b> сейчас ${g.ir_current}% при норме ${g.ir_target_pct}%. ${d <= 0 ? 'Норма взята — держим! ✅' : `До нормы ${d} п.п. — подтянуть отстающих.`}`);
+  }
+  if (!parts.length) return '<div class="muted">Цели не настроены.</div>';
+  return `<div style="font-size:14px;line-height:1.6">${parts.map((p) => `<p style="margin-bottom:8px">${p}</p>`).join('')}</div>`;
+}
+// сравнение групп: лидеры + ваша группа + аутсайдеры, различия укрупнены
 function groupCompareHTML(gc) {
   if (!gc || !gc.groups || !gc.groups.length) return '';
-  let list = gc.groups;
-  if (list.length > 12) {
-    const top = list.slice(0, 12);
-    if (!top.some((g) => g.self)) { const me = list.find((g) => g.self); if (me) top.push(me); }
-    list = top;
-  }
-  const max = Math.max(...gc.groups.map((g) => g.ir), 1);
-  const rows = list.map((g) => {
-    const w = Math.max(2, Math.round(g.ir / max * 100));
-    return `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${esc(g.name)}${g.self ? ' (вы)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%"></span></span><span class="gv">${g.ir}%</span></div>`;
+  const all = gc.groups; // отсортировано по ИР убыв.
+  const meIdx = all.findIndex((g) => g.self);
+  const idxs = new Set();
+  [0, 1, 2].forEach((i) => { if (i < all.length) idxs.add(i); });
+  [meIdx - 1, meIdx, meIdx + 1].forEach((i) => { if (i >= 0 && i < all.length) idxs.add(i); });
+  [all.length - 3, all.length - 2, all.length - 1].forEach((i) => { if (i >= 0) idxs.add(i); });
+  const sel = [...idxs].sort((a, b) => a - b);
+  const min = Math.min(...all.map((g) => g.ir)), max = Math.max(...all.map((g) => g.ir));
+  const range = Math.max(1, max - min);
+  let prev = -1;
+  const rows = sel.map((i) => {
+    const g = all[i];
+    const gap = (prev >= 0 && i - prev > 1) ? '<div style="text-align:center;color:var(--muted-2);font-size:13px;line-height:1;margin:1px 0">⋮</div>' : '';
+    prev = i;
+    const w = Math.round((g.ir - min) / range * 90) + 10; // укрупнённо 10..100
+    const clr = g.self ? 'linear-gradient(90deg,#22c55e,#16a34a)' : (g.ir >= gc.avg ? 'linear-gradient(90deg,#93c5fd,#3b82f6)' : 'linear-gradient(90deg,#fca5a5,#ef4444)');
+    return gap + `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${i + 1}. ${esc(g.name)}${g.self ? ' (вы)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%;background:${clr}"></span></span><span class="gv">${g.ir}%</span></div>`;
   }).join('');
-  return `<div class="block-title" style="margin-top:2px">Сравнение групп отдела · вы <b style="color:var(--ink)">${gc.rank} из ${gc.total}</b> · средний ИР отдела ${gc.avg}%</div>${rows}`;
+  const me = all[meIdx];
+  const diff = me ? me.ir - gc.avg : 0;
+  const pos = diff >= 0 ? `<b style="color:var(--ok)">выше среднего отдела на ${diff} п.п.</b> 👍` : `<b style="color:var(--bad)">ниже среднего на ${-diff} п.п.</b>`;
+  return `<div class="block-title" style="margin-top:6px">Место в отделе <b style="color:var(--ink)">${gc.rank} из ${gc.total}</b> — ${pos} <span class="muted">(средний ИР отдела ${gc.avg}%, норма 70%)</span></div>${rows}`;
 }
 // 💵 вал по партнёрам: факт (зел.) + прогноз (оранж.) + план-метка
 function valByPartnerHTML(v) {
@@ -741,7 +770,7 @@ function valByPartnerHTML(v) {
     return `<div class="vfp"><div class="vfp-top"><span class="vn">${esc(m.name)}</span><span class="vv"><b>${fmtK(m.fact + m.forecast)}</b> ${m.plan > 0 ? `<small>/ план ${fmtK(m.plan)}</small>` : ''}</span></div>
     <div class="vfp-track"><div class="vfp-fact" style="width:${factW}%"></div><div class="vfp-fc" style="width:${fcW}%"></div>${planLeft != null ? `<div class="vfp-plan" style="left:${planLeft}%"></div>` : ''}</div></div>`;
   }).join('');
-  const legend = `<div class="plegend" style="margin-top:6px"><span><i style="background:var(--ok)"></i>факт закрыт</span><span><i style="background:var(--gold)"></i>прогноз</span><span><i style="background:var(--ink);width:2px;height:12px"></i>план</span></div>`;
+  const legend = `<div class="plegend" style="margin-top:6px"><span><i style="background:var(--ok)"></i>факт закрыт</span><span><i style="background:var(--buyer)"></i>прогноз</span><span><i style="background:var(--ink);width:2px;height:12px"></i>план</span></div>`;
   const zero = v.zero && v.zero.length ? `<div class="valzero">Пока без вала: ${v.zero.slice(0, 12).map(esc).join(', ')}${v.zero.length > 12 ? '…' : ''}</div>` : '';
   return rows + legend + zero;
 }
@@ -832,16 +861,15 @@ function renderMop(r, fromCache) {
       ${irTrendHTML(r.ir_trend)}
       ${historyTabs(r.history, { hideIncome: true })}
       <div class="block-title" style="margin-top:16px">Выжимка по плану</div>
-      ${goalsMopHTML(r.goals)}
+      ${planSummaryHTML(r.goals)}
     </div>
 
     <div class="sec">
       <div class="sec-h"><span class="n">3</span> Партнёры</div>
-      <div class="sec-sub">Вал каждого (факт + прогноз), состояние по ИР и награды за неделю.</div>
+      <div class="sec-sub">Вал каждого (факт + прогноз) и состояние по ИР.</div>
       ${ptabsHTML([
         { label: '💵 Вал', html: valByPartnerHTML(r.val_by_partner || {}) },
         { label: '📊 Состояние', html: membersTableHTML(r.state) + (r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 по ИР</div>${r.state.top.map(m => `<div class="tagline tag-ok">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : '') + (r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 по ИР</div>${r.state.lowest.map(m => `<div class="tagline tag-bad">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : '') },
-        { label: '🏅 Награды', html: awardsTableHTML(r.awards_table) + achievementsHTML(r.achievements) },
       ])}
     </div>
 
@@ -852,7 +880,17 @@ function renderMop(r, fromCache) {
     </div>` : ''}
 
     <div class="sec">
-      <div class="sec-h"><span class="n">5</span> Застряли и в риске</div>
+      <div class="sec-h"><span class="n">5</span> Награды команды</div>
+      <div class="sec-sub">Кого похвалить на планёрке — за неделю и по итогам месяца.</div>
+      <div class="block-title">🗓 Награды недели</div>
+      ${awardsTableHTML(r.awards_week)}
+      <div class="block-title" style="margin-top:16px">📆 Награды месяца</div>
+      ${awardsTableHTML(r.awards_month)}
+      ${achievementsHTML(r.achievements)}
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">6</span> Застряли и в риске</div>
       <div class="sec-sub">Кого разобрать в первую очередь — с кратким «что не так» (Группа 0 не в счёт).</div>
       <div class="block-title">Дней без движения по воронке</div>
       ${stalledDaysHTML(r.stalled)}
@@ -861,13 +899,13 @@ function renderMop(r, fromCache) {
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">6</span> Воронка группы — план и факт</div>
+      <div class="sec-h"><span class="n">7</span> Воронка группы — план и факт</div>
       <div class="sec-sub">По каждому этапу: дорожка — план, заливка — факт (сколько закрыто из плана).</div>
       ${aggFunnelBarsHTML(r.funnel || {})}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">7</span> Задачи старшего партнёра и дисциплина управления</div>
+      <div class="sec-h"><span class="n">8</span> Задачи старшего партнёра и дисциплина управления</div>
       <div class="sec-sub">Что ставилось старшему партнёру за прошлую неделю (включая управленческие из эскалаций «Н»).</div>
       ${tasksHTML(r.tasks)}
       ${r.task_lag && r.task_lag.length ? `<div class="tagline tag-bad" style="margin-top:10px">Не разбирают задачи: ${r.task_lag.map(esc).join(', ')} (0 выполнено)</div>` : ''}
