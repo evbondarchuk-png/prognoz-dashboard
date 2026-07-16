@@ -82,7 +82,7 @@ function renderPop(){
   const allOk=mb.linked&&gc.linked;
   return `
   <button class="btn integ-trigger" onclick="window.__integToggle()" title="Подключения">
-    🔗${allOk?'':'<span class="integ-dot"></span>'}
+    🔗<span class="integ-dot" style="background:var(--${allOk?'ok':'warn'})"></span>
   </button>
   <div class="integ-pop" id="integPop">
     <div class="integ-pop-h">Подключения</div>
@@ -92,7 +92,7 @@ function renderPop(){
         <div class="integ-name">Google Календарь</div>
         <div class="integ-status ${gc.linked?'ok':'off'}">${gc.linked?'Подключён':'Не подключён'}</div>
       </div>
-      <button class="integ-act ${gc.linked?'ghost':'primary'}" onclick="window.__integGCal()">
+      <button class="integ-act ${gc.linked?'ghost':'primary'}" onclick="${gc.linked?'window.__integOpenTasks()':'window.__integGCal()'}">
         ${gc.linked?'Открыть':'Подключить'}
       </button>
     </div>
@@ -150,6 +150,12 @@ window.__integToggle=()=>{
   pop.classList.toggle('on',popOpen);
 };
 window.__integGCal=()=>connectGoogleCalendar();
+window.__integOpenTasks=()=>{
+  popOpen=false;
+  const pop=document.getElementById('integPop');
+  if(pop) pop.classList.remove('on');
+  if(typeof window.goTab==='function') window.goTab('tasks');
+};
 
 /* --- Закрытие попапа --- */
 document.addEventListener('click',e=>{
