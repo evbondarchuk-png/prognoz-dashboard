@@ -512,11 +512,12 @@ import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-
 import { mountCalendar, openTaskDetail } from './calendar.js';
 import { initAssistant } from './assistant.js?v=1';
 import { initConnect, refreshConnect } from './connect.js?v=1';
+import { initNav } from './nav.js?v=1';
 
 const INCOME_SHARE=0.48;
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
 const SIDE_COLOR={buyer:'#3b82f6',seller:'#10b981'};
-const CTX={data:null,target:null,me:null};
+const CTX={data:null,target:null,me:null,role:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtShort=(n)=>{ n=Number(n)||0; const a=Math.abs(n); if(a<1000)return String(Math.round(n)); if(a<1e6)return Math.round(n/1000)+'к'; return (Math.round(n/1e5)/10).toString().replace('.',',')+' млн'; };
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
@@ -1738,6 +1739,7 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  const me=await requireAuth();
  document.getElementById('logoutBtn').onclick=logout;
  CTX.me=me.code;
+ CTX.role=me.role;
  const params=new URLSearchParams(location.search);
  const targetCode=params.get('agent')||me.code;
  CTX.target=targetCode;
@@ -1755,7 +1757,8 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  // Только в СВОЁМ кабинете (данные ИИ строятся по auth.uid, не по ?agent=).
  try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
  catch(e){ console.error('[prognosha] init failed', e); }
- try{ initConnect(CTX.me, CTX.data?.integrations); } catch(e){ console.error('[connect] init failed', e); }
+ try{ initConnect(CTX.me, CTX.data?.integrations, CTX.role); } catch(e){ console.error('[connect] init failed', e); }
+ try{ initNav({role:CTX.role, me:CTX.me, target:CTX.target, data:CTX.data}); } catch(e){ console.error('[nav] init failed', e); }
 })();
 
 /* TZ-A26: утилиты трёхчастной воронки */

@@ -12,7 +12,8 @@ let injected = false;
 let popOpen = false;
 let integData = {};
 let authCode = null;
-let onChangeCb = null; // колбэк при обновлении данных (для синхронизации с панелью в табе)
+let authRole = null;
+let onChangeCb = null;
 
 const CSS = `
 /* --- Подключения: триггер-кнопка в шапке --- */
@@ -164,9 +165,10 @@ async function fetchIntegrations(){
 }
 
 /* --- Публичный API --- */
-export function initConnect(authUserCode, initialData){
+export function initConnect(authUserCode, initialData, role){
   injectCss();
   authCode=authUserCode;
+  authRole=role||'realtor';
   integData=(initialData&&initialData.max_bot!=null)?initialData:{};
   const headerRight=document.querySelector('.app-header-right');
   if(!headerRight||document.getElementById('integPop')) return;
@@ -223,13 +225,16 @@ window.__integOpenTasks=()=>{
   popOpen=false;
   const pop=document.getElementById('integPop');
   if(pop) pop.classList.remove('on');
-  // Если уже в своём кабинете — просто переключаем таб.
-  // Иначе — переходим на index.html (auth-guard автоматически направит
-  // на mop/rop/aup по роли; в ?agent= укажем authCode для гарантии).
+  // Если уже в своём кабинете — просто переключаем таб
   if(typeof window.CTX==='object'&&String(window.CTX.me)===String(window.CTX.target)){
     if(typeof window.goTab==='function') window.goTab('tasks');
-  } else {
-    location.href='index.html?agent='+encodeURIComponent(authCode);
+    return;
+  }
+  // Иначе — переход на СВОЙ кабинет с ?agent= (auth-guard не редиректнет,
+  // т.к. файл совпадает с ролью, а ?agent= предотвращает idxRedirect)
+  if(authCode){
+    const home={realtor:'index.html',mop:'mop.html',rop:'rop.html',aup:'aup.html',admin:'aup.html'};
+    location.href=(home[authRole]||'index.html')+'?agent='+encodeURIComponent(authCode);
   }
 };
 
