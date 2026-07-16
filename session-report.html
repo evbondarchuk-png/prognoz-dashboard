@@ -242,13 +242,15 @@ table.wk-tbl th:first-child{text-align:left}
 table.wk-tbl td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
 table.wk-tbl td:first-child{text-align:left;white-space:nowrap;font-weight:600}
 table.wk-tbl tr:hover{background:var(--surface-2)}
-/* ── награды-строки ── */
-.awp{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+/* ── легенда таблицы недели ── */
+.wk-legend{font-size:12px;font-weight:700;margin-bottom:8px;display:flex;gap:6px;align-items:center}
+/* ── награды-строки (праздничный блок) ── */
+.fest{background:linear-gradient(135deg,#fffdf5,#fef6dd);border:1px solid #fcd34d;border-radius:var(--r);padding:6px 16px;box-shadow:inset 0 0 0 1px #fff8e1}
+.awp{display:flex;align-items:baseline;gap:10px;padding:11px 0;border-bottom:1px dashed #f0d98a;flex-wrap:wrap}
 .awp:last-child{border-bottom:none}
-.awp-name{font-weight:700;font-size:14px;white-space:nowrap}
-.awp-dots{flex:1;border-bottom:1px dotted var(--muted-2);min-width:16px;align-self:flex-end;margin-bottom:4px}
-.awp-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.awp-badge{font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--pill);background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;color:#92600a;white-space:nowrap}
+.awp-name{font-weight:800;font-size:14px;white-space:nowrap;color:#5b4708}
+.awp-dots{flex:1;border-bottom:1px dotted #d9c47a;min-width:16px;align-self:flex-end;margin-bottom:4px}
+.awp-combined{font-size:12px;font-weight:700;padding:5px 12px;border-radius:var(--pill);background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f5c542;color:#8a5a06}
 
 @media print{.app-header .actions,.addtask{display:none}body{background:#fff}.sec,.rep-head{box-shadow:none;break-inside:avoid}}
 </style>
@@ -673,7 +675,7 @@ function riskListHTML(risk) {
     <span class="tco">🔴</span>
     <div class="trc">
       <div class="trn">${esc(r.name)}</div>
-      <div class="trm">Н${r.level} · ${r.streak}-я неделя в риске · ИР мес ${r.ir_month != null ? r.ir_month + '%' : '—'}</div>
+      <div class="trm">Н${r.level} · ${r.streak}-я неделя в риске · ИР мес ${r.ir_month != null ? r.ir_month + '%' : '—'}${r.reason ? ` · <span class="cm">${esc(r.reason)}</span>` : ''}</div>
     </div>
     <a href="session-report.html?level=partner&code=${esc(r.code)}" target="_blank" class="trst" style="background:var(--brand-soft);color:var(--brand);text-decoration:none">📄 Отчёт</a>
   </div>`).join('');
@@ -816,23 +818,26 @@ function shortName(n) {
   if (p.length === 2) return `${p[0]} ${p[1][0]}.`;
   return p[0] || n;
 }
-// 📆 активность за неделю по одной стороне (покупатель или продавец), с нулями
-function weekSideHTML(rows, isBuyer) {
-  if (!rows || !rows.length) return '<div class="muted">Нет данных.</div>';
-  const cols = isBuyer
-    ? [['Заявки', 'flow'], ['Горячие', 'hot'], ['Задатки', 'dep'], ['Сделки', 'closed']]
-    : [['Объекты', 'obj'], ['Горячие', 'hot'], ['Задатки', 'dep'], ['Сделки', 'closed']];
-  const head = `<tr><th>Риэлтор</th>${cols.map((c) => `<th>${c[0]}</th>`).join('')}</tr>`;
-  const body = rows.map((r) => {
-    const tds = cols.map((c) => { const v = r[c[1]] || 0; return `<td style="${v > 0 ? 'font-weight:800;color:var(--ok)' : 'color:var(--muted-2)'}">${v > 0 ? '+' + v : '0'}</td>`; }).join('');
-    return `<tr><td>${esc(shortName(r.name))}</td>${tds}</tr>`;
-  }).join('');
-  return `<div style="overflow-x:auto"><table class="wk-tbl"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+// 📆 активность за неделю — ОДНА таблица: покупатель \ продавец через слэш (с нулями)
+function weekCombinedHTML(rows) {
+  if (!rows || !rows.length) return '<div class="muted">Нет данных за неделю.</div>';
+  const cell = (bv, sv) => {
+    const b = bv > 0 ? `<b style="color:var(--buyer)">+${bv}</b>` : '<span style="color:var(--muted-2)">0</span>';
+    const s = sv > 0 ? `<b style="color:var(--seller)">+${sv}</b>` : '<span style="color:var(--muted-2)">0</span>';
+    return `${b} <span style="color:var(--muted-2)">\\</span> ${s}`;
+  };
+  const body = rows.map((r) => `<tr><td>${esc(shortName(r.name))}</td><td>${cell(r.b.flow, r.s.obj)}</td><td>${cell(r.b.hot, r.s.hot)}</td><td>${cell(r.b.dep, r.s.dep)}</td><td>${cell(r.b.closed, r.s.closed)}</td></tr>`).join('');
+  return `<div class="wk-legend"><span style="color:var(--buyer)">🛒 покупатель</span> <span style="color:var(--muted-2)">\\</span> <span style="color:var(--seller)">🏠 продавец</span></div>
+    <div style="overflow-x:auto"><table class="wk-tbl"><thead><tr><th>Риэлтор</th><th>Заявки \\ Объекты</th><th>Горячие</th><th>Задатки</th><th>Сделки</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
-// 🏅 награды: одна строка на риэлтора, значки справа (только сверх-достижения)
+// 🏅 награды: строка на риэлтора, справа — ОДНА объединённая строка наград
 function awardsPeopleHTML(people) {
   if (!people || !people.length) return '<div class="muted">За период — без сверх-достижений. Награды появятся за выполненный план, топ по ИР/валу, рекорды по задаткам/объектам.</div>';
-  return people.map((p) => `<div class="awp"><span class="awp-name">${esc(p.name)}</span><span class="awp-dots"></span><span class="awp-badges">${p.badges.map((b) => `<span class="awp-badge">${b.icon} ${esc(b.label)}</span>`).join('')}</span></div>`).join('');
+  const rows = people.map((p) => {
+    const combined = p.badges.map((b) => `${b.icon} ${esc(b.label)}`).join('  ·  ');
+    return `<div class="awp"><span class="awp-name">🏅 ${esc(p.name)}</span><span class="awp-dots"></span><span class="awp-badge awp-combined">${combined}</span></div>`;
+  }).join('');
+  return `<div class="fest">${rows}</div>`;
 }
 // воронка группы: план (дорожка) + факт (заливка), полоски как на главной
 function aggFunnelBarsHTML(funnel) {
@@ -908,18 +913,14 @@ function renderMop(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">4</span> За неделю — кто что набрал</div>
-      <div class="sec-sub">По каждому риэлтору за 7 дней, раздельно покупатель / продавец. Нули видно сразу — кто без движения.</div>
-      <div class="block-title" style="color:var(--buyer)">🛒 Покупатель</div>
-      ${weekSideHTML(r.week_buyer, true)}
-      <div class="block-title" style="color:var(--seller);margin-top:18px">🏠 Продавец</div>
-      ${weekSideHTML(r.week_seller, false)}
+      <div class="sec-sub">По каждому риэлтору за 7 дней. В каждой ячейке: <b style="color:var(--buyer)">покупатель</b> \\ <b style="color:var(--seller)">продавец</b>. Нули видно сразу.</div>
+      ${weekCombinedHTML(r.week_combined)}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">5</span> Награды команды</div>
-      <div class="sec-sub">Только за сверх-достижения — кого отметить на планёрке. По одному на строку, значки справа.</div>
+      <div class="sec-h"><span class="n">5</span> 🎉 Награды команды</div>
+      <div class="sec-sub">Есть кого похвалить на планёрке! Только за сверх-достижения — риэлтор слева, награды строкой справа.</div>
       ${awardsPeopleHTML(r.awards_people)}
-      ${achievementsHTML(r.achievements)}
     </div>
 
     <div class="sec">
