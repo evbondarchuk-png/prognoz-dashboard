@@ -235,6 +235,20 @@ table.aw td.aw-reason{color:var(--muted)}
 .ptab-bar{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px;margin-bottom:14px;flex-wrap:wrap}
 .ptab-btn{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);padding:6px 15px;border-radius:999px;cursor:pointer}
 .ptab-btn.on{background:var(--surface);color:var(--brand);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+/* ── таблица активности за неделю ── */
+table.wk-tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.wk-tbl th{padding:7px 8px;background:var(--surface-2);font-weight:700;font-size:12px;text-align:center;white-space:nowrap}
+table.wk-tbl th:first-child{text-align:left}
+table.wk-tbl td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
+table.wk-tbl td:first-child{text-align:left;white-space:nowrap;font-weight:600}
+table.wk-tbl tr:hover{background:var(--surface-2)}
+/* ── награды-строки ── */
+.awp{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.awp:last-child{border-bottom:none}
+.awp-name{font-weight:700;font-size:14px;white-space:nowrap}
+.awp-dots{flex:1;border-bottom:1px dotted var(--muted-2);min-width:16px;align-self:flex-end;margin-bottom:4px}
+.awp-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.awp-badge{font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--pill);background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;color:#92600a;white-space:nowrap}
 
 @media print{.app-header .actions,.addtask{display:none}body{background:#fff}.sec,.rep-head{box-shadow:none;break-inside:avoid}}
 </style>
@@ -595,7 +609,7 @@ function chipsMopHTML(c) {
   const h = [];
   if (c.ir_pct != null) {
     const cls = c.ir_status === 'green' ? 'ok' : c.ir_status === 'red' ? 'bad' : '';
-    h.push(`<div class="chip ir ${cls}">ИР группы ${c.ir_pct}% · норма ${c.ir_norm}%</div>`);
+    h.push(`<div class="chip ir ${cls}">📊 ИР группы ${c.ir_pct}% · норма ${c.ir_norm}%</div>`);
   }
   if (c.in_risk != null && c.total != null) {
     const cls = c.in_risk === 0 ? 'up' : c.in_risk <= 2 ? 'ir' : 'down';
@@ -751,8 +765,8 @@ function groupCompareHTML(gc) {
     const g = all[i];
     const gap = (prev >= 0 && i - prev > 1) ? '<div style="text-align:center;color:var(--muted-2);font-size:13px;line-height:1;margin:1px 0">⋮</div>' : '';
     prev = i;
-    const w = Math.round((g.ir - min) / range * 90) + 10; // укрупнённо 10..100
-    const clr = g.self ? 'linear-gradient(90deg,#22c55e,#16a34a)' : (g.ir >= gc.avg ? 'linear-gradient(90deg,#93c5fd,#3b82f6)' : 'linear-gradient(90deg,#fca5a5,#ef4444)');
+    const w = Math.round((g.ir - min) / range * 88) + 12; // укрупнённо 12..100
+    const clr = g.self ? '#16a34a' : (g.ir >= 70 ? '#16a34a' : g.ir >= gc.avg ? '#2b6cb0' : g.ir >= 30 ? '#d97706' : '#dc2626');
     return gap + `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${i + 1}. ${esc(g.name)}${g.self ? ' (вы)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%;background:${clr}"></span></span><span class="gv">${g.ir}%</span></div>`;
   }).join('');
   const me = all[meIdx];
@@ -795,11 +809,30 @@ function stalledDaysHTML(list) {
     return `<div class="stall-row${m.days >= 4 ? ' hot' : ''}"><div class="sn">${esc(m.name)}${m.newbie ? ' <span class="muted" style="font-size:11px">(нов)</span>' : ''}<small>${esc(m.reason || '')}${ir}</small></div><div class="sd">${m.days} ${word}</div></div>`;
   }).join('');
 }
-// 🏅 таблица наград по риэлторам
-function awardsTableHTML(rows) {
-  if (!rows || !rows.length) return '<div class="muted">За неделю пока без ярких достижений — появятся по мере закрытий.</div>';
-  const tr = rows.map((a) => `<tr><td class="aw-badge">${esc(a.award)}</td><td class="aw-name">${esc(a.name)}</td><td class="aw-reason">${esc(a.reason)}</td></tr>`).join('');
-  return `<div style="overflow-x:auto"><table class="aw"><tbody>${tr}</tbody></table></div>`;
+// Фамилия + инициалы
+function shortName(n) {
+  const p = String(n || '').trim().split(/\s+/);
+  if (p.length >= 3) return `${p[0]} ${p[1][0]}.${p[2][0]}.`;
+  if (p.length === 2) return `${p[0]} ${p[1][0]}.`;
+  return p[0] || n;
+}
+// 📆 активность за неделю по одной стороне (покупатель или продавец), с нулями
+function weekSideHTML(rows, isBuyer) {
+  if (!rows || !rows.length) return '<div class="muted">Нет данных.</div>';
+  const cols = isBuyer
+    ? [['Заявки', 'flow'], ['Горячие', 'hot'], ['Задатки', 'dep'], ['Сделки', 'closed']]
+    : [['Объекты', 'obj'], ['Горячие', 'hot'], ['Задатки', 'dep'], ['Сделки', 'closed']];
+  const head = `<tr><th>Риэлтор</th>${cols.map((c) => `<th>${c[0]}</th>`).join('')}</tr>`;
+  const body = rows.map((r) => {
+    const tds = cols.map((c) => { const v = r[c[1]] || 0; return `<td style="${v > 0 ? 'font-weight:800;color:var(--ok)' : 'color:var(--muted-2)'}">${v > 0 ? '+' + v : '0'}</td>`; }).join('');
+    return `<tr><td>${esc(shortName(r.name))}</td>${tds}</tr>`;
+  }).join('');
+  return `<div style="overflow-x:auto"><table class="wk-tbl"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+}
+// 🏅 награды: одна строка на риэлтора, значки справа (только сверх-достижения)
+function awardsPeopleHTML(people) {
+  if (!people || !people.length) return '<div class="muted">За период — без сверх-достижений. Награды появятся за выполненный план, топ по ИР/валу, рекорды по задаткам/объектам.</div>';
+  return people.map((p) => `<div class="awp"><span class="awp-name">${esc(p.name)}</span><span class="awp-dots"></span><span class="awp-badges">${p.badges.map((b) => `<span class="awp-badge">${b.icon} ${esc(b.label)}</span>`).join('')}</span></div>`).join('');
 }
 // воронка группы: план (дорожка) + факт (заливка), полоски как на главной
 function aggFunnelBarsHTML(funnel) {
@@ -873,19 +906,19 @@ function renderMop(r, fromCache) {
       ])}
     </div>
 
-    ${r.week_activity ? `<div class="sec">
-      <div class="sec-h"><span class="n">4</span> За неделю — кто что сделал</div>
-      <div class="sec-sub">Реальные движения: заявки, объекты, горячие, задатки, сделки — с именами.</div>
-      ${weekActivityHTML(r.week_activity)}
-    </div>` : ''}
+    <div class="sec">
+      <div class="sec-h"><span class="n">4</span> За неделю — кто что набрал</div>
+      <div class="sec-sub">По каждому риэлтору за 7 дней, раздельно покупатель / продавец. Нули видно сразу — кто без движения.</div>
+      <div class="block-title" style="color:var(--buyer)">🛒 Покупатель</div>
+      ${weekSideHTML(r.week_buyer, true)}
+      <div class="block-title" style="color:var(--seller);margin-top:18px">🏠 Продавец</div>
+      ${weekSideHTML(r.week_seller, false)}
+    </div>
 
     <div class="sec">
       <div class="sec-h"><span class="n">5</span> Награды команды</div>
-      <div class="sec-sub">Кого похвалить на планёрке — за неделю и по итогам месяца.</div>
-      <div class="block-title">🗓 Награды недели</div>
-      ${awardsTableHTML(r.awards_week)}
-      <div class="block-title" style="margin-top:16px">📆 Награды месяца</div>
-      ${awardsTableHTML(r.awards_month)}
+      <div class="sec-sub">Только за сверх-достижения — кого отметить на планёрке. По одному на строку, значки справа.</div>
+      ${awardsPeopleHTML(r.awards_people)}
       ${achievementsHTML(r.achievements)}
     </div>
 
