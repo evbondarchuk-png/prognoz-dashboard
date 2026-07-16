@@ -223,12 +223,9 @@ window.__integOpenTasks=()=>{
   popOpen=false;
   const pop=document.getElementById('integPop');
   if(pop) pop.classList.remove('on');
-  // Если уже в своём кабинете — просто переключаем таб.
-  // Иначе — переходим на index.html (auth-guard автоматически направит
-  // на mop/rop/aup по роли; в ?agent= укажем authCode для гарантии).
-  if(typeof window.CTX==='object'&&String(window.CTX.me)===String(window.CTX.target)){
-    if(typeof window.goTab==='function') window.goTab('tasks');
-  } else {
+  // Всегда переход в СВОЙ кабинет с явным кодом юзера.
+  // auth-guard на index.html?agent=CODE направит на mop/rop/aup по роли.
+  if(authCode){
     location.href='index.html?agent='+encodeURIComponent(authCode);
   }
 };
