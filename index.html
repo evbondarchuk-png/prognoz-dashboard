@@ -511,7 +511,7 @@ import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 import { mountCalendar, openTaskDetail } from './calendar.js';
 import { initAssistant } from './assistant.js?v=1';
-import { initConnect, refreshConnect, getIntegrations } from './connect.js?v=1';
+import { initConnect, refreshConnect, getIntegrations, onIntegrationsChange } from './connect.js?v=1';
 
 const INCOME_SHARE=0.48;
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
@@ -1801,6 +1801,11 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
  catch(e){ console.error('[prognosha] init failed', e); }
  try{ initConnect(CTX.me); } catch(e){ console.error('[connect] init failed', e); }
+ // Синхронизация панели «Подключения» в табе «Задачи» с данными connect.js
+ try{ onIntegrationsChange(function(integ){
+   var panel=document.querySelector('.integ-panel');
+   if(panel) panel.outerHTML=renderIntegrationsPanel(integ);
+ }); }catch(e){}
 })();
 
 /* TZ-A26: утилиты трёхчастной воронки */

@@ -12,15 +12,14 @@ let injected = false;
 let popOpen = false;
 let integData = {};
 let authCode = null;
+let onChangeCb = null; // колбэк при обновлении данных (для синхронизации с панелью в табе)
 
 const CSS = `
 /* --- Подключения: триггер-кнопка в шапке --- */
-.integ-trigger{position:relative}
+.integ-trigger{position:relative;display:inline-flex;align-items:center;gap:5px}
 .integ-dot{
-  position:absolute;top:4px;right:4px;
   width:7px;height:7px;border-radius:50%;
-  background:var(--warn);pointer-events:none;
-  box-shadow:0 0 0 2px var(--surface);
+  background:var(--warn);flex-shrink:0;
   transition:background .3s;
 }
 /* --- Попап --- */
@@ -86,7 +85,7 @@ function renderPop(){
   const allOk=!!(mb.linked&&gc.linked);
   return `
   <button class="btn integ-trigger" onclick="window.__integToggle()" title="Подключения">
-    🔗<span class="integ-dot" id="integDot" style="background:var(--${allOk?'ok':'warn'})"></span>
+    🔗 <span class="integ-dot" id="integDot" style="background:var(--${allOk?'ok':'warn'})"></span> <span style="font-size:var(--fs-12)">Подключения</span>
   </button>
   <div class="integ-pop" id="integPop">
     <div class="integ-pop-h">Подключения</div>
@@ -152,10 +151,13 @@ async function fetchIntegrations(){
   if(!authCode) return;
   try{
     const fns=getFunctions(getApp(),'europe-west1');
-    const r=await httpsCallable(fns,'getDashboard',{timeout:30000})({user_code:String(authCode),view:'partner'});
+    // Без view — getDashboard авто-резолвит по роли пользователя.
+    // Бэкенд отдаёт integrations для ЛЮБОГО view (fix: убран isPartner-гейт).
+    const r=await httpsCallable(fns,'getDashboard',{timeout:30000})({user_code:String(authCode)});
     const d=r.data||{};
     integData=d.integrations||{};
     refreshUI();
+    if(onChangeCb) try{ onChangeCb(integData); }catch(e){}
   }catch(e){
     console.error('[connect] fetchIntegrations failed',e);
   }
@@ -186,6 +188,13 @@ export function getIntegrations(){
   return integData;
 }
 
+/* --- Подписаться на обновление данных интеграций --- */
+export function onIntegrationsChange(cb){
+  onChangeCb=cb;
+  // Если данные уже загружены — сразу вызываем
+  if(integData&&(integData.max_bot||integData.google_calendar)) try{ cb(integData); }catch(e){}
+}
+
 /* --- Google Calendar OAuth --- */
 async function connectGoogleCalendar(){
   const ok=confirm(
@@ -214,7 +223,14 @@ window.__integOpenTasks=()=>{
   popOpen=false;
   const pop=document.getElementById('integPop');
   if(pop) pop.classList.remove('on');
-  if(typeof window.goTab==='function') window.goTab('tasks');
+  // Если уже в своём кабинете — просто переключаем таб.
+  // Иначе — переходим на index.html (auth-guard автоматически направит
+  // на mop/rop/aup по роли; в ?agent= укажем authCode для гарантии).
+  if(typeof window.CTX==='object'&&String(window.CTX.me)===String(window.CTX.target)){
+    if(typeof window.goTab==='function') window.goTab('tasks');
+  } else {
+    location.href='index.html?agent='+encodeURIComponent(authCode);
+  }
 };
 
 /* --- Авто-обновление при возврате на вкладку (после OAuth в другой вкладке) --- */
