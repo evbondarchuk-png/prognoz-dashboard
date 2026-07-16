@@ -1274,7 +1274,7 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderDepts(
  // Прогноша — АУП-кабинет всегда «свой» (компания целиком).
  try{ if(CTX.data) initAssistant(CTX.data); }
  catch(e){ console.error('[prognosha] init failed', e); }
- try{ initConnect(CTX.me); } catch(e){ console.error('[connect] init failed', e); }
+ try{ initConnect(CTX.me, CTX.data?.integrations); } catch(e){ console.error('[connect] init failed', e); }
  try{ onIntegrationsChange(function(integ){ var panel=document.querySelector('.integ-panel'); if(panel) panel.outerHTML=renderIntegrationsPanel(integ); }); }catch(e){}
 })();
 

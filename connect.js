@@ -164,10 +164,10 @@ async function fetchIntegrations(){
 }
 
 /* --- Публичный API --- */
-export function initConnect(authUserCode){
+export function initConnect(authUserCode, initialData){
   injectCss();
   authCode=authUserCode;
-  integData={};
+  integData=(initialData&&initialData.max_bot!=null)?initialData:{};
   const headerRight=document.querySelector('.app-header-right');
   if(!headerRight||document.getElementById('integPop')) return;
   headerRight.style.position='relative';

@@ -1373,7 +1373,7 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups
  // Прогноша — только в СВОЁМ кабинете (не при просмотре чужого отдела через ?rop=).
  try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
  catch(e){ console.error('[prognosha] init failed', e); }
- try{ initConnect(CTX.me); } catch(e){ console.error('[connect] init failed', e); }
+ try{ initConnect(CTX.me, CTX.data?.integrations); } catch(e){ console.error('[connect] init failed', e); }
  try{ onIntegrationsChange(function(integ){ var panel=document.querySelector('.integ-panel'); if(panel) panel.outerHTML=renderIntegrationsPanel(integ); }); }catch(e){}
 })();
 
