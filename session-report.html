@@ -903,27 +903,22 @@ function renderMop(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">3</span> Партнёры</div>
-      <div class="sec-sub">Вал каждого (факт + прогноз) и состояние по ИР.</div>
+      <div class="sec-sub">Вал каждого (факт + прогноз), состояние по ИР и активность за неделю.</div>
       ${ptabsHTML([
         { label: '💵 Вал', html: valByPartnerHTML(r.val_by_partner || {}) },
         { label: '📊 Состояние', html: membersTableHTML(r.state) + (r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 по ИР</div>${r.state.top.map(m => `<div class="tagline tag-ok">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : '') + (r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 по ИР</div>${r.state.lowest.map(m => `<div class="tagline tag-bad">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : '') },
+        { label: '📆 Активность за неделю', html: `<div class="sec-sub" style="margin-bottom:10px">За 7 дней. В каждой ячейке: <b style="color:var(--buyer)">покупатель</b> \\ <b style="color:var(--seller)">продавец</b>. Нули видно сразу.</div>${weekCombinedHTML(r.week_combined)}` },
       ])}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">4</span> За неделю — кто что набрал</div>
-      <div class="sec-sub">По каждому риэлтору за 7 дней. В каждой ячейке: <b style="color:var(--buyer)">покупатель</b> \\ <b style="color:var(--seller)">продавец</b>. Нули видно сразу.</div>
-      ${weekCombinedHTML(r.week_combined)}
-    </div>
-
-    <div class="sec">
-      <div class="sec-h"><span class="n">5</span> 🎉 Награды команды</div>
+      <div class="sec-h"><span class="n">4</span> 🎉 Награды команды</div>
       <div class="sec-sub">Есть кого похвалить на планёрке! Только за сверх-достижения — риэлтор слева, награды строкой справа.</div>
       ${awardsPeopleHTML(r.awards_people)}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">6</span> Застряли и в риске</div>
+      <div class="sec-h"><span class="n">5</span> Застряли и в риске</div>
       <div class="sec-sub">Кого разобрать в первую очередь — с кратким «что не так» (Группа 0 не в счёт).</div>
       <div class="block-title">Дней без движения по воронке</div>
       ${stalledDaysHTML(r.stalled)}
@@ -932,13 +927,13 @@ function renderMop(r, fromCache) {
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">7</span> Воронка группы — план и факт</div>
+      <div class="sec-h"><span class="n">6</span> Воронка группы — план и факт</div>
       <div class="sec-sub">По каждому этапу: дорожка — план, заливка — факт (сколько закрыто из плана).</div>
       ${aggFunnelBarsHTML(r.funnel || {})}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">8</span> Задачи старшего партнёра и дисциплина управления</div>
+      <div class="sec-h"><span class="n">7</span> Задачи старшего партнёра и дисциплина управления</div>
       <div class="sec-sub">Что ставилось старшему партнёру за прошлую неделю (включая управленческие из эскалаций «Н»).</div>
       ${tasksHTML(r.tasks)}
       ${r.task_lag && r.task_lag.length ? `<div class="tagline tag-bad" style="margin-top:10px">Не разбирают задачи: ${r.task_lag.map(esc).join(', ')} (0 выполнено)</div>` : ''}
