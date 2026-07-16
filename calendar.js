@@ -465,14 +465,7 @@ function render(state, mount) {
   const { inbox, scheduled } = partitionTasks(state);
   const periodLbl = labelForPeriod(state);
 
-  const gbarHtml = state.gcalLinked ? `
-    <div class="gbar">
-      <div class="gmark">G</div>
-      <div class="gtext"><b>Google Calendar подключён</b><small><span class="gdot"></span>встречи показаны рядом с задачами</small></div>
-    </div>` : '';
-
   mount.innerHTML = `
-    ${gbarHtml}
     <div class="toolbar">
       <div class="views">
         <button class="vbtn ${state.view==='list'?'on':''}" data-v="list">📋 Список</button>

@@ -511,7 +511,7 @@ import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 import { mountCalendar, openTaskDetail } from './calendar.js';
 import { initAssistant } from './assistant.js?v=1';
-import { initConnect, refreshConnect, getIntegrations, onIntegrationsChange } from './connect.js?v=1';
+import { initConnect, refreshConnect } from './connect.js?v=1';
 
 const INCOME_SHARE=0.48;
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
@@ -1597,54 +1597,12 @@ window.openTaskDetailForMe = async (taskId, ev) => {
     } });
   } catch (e) { console.error('[task-detail] failed', e); }
 };
-window.connectGoogleCalendar = async (ev) => {
- const btn = ev && ev.target && ev.target.closest && ev.target.closest('button');
- // Пока приложение не прошло верификацию Google — при подключении показывается
- // экран «Google hasn't verified this app». Предупреждаем заранее, чтобы риэлтор
- // не испугался и знал, куда нажимать.
- const ok = confirm('Сейчас откроется вход в Google.\n\nGoogle может показать экран «Приложение не проверено» — это нормально, наше приложение просто ещё на проверке.\n\nНа этом экране нажми внизу «Дополнительные настройки» (Advanced) → «Перейти на страницу…» (Go to…), потом разреши доступ к календарю.\n\nПродолжить?');
- if (!ok) return;
- if (btn) { btn.disabled = true; btn.textContent = '…'; }
- try {
-  const r = await window.__call('googleCalendarAuthStart', {});
-  if (r && r.url) window.open(r.url, '_blank', 'noopener');
- } catch (e) {
-  alert('Не удалось подключить: ' + (e.message || e));
- } finally {
-  if (btn) { btn.disabled = false; btn.textContent = 'Подключить'; }
- }
-};
-// TZ-A38: панель подключений (бот MAX «Прогноша» + Google Calendar) наверху таба «Задачи».
-function renderIntegrationsPanel(integ){
- integ = integ || {};
- const mb = integ.max_bot || {};
- const gc = integ.google_calendar || {};
- const maxUrl = mb.link_url || 'https://max.ru/id450130862328_bot';
- const row = (icon, title, sub, linked, actionHtml) => `
-  <div style="flex:1;min-width:220px;display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e6e8ee;border-radius:10px">
-    <span style="font-size:20px">${icon}</span>
-    <div style="flex:1">
-      <div style="font-weight:700;font-size:13px">${title}</div>
-      <div class="muted" style="font-size:12px">${sub}</div>
-    </div>
-    ${linked ? '<span class="badge badge-ok">✓ Подключено</span>' : actionHtml}
-  </div>`;
- return `<div class="card integ-panel" style="margin-bottom:14px">
-   <div class="section-title">🔗 Подключения</div>
-   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-     ${row('🤖','Прогноша в MAX', mb.linked?'Бот присылает брифинги и задачи':'Задачи, брифинг и напоминания в мессенджере MAX', mb.linked,
-       `<a href="${esc(maxUrl)}" target="_blank" rel="noopener" class="btn-primary" style="text-decoration:none;font-size:12px;padding:8px 14px">Подключить</a>`)}
-     ${row('📅','Google Calendar', gc.linked?'Прогноша может ставить встречи':'Прогноша сможет сам ставить встречи в календарь', gc.linked,
-       `<button class="btn-primary" style="font-size:12px;padding:8px 14px" onclick="connectGoogleCalendar(event)">Подключить</button>`)}
-   </div>
- </div>`;
-}
 // TZ-A31 Фаза 1: вкладка «Задачи» = календарь из calendar.js
 function renderTasks(d){
  const root = document.getElementById('screen-tasks');
  if (root && !root.dataset.calMounted) {
    root.dataset.calMounted = '1';
-   root.innerHTML = renderIntegrationsPanel(getIntegrations()) + '<div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
+   root.innerHTML = '<div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
    (async () => {
      try {
        const db = getDatabase(getApp());
@@ -1656,9 +1614,6 @@ function renderTasks(d){
        if (mp) mp.innerHTML = '<div class="banner" style="margin:20px;padding:16px">Календарь не запустился: <code>'+esc(e.message||String(e))+'</code><br><small>Открой DevTools → Console для деталей</small></div>';
      }
    })();
- } else if (root) {
-   const panel = root.querySelector('.integ-panel');
-   if (panel) panel.outerHTML = renderIntegrationsPanel(getIntegrations());
  }
  // Бейдж количества задач у таба — считаем сами из d.tasks (для совместимости)
  const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
@@ -1801,11 +1756,6 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
  catch(e){ console.error('[prognosha] init failed', e); }
  try{ initConnect(CTX.me, CTX.data?.integrations); } catch(e){ console.error('[connect] init failed', e); }
- // Синхронизация панели «Подключения» в табе «Задачи» с данными connect.js
- try{ onIntegrationsChange(function(integ){
-   var panel=document.querySelector('.integ-panel');
-   if(panel) panel.outerHTML=renderIntegrationsPanel(integ);
- }); }catch(e){}
 })();
 
 /* TZ-A26: утилиты трёхчастной воронки */
