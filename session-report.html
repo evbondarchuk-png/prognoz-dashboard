@@ -175,6 +175,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sa
 .award-chip{font-size:12px;font-weight:800;padding:6px 12px;border-radius:var(--pill);background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;color:#92600a}
 .income-strip{margin-top:12px;background:linear-gradient(135deg,#ecfdf5,#e9f6ec);border:1px solid #bbf0cf;border-radius:var(--r-sm);padding:11px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .income-strip b{color:var(--ok);font-size:18px;font-weight:800}
+/* ── вал по партнёрам ── */
+.valrow{display:flex;align-items:center;gap:11px;margin-bottom:8px}
+.valrow .vn{width:120px;font-size:13px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.valrow .vt{flex:1;height:18px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.valrow .vf{height:100%;border-radius:5px;background:linear-gradient(90deg,#3b82f6,#2b6cb0)}
+.valrow .vv{width:64px;text-align:right;font-weight:800;font-size:13px;flex-shrink:0}
+.valzero{font-size:12px;color:var(--muted);margin-top:8px}
+/* ── активность недели ── */
+.wk{display:flex;flex-direction:column;gap:9px}
+.wk-line{display:flex;gap:9px;align-items:flex-start}
+.wk-line .wi{font-size:15px;flex-shrink:0}
+.wk-line .wt{font-size:13px}.wk-line .wt b{font-weight:800}
+.wk-names span{display:inline-block;font-size:12px;font-weight:700;background:var(--surface-2);border-radius:var(--pill);padding:2px 9px;margin:2px 4px 0 0}
+/* ── застой по дням ── */
+.stall-row{display:flex;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--line);border-left-width:3px;border-left-color:var(--warn);border-radius:var(--r-sm);margin-top:7px}
+.stall-row.hot{border-left-color:var(--bad)}
+.stall-row .sn{flex:1;font-size:13px;font-weight:600}
+.stall-row .sd{font-size:12px;font-weight:800;padding:3px 10px;border-radius:var(--pill);background:var(--warn-bg);color:var(--warn)}
+.stall-row.hot .sd{background:var(--bad-bg);color:var(--bad)}
 
 @media print{.app-header .actions,.addtask{display:none}body{background:#fff}.sec,.rep-head{box-shadow:none;break-inside:avoid}}
 </style>
@@ -519,6 +538,9 @@ function chipsMopHTML(c) {
     const sign = c.ir_delta > 0 ? '▲ +' : '▼ ';
     h.push(`<div class="chip ${cls}">${sign}${c.ir_delta} п.п. за неделю</div>`);
   }
+  if (c.rank_dept != null && c.total_dept != null) {
+    h.push(`<div class="chip">🏢 место в отделе ${c.rank_dept}/${c.total_dept}</div>`);
+  }
   return h.join('');
 }
 
@@ -610,6 +632,37 @@ function goalsMopHTML(g) {
   return rows.join('') || '<div class="muted">Цели не настроены.</div>';
 }
 
+// 💵 вал по партнёрам (группа)
+function valByPartnerHTML(v) {
+  if (!v || !v.rows || !v.rows.length) return '<div class="muted">Пока никто не дал вала за месяц.</div>';
+  const top = v.rows[0].rev || 1;
+  const rows = v.rows.map((m) => {
+    const w = Math.max(1, Math.round((m.rev || 0) / top * 100));
+    return `<div class="valrow"><div class="vn">${esc(m.name)}</div><div class="vt"><div class="vf" style="width:${w}%"></div></div><div class="vv">${fmtK(m.rev)}</div></div>`;
+  }).join('');
+  const zero = v.zero && v.zero.length ? `<div class="valzero">Пока без вала: ${v.zero.slice(0, 10).map(esc).join(', ')}${v.zero.length > 10 ? '…' : ''}</div>` : '';
+  return rows + zero;
+}
+// 📆 за неделю — кто что сделал (группа)
+function weekActivityHTML(w) {
+  if (!w) return '';
+  const names = (arr, fmt) => arr && arr.length ? `<span class="wk-names">${arr.map((x) => `<span>${esc(fmt(x))}</span>`).join('')}</span>` : '<span class="muted">—</span>';
+  const lines = [];
+  lines.push(`<div class="wk-line"><div class="wi">✅</div><div class="wt"><b>Закрыли сделки:</b> ${names(w.closed, (x) => x.name + ' ' + fmtK(x.rev))}</div></div>`);
+  lines.push(`<div class="wk-line"><div class="wi">🤝</div><div class="wt"><b>Задатки:</b> ${names(w.deposits, (x) => x.name + ' +' + Math.round(x.n))}</div></div>`);
+  lines.push(`<div class="wk-line"><div class="wi">🔥</div><div class="wt"><b>Горячие:</b> ${names(w.hot, (x) => x.name + ' +' + Math.round(x.n))}</div></div>`);
+  lines.push(`<div class="wk-line"><div class="wi">📥</div><div class="wt"><b>Поток за неделю:</b> +${w.flow || 0} · <b>объекты:</b> +${w.obj_new || 0}</div></div>`);
+  return `<div class="wk">${lines.join('')}</div>`;
+}
+// ⏸️ застряли по дням (группа)
+function stalledDaysHTML(list) {
+  if (!list || !list.length) return '<div class="tagline tag-ok">✅ Никто не застрял — все шевелятся.</div>';
+  return list.slice(0, 10).map((m) => {
+    const word = m.days === 1 ? 'день' : (m.days >= 2 && m.days <= 4 ? 'дня' : 'дней');
+    return `<div class="stall-row${m.days >= 4 ? ' hot' : ''}"><div class="sn">${esc(m.name)}${m.newbie ? ' <span class="muted" style="font-size:11px">(нов)</span>' : ''}</div><div class="sd">${m.days} ${word}</div></div>`;
+  }).join('');
+}
+
 function renderMop(r, fromCache) {
   const root = document.getElementById('root');
   const h = r.head || {};
@@ -623,25 +676,43 @@ function renderMop(r, fromCache) {
       <div class="chips">${chipsMopHTML(h.chips || {})}</div>
     </div>
 
+    ${coachCardHTML(r.coach_text)}
+
     <div class="sec">
       <div class="sec-h"><span class="n">1</span> Коротко: где сейчас группа</div>
       <p class="lede">${esc(humanizeLede(r.lede || '—'))}</p>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">2</span> Как шла группа — динамика цикла 6 мес</div>
-      <div class="sec-sub">Помесячная динамика. Переключи: <b>вал</b> группы, <b>доход</b> (вал × 0.48) или <b>ИР</b>.</div>
+      <div class="sec-h"><span class="n">2</span> ИР — тренд и динамика</div>
+      <div class="sec-sub">Свежий тренд недели + помесячная динамика группы (<b>вал</b> / <b>доход</b> / <b>ИР</b>).</div>
+      ${irTrendHTML(r.ir_trend)}
       ${historyTabs(r.history)}
     </div>
 
+    ${r.val_by_partner ? `<div class="sec">
+      <div class="sec-h"><span class="n">3</span> Вал по партнёрам</div>
+      <div class="sec-sub">Кто сколько дал вала за месяц — видно, кто тянет группу.</div>
+      ${valByPartnerHTML(r.val_by_partner)}
+    </div>` : ''}
+
+    ${r.week_activity ? `<div class="sec">
+      <div class="sec-h"><span class="n">4</span> За неделю — кто что сделал</div>
+      <div class="sec-sub">Реальные движения по воронке за 7 дней.</div>
+      ${weekActivityHTML(r.week_activity)}
+    </div>` : ''}
+
     <div class="sec">
-      <div class="sec-h"><span class="n">3</span> Кто в риске</div>
-      <div class="sec-sub">Партнёры со стрик «Н1+» (только qualified, не новички и не группа 0).</div>
+      <div class="sec-h"><span class="n">5</span> Застряли и в риске</div>
+      <div class="sec-sub">Кого разобрать и поставить встречу в первую очередь (Группа 0 не в счёт).</div>
+      <div class="block-title">Дней без движения по воронке</div>
+      ${stalledDaysHTML(r.stalled)}
+      <div class="block-title" style="margin-top:16px">В зоне риска (стрик «Н1+»)</div>
       ${riskListHTML(r.risk)}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">4</span> Состояние группы</div>
+      <div class="sec-h"><span class="n">6</span> Состояние группы</div>
       <div class="sec-sub">Поимённо — ИР месяца, план/факт/прогноз вала, статус. Клик «📄» — открыть партнёрский отчёт.</div>
       ${membersTableHTML(r.state)}
       ${r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 по ИР</div>${r.state.top.map(m => `<div class="tagline tag-ok">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : ''}
@@ -649,27 +720,29 @@ function renderMop(r, fromCache) {
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">5</span> Клиенты — воронка группы</div>
+      <div class="sec-h"><span class="n">7</span> Клиенты — воронка группы</div>
       <div class="sec-sub">Агрегированная воронка по всей группе (суммарно поток/горячие/задатки/сделки).</div>
       ${aggFunnelHTML(r.funnel || {})}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">6</span> На какие цифры выйти</div>
+      <div class="sec-h"><span class="n">8</span> На какие цифры выйти</div>
       <div class="sec-sub">План группы, разрывы и цель ИР.</div>
       ${goalsMopHTML(r.goals)}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">7</span> Достижения и зона роста (уровень группы)</div>
-      <div class="sec-sub">Что заработала группа и над чем работать.</div>
+      <div class="sec-h"><span class="n">9</span> Награды команды и зона роста</div>
+      <div class="sec-sub">Что заработали партнёры за неделю (покажите на планёрке) и над чем работать.</div>
+      ${awardChipsHTML(r.award_chips)}
       ${achievementsHTML(r.achievements)}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">8</span> Задачи старшего партнёра и дисциплина управления</div>
+      <div class="sec-h"><span class="n">10</span> Задачи старшего партнёра и дисциплина управления</div>
       <div class="sec-sub">Что ставилось старшему партнёру за прошлую неделю (включая управленческие из эскалаций «Н»).</div>
       ${tasksHTML(r.tasks)}
+      ${r.task_lag && r.task_lag.length ? `<div class="tagline tag-bad" style="margin-top:10px">Не разбирают задачи: ${r.task_lag.map(esc).join(', ')} (0 выполнено)</div>` : ''}
     </div>
   `;
 }
