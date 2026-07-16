@@ -446,7 +446,7 @@ import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.j
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 import { mountCalendar, openTaskDetail } from './calendar.js';
 import { initAssistant } from './assistant.js?v=1';
-import { initConnect } from './connect.js?v=1';
+import { initConnect, refreshConnect } from './connect.js?v=1';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
@@ -1330,7 +1330,7 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups
  // Прогноша — только в СВОЁМ кабинете (не при просмотре чужого отдела через ?rop=).
  try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
  catch(e){ console.error('[prognosha] init failed', e); }
- try{ initConnect(CTX.data?.integrations || {}); } catch(e){ console.error('[connect] init failed', e); }
+ try{ initConnect(CTX.me); } catch(e){ console.error('[connect] init failed', e); }
 })();
 
 /* TZ-A26: утилиты трёхчастной воронки */

@@ -1,7 +1,8 @@
 /**
  * connect.js — компактный блок «Подключения» в шапке кабинета.
  * Один триггер-попап: Google Calendar (OAuth) + MAX бот (ссылка).
- * Данные: d.integrations из getDashboard.
+ * Статус привязки ВСЕГДА проверяется по авторизованному пользователю (auth.uid),
+ * а не по просматриваемому кабинету.
  */
 
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
@@ -10,6 +11,7 @@ import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/
 let injected = false;
 let popOpen = false;
 let integData = {};
+let authCode = null;
 
 const CSS = `
 /* --- Подключения: триггер-кнопка в шапке --- */
@@ -19,6 +21,7 @@ const CSS = `
   width:7px;height:7px;border-radius:50%;
   background:var(--warn);pointer-events:none;
   box-shadow:0 0 0 2px var(--surface);
+  transition:background .3s;
 }
 /* --- Попап --- */
 .integ-pop{
@@ -75,14 +78,15 @@ function injectCss(){
   injected=true;
 }
 
+/* --- Рендер попапа по текущему состоянию integData --- */
 function renderPop(){
   const mb=integData.max_bot||{};
   const gc=integData.google_calendar||{};
   const maxUrl=mb.link_url||'https://max.ru/id450130862328_bot';
-  const allOk=mb.linked&&gc.linked;
+  const allOk=!!(mb.linked&&gc.linked);
   return `
   <button class="btn integ-trigger" onclick="window.__integToggle()" title="Подключения">
-    🔗<span class="integ-dot" style="background:var(--${allOk?'ok':'warn'})"></span>
+    🔗<span class="integ-dot" id="integDot" style="background:var(--${allOk?'ok':'warn'})"></span>
   </button>
   <div class="integ-pop" id="integPop">
     <div class="integ-pop-h">Подключения</div>
@@ -90,9 +94,10 @@ function renderPop(){
       <div class="integ-icon gcal">📅</div>
       <div class="integ-info">
         <div class="integ-name">Google Календарь</div>
-        <div class="integ-status ${gc.linked?'ok':'off'}">${gc.linked?'Подключён':'Не подключён'}</div>
+        <div class="integ-status" id="integGcStatus" style="color:var(--${gc.linked?'ok':'muted'})">${gc.linked?'Подключён':'Не подключён'}</div>
       </div>
-      <button class="integ-act ${gc.linked?'ghost':'primary'}" onclick="${gc.linked?'window.__integOpenTasks()':'window.__integGCal()'}">
+      <button class="integ-act ${gc.linked?'ghost':'primary'}" id="integGcBtn"
+        onclick="${gc.linked?'window.__integOpenTasks()':'window.__integGCal()'}">
         ${gc.linked?'Открыть':'Подключить'}
       </button>
     </div>
@@ -100,9 +105,9 @@ function renderPop(){
       <div class="integ-icon max">🤖</div>
       <div class="integ-info">
         <div class="integ-name">MAX Бот</div>
-        <div class="integ-status ${mb.linked?'ok':'off'}">${mb.linked?'Подключён':'Не подключён'}</div>
+        <div class="integ-status" id="integMaxStatus" style="color:var(--${mb.linked?'ok':'muted'})">${mb.linked?'Подключён':'Не подключён'}</div>
       </div>
-      <a class="integ-act ${mb.linked?'ghost':'primary'}"
+      <a class="integ-act ${mb.linked?'ghost':'primary'}" id="integMaxBtn"
          href="${esc(maxUrl)}" target="_blank" rel="noopener"
          style="text-decoration:none;display:inline-block">
         ${mb.linked?'Открыть':'Подключить'}
@@ -111,12 +116,56 @@ function renderPop(){
   </div>`;
 }
 
+/* --- Обновить только статусы и индикатор (без пересоздания DOM) --- */
+function refreshUI(){
+  const mb=integData.max_bot||{};
+  const gc=integData.google_calendar||{};
+  const maxUrl=mb.link_url||'https://max.ru/id450130862328_bot';
+  const allOk=!!(mb.linked&&gc.linked);
+
+  const dot=document.getElementById('integDot');
+  if(dot) dot.style.background=allOk?'var(--ok)':'var(--warn)';
+
+  const gcSt=document.getElementById('integGcStatus');
+  if(gcSt){ gcSt.textContent=gc.linked?'Подключён':'Не подключён'; gcSt.style.color=gc.linked?'var(--ok)':'var(--muted)'; }
+  const gcBtn=document.getElementById('integGcBtn');
+  if(gcBtn){
+    gcBtn.className='integ-act '+(gc.linked?'ghost':'primary');
+    gcBtn.textContent=gc.linked?'Открыть':'Подключить';
+    gcBtn.onclick=gc.linked?window.__integOpenTasks:window.__integGCal;
+  }
+
+  const maxSt=document.getElementById('integMaxStatus');
+  if(maxSt){ maxSt.textContent=mb.linked?'Подключён':'Не подключён'; maxSt.style.color=mb.linked?'var(--ok)':'var(--muted)'; }
+  const maxBtn=document.getElementById('integMaxBtn');
+  if(maxBtn){
+    maxBtn.className='integ-act '+(mb.linked?'ghost':'primary');
+    maxBtn.textContent=mb.linked?'Открыть':'Подключить';
+    maxBtn.href=maxUrl;
+  }
+}
+
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
+/* --- Загрузить статус привязок для авторизованного пользователя --- */
+async function fetchIntegrations(){
+  if(!authCode) return;
+  try{
+    const fns=getFunctions(getApp(),'europe-west1');
+    const r=await httpsCallable(fns,'getDashboard',{timeout:30000})({user_code:String(authCode),view:'partner'});
+    const d=r.data||{};
+    integData=d.integrations||{};
+    refreshUI();
+  }catch(e){
+    console.error('[connect] fetchIntegrations failed',e);
+  }
+}
+
 /* --- Публичный API --- */
-export function initConnect(integ){
+export function initConnect(authUserCode){
   injectCss();
-  integData=integ||{};
+  authCode=authUserCode;
+  integData={};
   const headerRight=document.querySelector('.app-header-right');
   if(!headerRight||document.getElementById('integPop')) return;
   headerRight.style.position='relative';
@@ -124,6 +173,17 @@ export function initConnect(integ){
   wrap.style.display='contents';
   wrap.innerHTML=renderPop();
   headerRight.insertBefore(wrap,headerRight.firstChild);
+  fetchIntegrations();
+}
+
+/* --- Обновить статус (вызвать после OAuth-колбэка / возврата на вкладку) --- */
+export function refreshConnect(){
+  fetchIntegrations();
+}
+
+/* --- Получить текущие данные интеграций авторизованного пользователя --- */
+export function getIntegrations(){
+  return integData;
 }
 
 /* --- Google Calendar OAuth --- */
@@ -156,6 +216,11 @@ window.__integOpenTasks=()=>{
   if(pop) pop.classList.remove('on');
   if(typeof window.goTab==='function') window.goTab('tasks');
 };
+
+/* --- Авто-обновление при возврате на вкладку (после OAuth в другой вкладке) --- */
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&authCode) fetchIntegrations();
+});
 
 /* --- Закрытие попапа --- */
 document.addEventListener('click',e=>{

@@ -511,7 +511,7 @@ import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 import { mountCalendar, openTaskDetail } from './calendar.js';
 import { initAssistant } from './assistant.js?v=1';
-import { initConnect } from './connect.js?v=1';
+import { initConnect, refreshConnect, getIntegrations } from './connect.js?v=1';
 
 const INCOME_SHARE=0.48;
 const SB={green:'sb-green',yellow:'sb-yellow',red:'sb-red',no_data:'sb-no_data'};
@@ -1644,7 +1644,7 @@ function renderTasks(d){
  const root = document.getElementById('screen-tasks');
  if (root && !root.dataset.calMounted) {
    root.dataset.calMounted = '1';
-   root.innerHTML = renderIntegrationsPanel(d.integrations) + '<div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
+   root.innerHTML = renderIntegrationsPanel(getIntegrations()) + '<div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
    (async () => {
      try {
        const db = getDatabase(getApp());
@@ -1658,7 +1658,7 @@ function renderTasks(d){
    })();
  } else if (root) {
    const panel = root.querySelector('.integ-panel');
-   if (panel) panel.outerHTML = renderIntegrationsPanel(d.integrations);
+   if (panel) panel.outerHTML = renderIntegrationsPanel(getIntegrations());
  }
  // Бейдж количества задач у таба — считаем сами из d.tasks (для совместимости)
  const cnt=(d.tasks?.counts?.today||0)+(d.tasks?.counts?.expired||0)+(d.notifications?.unread_count||0);
@@ -1800,7 +1800,7 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  // Только в СВОЁМ кабинете (данные ИИ строятся по auth.uid, не по ?agent=).
  try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
  catch(e){ console.error('[prognosha] init failed', e); }
- try{ initConnect(CTX.data?.integrations || {}); } catch(e){ console.error('[connect] init failed', e); }
+ try{ initConnect(CTX.me); } catch(e){ console.error('[connect] init failed', e); }
 })();
 
 /* TZ-A26: утилиты трёхчастной воронки */
