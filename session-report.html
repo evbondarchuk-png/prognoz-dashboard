@@ -137,6 +137,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sa
 .salary{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:10px}
 .sal-now{font-size:18px;font-weight:800;line-height:1.2}.sal-now span{font-size:11px;color:var(--muted);font-weight:600;display:block}
 
+/* ── 🦊 наставник (ИИ) ── */
+.coach-card{background:linear-gradient(135deg,#f0f7ff,#eef2fb);border:1px solid #d5e6fb;border-radius:var(--r);padding:16px 18px;margin-bottom:14px;display:flex;gap:13px;align-items:flex-start}
+.coach-card .fox{font-size:26px;flex-shrink:0;line-height:1.1}
+.coach-card .ct{font-size:14px;line-height:1.55}
+.coach-card .cl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--brand);margin-bottom:5px}
+/* ── тренд ИР (последние дни) ── */
+.trend-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface-2);border-radius:var(--r-sm);padding:12px 14px}
+.trend-spark{display:flex;align-items:flex-end;gap:5px;height:44px}
+.trend-spark .tb{width:12px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#60a5fa,#2b6cb0);min-height:3px}
+.trend-spark .tb.last{background:linear-gradient(180deg,#10b981,#0e7a4f)}
+.trend-meta{font-size:13px}.trend-meta b{font-weight:800}
+.trend-dn{color:var(--bad);font-weight:800}.trend-up{color:var(--ok);font-weight:800}.trend-fl{color:var(--muted);font-weight:800}
+/* ── активность / застой ── */
+.yday{display:flex;gap:11px;align-items:flex-start;border-radius:var(--r-sm);padding:12px 14px}
+.yday.moved{background:var(--ok-bg)}.yday.stall{background:var(--warn-bg)}
+.yday .yi{font-size:20px;flex-shrink:0}.yday .yt b{font-weight:800}
+.ydelta{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+.ydelta span{font-size:12px;font-weight:700;background:var(--surface);border:1px solid var(--line);border-radius:var(--pill);padding:3px 10px}
+/* ── воронка: полоски прогресса ── */
+.fstage{margin-bottom:11px}
+.fstage-top{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:4px}
+.fstage-top .fn{color:var(--ink);font-weight:600}
+.fstage-top .fv{font-weight:800}.fstage-top .fv small{color:var(--muted);font-weight:600}
+.ptrack{height:16px;background:var(--surface-2);border-radius:5px;position:relative;overflow:hidden}
+.pfill{height:100%;border-radius:5px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;color:#fff;font-size:10px;font-weight:800;min-width:24px}
+.pfill.done{background:var(--ok)}.pfill.mid{background:var(--warn)}.pfill.low{background:var(--bad)}.pfill.over{background:var(--seller)}
+/* ── как ты на фоне ── */
+.fon{display:flex;gap:12px;flex-wrap:wrap}
+.fon-card{flex:1;min-width:190px;background:var(--surface-2);border-radius:var(--r-sm);padding:13px 15px}
+.fon-card .fk{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.fon-card .fbig{font-size:22px;font-weight:800;margin-top:3px}
+.fon-card .fnote{font-size:12px;color:var(--muted);margin-top:2px}
+.fon-card.good{background:var(--ok-bg)}.fon-card.good .fbig{color:var(--ok)}
+/* ── награды-чипы + доход ── */
+.award-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.award-chip{font-size:12px;font-weight:800;padding:6px 12px;border-radius:var(--pill);background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;color:#92600a}
+.income-strip{margin-top:12px;background:linear-gradient(135deg,#ecfdf5,#e9f6ec);border:1px solid #bbf0cf;border-radius:var(--r-sm);padding:11px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.income-strip b{color:var(--ok);font-size:18px;font-weight:800}
+
 @media print{.app-header .actions,.addtask{display:none}body{background:#fff}.sec,.rep-head{box-shadow:none;break-inside:avoid}}
 </style>
 </head>
@@ -793,6 +832,94 @@ function renderRop(r, fromCache) {
   `;
 }
 
+// 🦊 живой текст наставника (ИИ)
+function coachCardHTML(text) {
+  if (!text) return '';
+  return `<div class="coach-card"><div class="fox">🦊</div><div><div class="cl">Наставник говорит</div><div class="ct">${esc(text)}</div></div></div>`;
+}
+// 📈 тренд ИР недели (спарклайн последних дней)
+function irTrendHTML(t) {
+  if (!t || !t.points || t.points.length < 3) return '';
+  const vals = t.points;
+  const max = Math.max(...vals.filter(x => x != null), 1);
+  const bars = vals.map((v, i) => {
+    const last = i === vals.length - 1;
+    const h = v != null ? Math.max(6, Math.round(v / max * 100)) : 3;
+    return `<div class="tb${last ? ' last' : ''}" style="height:${h}%"${v != null ? ` title="${v}%"` : ''}></div>`;
+  }).join('');
+  const dirTxt = t.dir === 'up' ? '<span class="trend-up">↗ растёт</span>' : t.dir === 'down' ? '<span class="trend-dn">↘ просел</span>' : '<span class="trend-fl">→ ровно</span>';
+  return `<div class="trend-row" style="margin-bottom:16px">
+    <div class="trend-spark">${bars}</div>
+    <div class="trend-meta"><div>📈 <b>Тренд ИР недели</b></div><div class="muted">последние ${vals.length} дней · сейчас <b>${t.now != null ? t.now + '%' : '—'}</b> · ${dirTxt}</div></div>
+  </div>`;
+}
+// 📥 активность / застой
+function activityHTML(a) {
+  if (!a) return '';
+  if (a.moved_yesterday) {
+    const d = a.deltas || {};
+    const parts = [];
+    if (d.flow > 0.01) parts.push(`📥 поток +${Math.round(d.flow)}`);
+    if (d.objNew > 0.01) parts.push(`🏢 объекты +${Math.round(d.objNew)}`);
+    if (d.hot > 0.01) parts.push(`🔥 горячие +${Math.round(d.hot)}`);
+    if (d.dep > 0.01) parts.push(`🤝 задатки +${Math.round(d.dep)}`);
+    if (d.closed > 0.01) parts.push(`✅ сделки +${Math.round(d.closed)}`);
+    const chips = parts.length ? `<div class="ydelta">${parts.map(p => `<span>${p}</span>`).join('')}</div>` : '';
+    return `<div class="yday moved"><div class="yi">📥</div><div class="yt"><div><b>Вчера была работа</b> — воронка сдвинулась:</div>${chips}</div></div>
+      <div class="muted" style="font-size:12px;margin-top:8px">Последняя активность — <b>вчера</b>. Простоев по воронке нет.</div>`;
+  }
+  const nDays = a.stall_days || 0;
+  const word = nDays === 1 ? 'день' : (nDays >= 2 && nDays <= 4 ? 'дня' : 'дней');
+  return `<div class="yday stall"><div class="yi">⏸️</div><div class="yt"><div><b>Вчера без движения по воронке</b></div><div class="muted" style="font-size:13px;margin-top:4px">Последняя активность — <b>${nDays} ${word} назад</b>. Стоит разобрать, что тормозит.</div></div></div>`;
+}
+// воронка месяца с полосками прогресса (факт / план)
+function funnelProgressHTML(funnel) {
+  if (!funnel || (!funnel.buyer && !funnel.seller)) return '<div class="muted">Нет данных воронки.</div>';
+  const planB = (funnel.plan && funnel.plan.buyer) || {};
+  const planS = (funnel.plan && funnel.plan.seller) || {};
+  const stage = (label, fact, plan) => {
+    fact = Number(fact) || 0; plan = Number(plan) || 0;
+    const pct = plan > 0 ? Math.round(fact / plan * 100) : null;
+    let cls = 'low', w = 6, txt = '';
+    if (pct == null) { cls = 'mid'; w = 100; txt = ''; }
+    else if (pct >= 100) { cls = pct > 110 ? 'over' : 'done'; w = 100; txt = pct + '%'; }
+    else if (pct >= 60) { cls = 'mid'; w = pct; txt = pct + '%'; }
+    else { cls = 'low'; w = Math.max(6, pct); txt = pct + '%'; }
+    const planTxt = plan > 0 ? ` <small>/ ${Math.round(plan * 10) / 10}</small>` : '';
+    return `<div class="fstage"><div class="fstage-top"><span class="fn">${label}</span><span class="fv">${Math.round(fact * 10) / 10}${planTxt}</span></div><div class="ptrack"><div class="pfill ${cls}" style="width:${w}%">${txt}</div></div></div>`;
+  };
+  const buyer = funnel.buyer ? `<div><div class="side-h" style="color:var(--buyer)">🛒 Покупатель</div>
+    ${stage('Поток', funnel.buyer.flow, planB.flow)}${stage('Горячие', funnel.buyer.hot, planB.hot)}${stage('Задатки', funnel.buyer.deposits, planB.deposits)}${stage('Сделки', funnel.buyer.deals, planB.deals)}</div>` : '';
+  const seller = funnel.seller ? `<div><div class="side-h" style="color:var(--seller)">🏠 Продавец</div>
+    ${stage('Объекты', funnel.seller.objects, planS.objects)}${stage('Горячие', funnel.seller.hot, planS.hot)}${stage('Задатки', funnel.seller.deposits, planS.deposits)}${stage('Сделки', funnel.seller.deals, planS.deals)}</div>` : '';
+  return `<div class="two">${buyer}${seller}</div>`;
+}
+// 📊 как ты на фоне
+function peersHTML(p) {
+  if (!p) return '';
+  const cards = [];
+  if (p.rank_group && p.group_size > 1) {
+    const medal = p.rank_group === 1 ? ' 🥇' : p.rank_group <= 3 ? ' 👍' : '';
+    const good = p.rank_group <= Math.ceil(p.group_size / 2);
+    cards.push(`<div class="fon-card${good ? ' good' : ''}"><div class="fk">Место в группе по ИР</div><div class="fbig">${p.rank_group}-й из ${p.group_size}${medal}</div><div class="fnote">${good ? 'выше среднего по группе' : 'есть куда расти'}</div></div>`);
+  }
+  if (p.dept_ir_month != null && p.ir_month != null) {
+    const good = p.ir_month >= p.dept_ir_month;
+    const diff = p.ir_month - p.dept_ir_month;
+    cards.push(`<div class="fon-card${good ? ' good' : ''}"><div class="fk">Твой ИР месяца vs отдел</div><div class="fbig">${p.ir_month}% vs ${p.dept_ir_month}%</div><div class="fnote">${good ? `выше отдела на ${diff} п.п. 👍` : `ниже отдела на ${-diff} п.п.`}</div></div>`);
+  }
+  if (!cards.length) return '<div class="muted">Недостаточно данных для сравнения.</div>';
+  return `<div class="fon">${cards.join('')}</div>`;
+}
+function awardChipsHTML(chips) {
+  if (!chips || !chips.length) return '';
+  return `<div class="award-chips">${chips.map(c => `<span class="award-chip">${esc(c)}</span>`).join('')}</div>`;
+}
+function incomeStripHTML(income) {
+  if (!income || income <= 0) return '';
+  return `<div class="income-strip"><span>💵 <b style="color:var(--ink);font-size:14px;font-weight:700">≈ твой доход к концу месяца</b></span><b>${fmtK(income)} ₽</b></div>`;
+}
+
 function render(r, fromCache) {
   if (r.level === 'rop') return renderRop(r, fromCache);
   if (r.level === 'mop') return renderMop(r, fromCache);
@@ -808,14 +935,17 @@ function render(r, fromCache) {
       <div class="chips">${chipsHTML(h.chips || {})}</div>
     </div>
 
+    ${coachCardHTML(r.coach_text)}
+
     <div class="sec">
       <div class="sec-h"><span class="n">1</span> Коротко: где он сейчас</div>
       <p class="lede">${esc(humanizeLede(r.lede || '—'))}</p>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">2</span> Как шёл — динамика цикла 6 мес</div>
-      <div class="sec-sub">Помесячная динамика. Переключи: <b>вал</b>, <b>доход</b> (вал × 0.48) или <b>ИР</b>.</div>
+      <div class="sec-h"><span class="n">2</span> ИР — тренд и динамика</div>
+      <div class="sec-sub">Свежий тренд недели по дням + помесячная динамика цикла (<b>вал</b> / <b>доход</b> / <b>ИР</b>).</div>
+      ${irTrendHTML(r.ir_trend)}
       ${historyTabs(r.history)}
       ${r.risk && r.risk.streak >= 1 ? `<div class="block-title" style="margin-top:16px">Страйки риска «Н»</div>${nstepHTML(r.risk)}<div class="note">Одна хорошая неделя (выход из риска по правилу) — страйк снимается, счётчик обнуляется.</div>` : ''}
     </div>
@@ -826,36 +956,49 @@ function render(r, fromCache) {
       ${compsHTML(r.ir_breakdown, r.head)}
     </div>
 
+    ${r.activity ? `<div class="sec">
+      <div class="sec-h"><span class="n">4</span> Активность</div>
+      <div class="sec-sub">Что двигалось вчера и сколько дней назад была последняя активность по воронке.</div>
+      ${activityHTML(r.activity)}
+    </div>` : ''}
+
     <div class="sec">
-      <div class="sec-h"><span class="n">4</span> Диагностика по справочнику отклонений</div>
+      <div class="sec-h"><span class="n">5</span> Воронка месяца — факт / план</div>
+      <div class="sec-sub">По каждому этапу — сколько закрыто из плана. Покупатель и продавец раздельно.</div>
+      ${funnelProgressHTML(r.funnel)}
+    </div>
+
+    ${r.peers ? `<div class="sec">
+      <div class="sec-h"><span class="n">6</span> Как ты на фоне</div>
+      <div class="sec-sub">Сравнение с риэлторами своей группы и средним по отделу.</div>
+      ${peersHTML(r.peers)}
+    </div>` : ''}
+
+    <div class="sec">
+      <div class="sec-h"><span class="n">7</span> Диагностика по справочнику отклонений</div>
       <div class="sec-sub">Что система видит как отклонение (бит = 0). Каждое порождает задачу с инструментом.</div>
       ${diagnosticHTML(r.diagnostic)}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">5</span> Что с клиентами — воронка месяца</div>
-      <div class="sec-sub">Факт по этапам vs план месяца, конверсии этап→этап.</div>
-      ${funnelHTML(r.funnel)}
-    </div>
-
-    <div class="sec">
-      <div class="sec-h"><span class="n">6</span> На какие цифры выйти</div>
-      <div class="sec-sub">Ориентиры до конца месяца и цель ИР.</div>
+      <div class="sec-h"><span class="n">8</span> На какие цифры выйти</div>
+      <div class="sec-sub">Ориентиры до конца месяца, цель ИР и твой доход.</div>
       ${goalsHTML(r.goals)}
+      ${incomeStripHTML(r.income_forecast)}
       ${salaryGoalHTML(r.salary_goal)}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">7</span> Достижения и зона роста</div>
-      <div class="sec-sub">Из справочника «молодец» — за что похвалить и что почти заработано.</div>
+      <div class="sec-h"><span class="n">9</span> Награды и зона роста</div>
+      <div class="sec-sub">За что похвалить и что почти заработано.</div>
+      ${awardChipsHTML(r.award_chips)}
       ${achievementsHTML(r.achievements)}
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="n">8</span> Задачи периода — что ставили и как выполнил</div>
+      <div class="sec-h"><span class="n">10</span> Задачи периода — что ставили и как выполнил</div>
       <div class="sec-sub">Что система и менеджер поставили за прошлую неделю.</div>
       ${tasksHTML(r.tasks)}
-      <div class="note" style="margin-top:14px">📈 Плашка «эффект» (вырос ли показатель после задачи) — фаза 2, появится после накопления истории состояний.</div>
     </div>
   `;
 }
