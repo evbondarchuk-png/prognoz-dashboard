@@ -115,8 +115,8 @@ async function resolveChain(ctx){
   if(!target){console.warn('[nav] resolveChain: нет ctx.data.user');return [];}
 
   const targetCode=String(ctx.target);
-  const ropCode=target.ropCode?String(target.ropCode):null;
-  const mopCode=target.mopCode?String(target.mopCode):null;
+  const ropCode=target.rop_code?String(target.rop_code):null;
+  const mopCode=target.mop_code?String(target.mop_code):null;
   console.log('[nav] resolveChain: targetCode=',targetCode,'ropCode=',ropCode,'mopCode=',mopCode,'role=',target.role,'name=',target.name);
 
   // Определяем имена: сначала из ctx.data.user, иначе — чтение из Firebase
