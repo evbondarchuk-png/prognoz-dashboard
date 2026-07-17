@@ -95,47 +95,122 @@ function injectCss(){
 }
 
 /* --- Breadcrumbs --- */
-function buildBreadcrumbs(ctx){
+
+/**
+ * Резолвим полную цепочку иерархии для просматриваемого пользователя.
+ * Читает /users/{targetCode} и, при наличии mopCode/ropCode, их профили.
+ * Возвращает массив [{label, name, code, file, param}, ...] от корня к листу.
+ */
+async function resolveChain(targetCode){
+  const db=getDatabase(getApp());
+  const LEVEL={
+    aup :{label:'Компания',file:'aup.html',param:'aup'},
+    rop :{label:'РОП',      file:'rop.html', param:'rop'},
+    mop :{label:'МОП',      file:'mop.html', param:'mop'},
+    realtor:{label:'Партнёр',file:'index.html',param:'agent'},
+  };
+
+  // 1. Читаем целевого пользователя
+  let target;
+  try{const s=await get(ref(db,'users/'+targetCode));target=s.exists()?s.val():null;}catch(e){target=null;}
+  if(!target) return [];
+
+  const chain=[];
+  const ropCode=target.ropCode||null;
+  const mopCode=target.mopCode||null;
+
+  // 2. РОП (если есть ropCode и это не он сам)
+  if(ropCode&&String(ropCode)!==String(targetCode)){
+    try{
+      const s=await get(ref(db,'users/'+ropCode));
+      if(s.exists()){
+        const u=s.val();
+        chain.push({...LEVEL.rop,name:u.short_name||u.name||'',code:String(ropCode)});
+      }
+    }catch(e){}
+  }
+
+  // 3. МОП (если есть mopCode и это не он сам)
+  if(mopCode&&String(mopCode)!==String(targetCode)){
+    try{
+      const s=await get(ref(db,'users/'+mopCode));
+      if(s.exists()){
+        const u=s.val();
+        chain.push({...LEVEL.mop,name:u.short_name||u.name||'',code:String(mopCode)});
+      }
+    }catch(e){}
+  }
+
+  // 4. Сам просматриваемый
+  chain.push({
+    ...LEVEL[target.role]||LEVEL.realtor,
+    name:target.short_name||target.name||'',
+    code:String(targetCode),
+  });
+
+  return chain;
+}
+
+/**
+ * Строим HTML breadcrumbs из контекста и (опционально) цепочки.
+ * Если chain передан — используем его, иначе fallback на старую логику.
+ */
+function buildBreadcrumbs(ctx,chain){
   if(!ctx) return '';
-  const crumbs=[];
   const level=LEVEL_LABEL[ctx.role]||'Кабинет';
-  // Определяем, смотрим ли мы чужой кабинет
   const viewingSelf=!ctx.target||String(ctx.me)===String(ctx.target);
   if(viewingSelf){
-    // Свой кабинет — только уровень
     return `<span class="nav-current">${level}</span>`;
   }
-  // Смотрим чужой — строим цепочку
-  // level (свой) → кликабельная ссылка на свой кабинет
   const home={realtor:'index.html',mop:'mop.html',rop:'rop.html',aup:'aup.html',admin:'aup.html'};
   const myHome=home[ctx.role]||'index.html';
-  crumbs.push(`<a href="${myHome}">${level}</a>`);
-  // Получаем имя просматриваемого из data.user
-  const viewedUser=ctx.data?.user;
-  const viewedName=viewedUser?.short_name||viewedUser?.name||'';
-  // Определяем уровень просматриваемого
-  const params=new URLSearchParams(location.search);
-  if(ctx.role==='aup'){
-    if(params.has('rop')){
-      crumbs.push(`<a href="rop.html?rop=${params.get('rop')}">Отдел: ${esc(viewedName)}</a>`);
-    } else if(params.has('mop')){
-      // Нужно найти имя РОПа — пока просто «Группа: Имя»
-      crumbs.push(`<span class="nav-current">Группа: ${esc(viewedName)}</span>`);
-    } else if(params.has('agent')){
-      crumbs.push(`<span class="nav-current">${esc(viewedName)}</span>`);
-    }
-  } else if(ctx.role==='rop'){
-    if(params.has('mop')){
-      crumbs.push(`<a href="mop.html?mop=${params.get('mop')}">Группа: ${esc(viewedName)}</a>`);
-    } else if(params.has('agent')){
-      crumbs.push(`<span class="nav-current">${esc(viewedName)}</span>`);
-    }
-  } else if(ctx.role==='mop'){
-    if(params.has('agent')){
-      crumbs.push(`<span class="nav-current">${esc(viewedName)}</span>`);
+  const crumbs=[`<a href="${myHome}">${level}</a>`];
+
+  if(chain&&chain.length){
+    chain.forEach((item,i)=>{
+      const isLast=i===chain.length-1;
+      const href=`${item.file}?${item.param}=${encodeURIComponent(item.code)}`;
+      const label=item.name?`${item.label} ${esc(item.name)}`:item.label;
+      if(isLast){
+        crumbs.push(`<a href="${href}" class="nav-current">${label}</a>`);
+      }else{
+        crumbs.push(`<a href="${href}">${label}</a>`);
+      }
+    });
+  }else{
+    // Fallback — старая логика (если resolveChain не сработал)
+    const viewedUser=ctx.data?.user;
+    const viewedName=viewedUser?.short_name||viewedUser?.name||'';
+    const params=new URLSearchParams(location.search);
+    if(ctx.role==='aup'){
+      if(params.has('rop')) crumbs.push(`<a href="rop.html?rop=${params.get('rop')}">РОП ${esc(viewedName)}</a>`);
+      else if(params.has('mop')) crumbs.push(`<a href="mop.html?mop=${params.get('mop')}">МОП ${esc(viewedName)}</a>`);
+      else if(params.has('agent')) crumbs.push(`<span class="nav-current">${esc(viewedName)}</span>`);
+    }else if(ctx.role==='rop'){
+      if(params.has('mop')) crumbs.push(`<a href="mop.html?mop=${params.get('mop')}">МОП ${esc(viewedName)}</a>`);
+      else if(params.has('agent')) crumbs.push(`<span class="nav-current">${esc(viewedName)}</span>`);
+    }else if(ctx.role==='mop'){
+      if(params.has('agent')) crumbs.push(`<span class="nav-current">${esc(viewedName)}</span>`);
     }
   }
   return crumbs.join('<span class="nav-sep">›</span>');
+}
+
+/**
+ * Async-обёртка: резолвим цепочку, потом обновляем DOM.
+ * Вызывается из initNav() после render().
+ */
+async function renderBreadcrumbsAsync(ctx){
+  if(!ctx) return;
+  const viewingSelf=!ctx.target||String(ctx.me)===String(ctx.target);
+  let chain=null;
+  if(!viewingSelf&&ctx.target){
+    chain=await resolveChain(ctx.target);
+  }
+  const crumbsSpan=document.querySelector('.logo .nav-crumbs');
+  if(crumbsSpan){
+    crumbsSpan.innerHTML=buildBreadcrumbs(ctx,chain);
+  }
 }
 
 /* --- Меню команд --- */
@@ -155,7 +230,7 @@ function buildTeamMenu(ctx){
   }).join('');
   if(!items) return '';
   return `<div class="nav-team-trigger">
-    <button class="nav-team-btn" onclick="window.__navTeamToggle()" title="Моя команда">👥 ▾</button>
+    <button class="nav-team-btn" onclick="window.__navTeamToggle()" >👥 Моя команда ▾</button>
     <div class="nav-team-drop" id="navTeamDrop">${items}</div>
   </div>`;
 }
@@ -163,7 +238,7 @@ function buildTeamMenu(ctx){
 /* --- Поиск --- */
 function buildSearch(){
   return `<div class="nav-search-trigger">
-    <button class="nav-search-btn" onclick="window.__navSearchToggle()" title="Найти сотрудника">🔍</button>
+    <button class="nav-search-btn" onclick="window.__navSearchToggle()" >🔍 Найти сотрудника</button>
     <div class="nav-search-box" id="navSearchBox">
       <input class="nav-search-input" id="navSearchInput" placeholder="Имя или код..." autocomplete="off">
       <div class="nav-search-results" id="navSearchResults"></div>
@@ -219,6 +294,7 @@ export function initNav(ctx){
   injectCss();
   navCtx=ctx;
   render(ctx);
+  renderBreadcrumbsAsync(ctx); // асинхронно подтягиваем полную цепочку
   // Обработчики для поиска
   const input=document.getElementById('navSearchInput');
   if(input){
