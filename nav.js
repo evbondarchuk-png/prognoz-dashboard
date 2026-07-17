@@ -5,7 +5,7 @@
  */
 
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-import { getDatabase, ref, orderByChild, startAt, endAt, get, query } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 
 let injected = false;
 let navCtx = null;
@@ -101,7 +101,7 @@ function injectCss(){
  * Читает /users/{targetCode} и, при наличии mopCode/ropCode, их профили.
  * Возвращает массив [{label, name, code, file, param}, ...] от корня к листу.
  */
-async function resolveChain(targetCode){
+async function resolveChain(ctx){
   const db=getDatabase(getApp());
   const LEVEL={
     aup :{label:'Компания',file:'aup.html',param:'aup'},
@@ -110,42 +110,32 @@ async function resolveChain(targetCode){
     realtor:{label:'Партнёр',file:'index.html',param:'agent'},
   };
 
-  // 1. Читаем целевого пользователя
-  let target;
-  try{const s=await get(ref(db,'users/'+targetCode));target=s.exists()?s.val():null;}catch(e){target=null;}
+  // target user уже есть в ctx.data.user — не читаем повторно
+  const target=ctx.data?.user;
   if(!target) return [];
 
-  const chain=[];
+  const targetCode=String(ctx.target);
   const ropCode=target.ropCode||null;
   const mopCode=target.mopCode||null;
 
-  // 2. РОП (если есть ropCode и это не он сам)
-  if(ropCode&&String(ropCode)!==String(targetCode)){
-    try{
-      const s=await get(ref(db,'users/'+ropCode));
-      if(s.exists()){
-        const u=s.val();
-        chain.push({...LEVEL.rop,name:u.short_name||u.name||'',code:String(ropCode)});
-      }
-    }catch(e){}
-  }
+  // РОП + МОП параллельно (независимы друг от друга)
+  const pRop=(ropCode&&String(ropCode)!==targetCode)?get(ref(db,'users/'+ropCode)):Promise.resolve(null);
+  const pMop=(mopCode&&String(mopCode)!==targetCode)?get(ref(db,'users/'+mopCode)):Promise.resolve(null);
+  const [ropSnap,mopSnap]=await Promise.all([pRop,pMop]);
 
-  // 3. МОП (если есть mopCode и это не он сам)
-  if(mopCode&&String(mopCode)!==String(targetCode)){
-    try{
-      const s=await get(ref(db,'users/'+mopCode));
-      if(s.exists()){
-        const u=s.val();
-        chain.push({...LEVEL.mop,name:u.short_name||u.name||'',code:String(mopCode)});
-      }
-    }catch(e){}
+  const chain=[];
+  if(ropSnap&&ropSnap.exists()){
+    const u=ropSnap.val();
+    chain.push({...LEVEL.rop,name:shorten(u.name),code:String(ropCode)});
   }
-
-  // 4. Сам просматриваемый
+  if(mopSnap&&mopSnap.exists()){
+    const u=mopSnap.val();
+    chain.push({...LEVEL.mop,name:shorten(u.name),code:String(mopCode)});
+  }
   chain.push({
     ...LEVEL[target.role]||LEVEL.realtor,
-    name:target.short_name||target.name||'',
-    code:String(targetCode),
+    name:shorten(target.name),
+    code:targetCode,
   });
 
   return chain;
@@ -180,7 +170,7 @@ function buildBreadcrumbs(ctx,chain){
   }else{
     // Fallback — старая логика (если resolveChain не сработал)
     const viewedUser=ctx.data?.user;
-    const viewedName=viewedUser?.short_name||viewedUser?.name||'';
+    const viewedName=shorten(viewedUser?.name||'');
     const params=new URLSearchParams(location.search);
     if(ctx.role==='aup'){
       if(params.has('rop')) crumbs.push(`<a href="rop.html?rop=${params.get('rop')}">РОП ${esc(viewedName)}</a>`);
@@ -205,7 +195,7 @@ async function renderBreadcrumbsAsync(ctx){
   const viewingSelf=!ctx.target||String(ctx.me)===String(ctx.target);
   let chain=null;
   if(!viewingSelf&&ctx.target){
-    chain=await resolveChain(ctx.target);
+    chain=await resolveChain(ctx);
   }
   const crumbsSpan=document.querySelector('.logo .nav-crumbs');
   if(crumbsSpan){
@@ -221,7 +211,7 @@ function buildTeamMenu(ctx){
   // Фильтруем: МОП видит партнёров, РОП видит МОПов, АУП видит РОПов
   const drillParam={mop:'agent',rop:'mop',aup:'rop',admin:'rop'}[ctx.role]||'agent';
   const drillFile={mop:'index.html',rop:'mop.html',aup:'rop.html',admin:'rop.html'}[ctx.role]||'index.html';
-  const items=members.filter(m=>!m.is_self).map(m=>{
+  const items=members.filter(m=>!m.is_self).sort((a,b)=>(a.short_name||a.name||'').localeCompare(b.short_name||b.name||'','ru')).map(m=>{
     const initials=(m.short_name||m.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2);
     return `<a class="nav-team-item" href="${drillFile}?${drillParam}=${encodeURIComponent(m.code)}">
       <div class="nav-team-avatar">${esc(initials)}</div>
@@ -236,7 +226,8 @@ function buildTeamMenu(ctx){
 }
 
 /* --- Поиск --- */
-function buildSearch(){
+function buildSearch(ctx){
+  if(!ctx||ctx.role==='realtor') return '';
   return `<div class="nav-search-trigger">
     <button class="nav-search-btn" onclick="window.__navSearchToggle()" >🔍 Найти сотрудника</button>
     <div class="nav-search-box" id="navSearchBox">
@@ -276,7 +267,7 @@ function render(ctx){
     const toolsDiv=document.createElement('div');
     toolsDiv.id='navTools';
     toolsDiv.className='nav-tools';
-    toolsDiv.innerHTML=buildTeamMenu(ctx)+buildSearch();
+    toolsDiv.innerHTML=buildTeamMenu(ctx)+buildSearch(ctx);
     // Вставляем перед logoutBtn (или первым элементом)
     const logoutBtn=document.getElementById('logoutBtn');
     if(logoutBtn){
@@ -288,6 +279,14 @@ function render(ctx){
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+/** Сокращаем ФИО до «Фамилия И.О.» — только для breadcrumbs */
+function shorten(name){
+  if(!name) return '';
+  const p=name.trim().split(/\s+/);
+  if(p.length<=1) return name;
+  return p[0]+' '+p.slice(1).map(w=>w[0]+'.').join('');
+}
 
 /* --- Публичный API --- */
 export function initNav(ctx){
@@ -310,48 +309,57 @@ export function initNav(ctx){
   }
 }
 
-/* --- Поиск по /users --- */
+/* --- Поиск по сотрудникам --- */
 async function doSearch(q){
   const resultsEl=document.getElementById('navSearchResults');
   if(!resultsEl) return;
   resultsEl.innerHTML='<div class="nav-search-empty">Ищу…</div>';
-  try{
-    const db=getDatabase(getApp());
-    // Ищем по name (префиксный) и по code (точный)
-    const nameQ=query(ref(db,'users'),orderByChild('name'),startAt(q),endAt(q+''));
-    const snap=await get(nameQ);
-    const results=[];
-    snap.forEach(child=>{
-      const u=child.val();
-      results.push({code:child.key,name:u.name||'',role:u.role||''});
-    });
-    // Если введён код — добавляем точное совпадение
-    if(/^\d+$/.test(q)){
-      try{
-        const codeSnap=await get(ref(db,'users/'+q));
-        if(codeSnap.exists()&&!results.find(r=>r.code===q)){
-          const u=codeSnap.val();
-          results.push({code:q,name:u.name||'',role:u.role||''});
-        }
-      }catch(e){}
-    }
-    if(!results.length){
-      resultsEl.innerHTML='<div class="nav-search-empty">Ничего не найдено</div>';
-      return;
-    }
-    resultsEl.innerHTML=results.slice(0,10).map(r=>{
-      const roleLabel={realtor:'Партнёр',mop:'МОП',rop:'РОП',aup:'АУП'}[r.role]||'';
-      const file={realtor:'index.html',mop:'index.html',rop:'mop.html',aup:'rop.html'}[r.role]||'index.html';
-      const param={realtor:'agent',mop:'agent',rop:'mop',aup:'rop'}[r.role]||'agent';
-      return `<a class="nav-search-item" href="${file}?${param}=${encodeURIComponent(r.code)}">
-        <span>${esc(r.name)}</span>
-        <span style="color:var(--muted);font-size:10px">${roleLabel} ${esc(r.code)}</span>
-      </a>`;
-    }).join('');
-  }catch(e){
-    resultsEl.innerHTML='<div class="nav-search-empty">Ошибка поиска</div>';
-    console.error('[nav] search failed',e);
+
+  const qLow=q.toLowerCase().trim();
+  if(!qLow){resultsEl.innerHTML='';return;}
+
+  // Режим A: ищем по уже загруженным team_cards.members (мгновенно, 0 запросов)
+  const members=navCtx?.data?.team_cards?.members||[];
+  const results=[];
+  members.forEach(m=>{
+    if(m.is_self) return;
+    const name=(m.short_name||m.name||'').toLowerCase();
+    const code=String(m.code||'');
+    if(name.includes(qLow)||code.includes(qLow)) results.push({code:m.code,name:m.short_name||m.name||''});
+  });
+
+  // Режим B: если введён числовой код — прямое чтение /users/{code}
+  // (для АУП/admin найдёт любого; для МОП/РОП — только если в subordinates)
+  if(/^\d+$/.test(q)){
+    try{
+      const db=getDatabase(getApp());
+      const s=await get(ref(db,'users/'+q));
+      if(s.exists()&&!results.find(r=>String(r.code)===q)){
+        const u=s.val();
+        results.push({code:q,name:u.name||'',role:u.role||''});
+      }
+    }catch(e){}
   }
+
+  if(!results.length){
+    resultsEl.innerHTML='<div class="nav-search-empty">Ничего не найдено</div>';
+    return;
+  }
+
+  // Маппинг ссылок по роли просматриваемого (как в team menu)
+  const drillParam={mop:'agent',rop:'mop',aup:'rop',admin:'rop'}[navCtx?.role]||'agent';
+  const drillFile={mop:'index.html',rop:'mop.html',aup:'rop.html',admin:'rop.html'}[navCtx?.role]||'index.html';
+
+  resultsEl.innerHTML=results.slice(0,10).map(r=>{
+    const href=r.role
+      ?`${{realtor:'index.html',mop:'index.html',rop:'mop.html',aup:'rop.html'}[r.role]||'index.html'}?${{realtor:'agent',mop:'agent',rop:'mop',aup:'rop'}[r.role]||'agent'}=${encodeURIComponent(r.code)}`
+      :`${drillFile}?${drillParam}=${encodeURIComponent(r.code)}`;
+    const roleLabel=r.role?({realtor:'Партнёр',mop:'МОП',rop:'РОП',aup:'АУП'}[r.role]||''):'';
+    return `<a class="nav-search-item" href="${href}">
+      <span>${esc(r.name||'')}</span>
+      ${roleLabel?`<span style="color:var(--muted);font-size:10px">${roleLabel} ${esc(String(r.code))}</span>`:''}
+    </a>`;
+  }).join('');
 }
 
 /* --- Обработчики --- */
