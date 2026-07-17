@@ -111,42 +111,47 @@ async function resolveChain(ctx){
   };
 
   const target=ctx.data?.user;
-  if(!target) return [];
+  console.log('[nav] resolveChain: ctx.target=',ctx.target,'ctx.data.user=',target);
+  if(!target){console.warn('[nav] resolveChain: нет ctx.data.user');return [];}
 
   const targetCode=String(ctx.target);
   const ropCode=target.ropCode?String(target.ropCode):null;
   const mopCode=target.mopCode?String(target.mopCode):null;
+  console.log('[nav] resolveChain: targetCode=',targetCode,'ropCode=',ropCode,'mopCode=',mopCode,'role=',target.role,'name=',target.name);
 
   // Определяем имена: сначала из ctx.data.user, иначе — чтение из Firebase
   let ropName=target.rop_name||null;
   let mopName=target.mop_name||null;
+  console.log('[nav] resolveChain: rop_name=',ropName,'mop_name=',mopName);
 
   const needRop=ropCode&&ropCode!==targetCode&&!ropName;
   const needMop=mopCode&&mopCode!==targetCode&&!mopName;
+  console.log('[nav] resolveChain: needRop=',needRop,'needMop=',needMop);
 
   if(needRop||needMop){
-    const pRop=needRop?get(ref(db,'users/'+ropCode)):Promise.resolve(null);
-    const pMop=needMop?get(ref(db,'users/'+mopCode)):Promise.resolve(null);
-    const [ropSnap,mopSnap]=await Promise.all([pRop,pMop]);
-    if(needRop&&ropSnap&&ropSnap.exists()) ropName=ropSnap.val().name||null;
-    if(needMop&&mopSnap&&mopSnap.exists()) mopName=mopSnap.val().name||null;
+    try{
+      const pRop=needRop?get(ref(db,'users/'+ropCode)):Promise.resolve(null);
+      const pMop=needMop?get(ref(db,'users/'+mopCode)):Promise.resolve(null);
+      const [ropSnap,mopSnap]=await Promise.all([pRop,pMop]);
+      if(needRop&&ropSnap&&ropSnap.exists()) ropName=ropSnap.val().name||null;
+      if(needMop&&mopSnap&&mopSnap.exists()) mopName=mopSnap.val().name||null;
+      console.log('[nav] resolveChain: после Firebase — ropName=',ropName,'mopName=',mopName);
+    }catch(e){console.warn('[nav] resolveChain: Firebase ошибка',e);}
   }
 
   const chain=[];
-  // РОП — если есть код и имя
   if(ropCode&&ropCode!==targetCode&&ropName&&ropName!==target.name){
     chain.push({...LEVEL.rop,name:shorten(ropName),code:ropCode});
   }
-  // МОП — если есть код и имя
   if(mopCode&&mopCode!==targetCode&&mopName&&mopName!==target.name){
     chain.push({...LEVEL.mop,name:shorten(mopName),code:mopCode});
   }
-  // Сам просматриваемый
   chain.push({
     ...LEVEL[target.role]||LEVEL.realtor,
     name:shorten(target.name),
     code:targetCode,
   });
+  console.log('[nav] resolveChain: chain=',chain);
 
   return chain;
 }
@@ -203,11 +208,15 @@ function buildBreadcrumbs(ctx,chain){
 async function renderBreadcrumbsAsync(ctx){
   if(!ctx) return;
   const viewingSelf=!ctx.target||String(ctx.me)===String(ctx.target);
+  console.log('[nav] renderBreadcrumbsAsync: viewingSelf=',viewingSelf,'me=',ctx.me,'target=',ctx.target);
   let chain=null;
   if(!viewingSelf&&ctx.target){
-    chain=await resolveChain(ctx);
+    try{
+      chain=await resolveChain(ctx);
+    }catch(e){console.error('[nav] renderBreadcrumbsAsync: resolveChain failed',e);}
   }
   const crumbsSpan=document.querySelector('.logo .nav-crumbs');
+  console.log('[nav] renderBreadcrumbsAsync: crumbsSpan=',crumbsSpan,'chain=',chain);
   if(crumbsSpan){
     crumbsSpan.innerHTML=buildBreadcrumbs(ctx,chain);
   }
