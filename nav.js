@@ -97,10 +97,12 @@ function injectCss(){
 /* --- Breadcrumbs --- */
 
 /**
- * Строим полную цепочку иерархии из ctx.data.user (без доп. чтений Firebase).
- * Данные mop_name/rop_name/mopCode/ropCode уже есть в ctx.data.user.
+ * Строим полную цепочку иерархии.
+ * ropCode/mopCode берём из ctx.data.user, имена — из ctx.data.user (rop_name/mop_name)
+ * или дочитываем из Firebase если их нет.
  */
-function resolveChain(ctx){
+async function resolveChain(ctx){
+  const db=getDatabase(getApp());
   const LEVEL={
     aup :{label:'Компания',file:'aup.html',param:'aup'},
     rop :{label:'РОП',      file:'rop.html', param:'rop'},
@@ -112,15 +114,32 @@ function resolveChain(ctx){
   if(!target) return [];
 
   const targetCode=String(ctx.target);
-  const chain=[];
+  const ropCode=target.ropCode?String(target.ropCode):null;
+  const mopCode=target.mopCode?String(target.mopCode):null;
 
-  // РОП — если есть ropCode и имя отличается от имени target
-  if(target.ropCode&&String(target.ropCode)!==targetCode&&target.rop_name&&target.rop_name!==target.name){
-    chain.push({...LEVEL.rop,name:shorten(target.rop_name),code:String(target.ropCode)});
+  // Определяем имена: сначала из ctx.data.user, иначе — чтение из Firebase
+  let ropName=target.rop_name||null;
+  let mopName=target.mop_name||null;
+
+  const needRop=ropCode&&ropCode!==targetCode&&!ropName;
+  const needMop=mopCode&&mopCode!==targetCode&&!mopName;
+
+  if(needRop||needMop){
+    const pRop=needRop?get(ref(db,'users/'+ropCode)):Promise.resolve(null);
+    const pMop=needMop?get(ref(db,'users/'+mopCode)):Promise.resolve(null);
+    const [ropSnap,mopSnap]=await Promise.all([pRop,pMop]);
+    if(needRop&&ropSnap&&ropSnap.exists()) ropName=ropSnap.val().name||null;
+    if(needMop&&mopSnap&&mopSnap.exists()) mopName=mopSnap.val().name||null;
   }
-  // МОП — если есть mopCode и имя отличается от имени target
-  if(target.mopCode&&String(target.mopCode)!==targetCode&&target.mop_name&&target.mop_name!==target.name){
-    chain.push({...LEVEL.mop,name:shorten(target.mop_name),code:String(target.mopCode)});
+
+  const chain=[];
+  // РОП — если есть код и имя
+  if(ropCode&&ropCode!==targetCode&&ropName&&ropName!==target.name){
+    chain.push({...LEVEL.rop,name:shorten(ropName),code:ropCode});
+  }
+  // МОП — если есть код и имя
+  if(mopCode&&mopCode!==targetCode&&mopName&&mopName!==target.name){
+    chain.push({...LEVEL.mop,name:shorten(mopName),code:mopCode});
   }
   // Сам просматриваемый
   chain.push({
@@ -181,12 +200,12 @@ function buildBreadcrumbs(ctx,chain){
  * Async-обёртка: резолвим цепочку, потом обновляем DOM.
  * Вызывается из initNav() после render().
  */
-function renderBreadcrumbsAsync(ctx){
+async function renderBreadcrumbsAsync(ctx){
   if(!ctx) return;
   const viewingSelf=!ctx.target||String(ctx.me)===String(ctx.target);
   let chain=null;
   if(!viewingSelf&&ctx.target){
-    chain=resolveChain(ctx);
+    chain=await resolveChain(ctx);
   }
   const crumbsSpan=document.querySelector('.logo .nav-crumbs');
   if(crumbsSpan){
