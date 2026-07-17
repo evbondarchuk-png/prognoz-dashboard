@@ -98,8 +98,14 @@ function injectCss(){
 
 /**
  * Строим полную цепочку иерархии.
- * ropCode/mopCode берём из ctx.data.user, имена — из ctx.data.user (rop_name/mop_name)
+ * rop_code/mop_code берём из ctx.data.user, имена — из rop_name/mop_name
  * или дочитываем из Firebase если их нет.
+ *
+ * Цепочка по уровням target.role:
+ *   realtor: Компания > РОП > МОП > Партнёр  (если rop_code и mop_code есть)
+ *   mop:     Компания > РОП > МОП             (если rop_code есть)
+ *   rop:     Компания > РОП                    (нет rop_code/mop_code)
+ *   aup:     Компания > АУП                    (нет rop_code/mop_code)
  */
 async function resolveChain(ctx){
   const db=getDatabase(getApp());
@@ -111,22 +117,18 @@ async function resolveChain(ctx){
   };
 
   const target=ctx.data?.user;
-  console.log('[nav] resolveChain: ctx.target=',ctx.target,'ctx.data.user=',target);
-  if(!target){console.warn('[nav] resolveChain: нет ctx.data.user');return [];}
+  if(!target) return [];
 
   const targetCode=String(ctx.target);
   const ropCode=target.rop_code?String(target.rop_code):null;
   const mopCode=target.mop_code?String(target.mop_code):null;
-  console.log('[nav] resolveChain: targetCode=',targetCode,'ropCode=',ropCode,'mopCode=',mopCode,'role=',target.role,'name=',target.name);
 
   // Определяем имена: сначала из ctx.data.user, иначе — чтение из Firebase
   let ropName=target.rop_name||null;
   let mopName=target.mop_name||null;
-  console.log('[nav] resolveChain: rop_name=',ropName,'mop_name=',mopName);
 
   const needRop=ropCode&&ropCode!==targetCode&&!ropName;
   const needMop=mopCode&&mopCode!==targetCode&&!mopName;
-  console.log('[nav] resolveChain: needRop=',needRop,'needMop=',needMop);
 
   if(needRop||needMop){
     try{
@@ -135,7 +137,6 @@ async function resolveChain(ctx){
       const [ropSnap,mopSnap]=await Promise.all([pRop,pMop]);
       if(needRop&&ropSnap&&ropSnap.exists()) ropName=ropSnap.val().name||null;
       if(needMop&&mopSnap&&mopSnap.exists()) mopName=mopSnap.val().name||null;
-      console.log('[nav] resolveChain: после Firebase — ropName=',ropName,'mopName=',mopName);
     }catch(e){console.warn('[nav] resolveChain: Firebase ошибка',e);}
   }
 
@@ -151,7 +152,6 @@ async function resolveChain(ctx){
     name:shorten(target.name),
     code:targetCode,
   });
-  console.log('[nav] resolveChain: chain=',chain);
 
   return chain;
 }
@@ -208,7 +208,6 @@ function buildBreadcrumbs(ctx,chain){
 async function renderBreadcrumbsAsync(ctx){
   if(!ctx) return;
   const viewingSelf=!ctx.target||String(ctx.me)===String(ctx.target);
-  console.log('[nav] renderBreadcrumbsAsync: viewingSelf=',viewingSelf,'me=',ctx.me,'target=',ctx.target);
   let chain=null;
   if(!viewingSelf&&ctx.target){
     try{
@@ -216,7 +215,6 @@ async function renderBreadcrumbsAsync(ctx){
     }catch(e){console.error('[nav] renderBreadcrumbsAsync: resolveChain failed',e);}
   }
   const crumbsSpan=document.querySelector('.logo .nav-crumbs');
-  console.log('[nav] renderBreadcrumbsAsync: crumbsSpan=',crumbsSpan,'chain=',chain);
   if(crumbsSpan){
     crumbsSpan.innerHTML=buildBreadcrumbs(ctx,chain);
   }
@@ -227,7 +225,7 @@ function buildTeamMenu(ctx){
   if(!ctx||ctx.role==='realtor') return '';
   const members=ctx.data?.team_cards?.members||[];
   if(!members.length) return '';
-  // Маппинг ссылок по РОЛИ MEMBER'А (не смотрящего):
+  // Маппинг ссылок по РОЛИ MEMBER'А:
   // МОП→members=партнёры→index.html?agent=, РОП→members=МОПы→mop.html?mop=, АУП→members=РОПы→rop.html?rop=
   const drillParam={mop:'agent',rop:'mop',aup:'rop',admin:'rop'}[ctx.role]||'agent';
   const drillFile={mop:'index.html',rop:'mop.html',aup:'rop.html',admin:'rop.html'}[ctx.role]||'index.html';
@@ -262,15 +260,13 @@ function render(ctx){
   // Breadcrumbs — в .logo
   const logo=document.querySelector('.logo');
   if(logo){
-    // Удаляем старый span «· кабинет» и вставляем breadcrumbs
     const existing=logo.querySelector('.nav-crumbs');
     if(existing) existing.remove();
     const sep=logo.querySelector('.nav-sep');
     if(sep) sep.remove();
-    // Ищем span внутри logo (текст «· кабинет»)
     const innerSpan=logo.querySelector('span');
     if(innerSpan&&!innerSpan.classList.contains('nav-sep')&&!innerSpan.classList.contains('nav-crumbs')){
-      innerSpan.style.display='none'; // скрываем «· кабинет»
+      innerSpan.style.display='none';
     }
     const crumbsDiv=document.createElement('span');
     crumbsDiv.className='nav-sep';
@@ -288,7 +284,6 @@ function render(ctx){
     toolsDiv.id='navTools';
     toolsDiv.className='nav-tools';
     toolsDiv.innerHTML=buildTeamMenu(ctx)+buildSearch(ctx);
-    // Вставляем перед logoutBtn (или первым элементом)
     const logoutBtn=document.getElementById('logoutBtn');
     if(logoutBtn){
       headerRight.insertBefore(toolsDiv,logoutBtn);
