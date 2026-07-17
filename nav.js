@@ -97,12 +97,10 @@ function injectCss(){
 /* --- Breadcrumbs --- */
 
 /**
- * Резолвим полную цепочку иерархии для просматриваемого пользователя.
- * Читает /users/{targetCode} и, при наличии mopCode/ropCode, их профили.
- * Возвращает массив [{label, name, code, file, param}, ...] от корня к листу.
+ * Строим полную цепочку иерархии из ctx.data.user (без доп. чтений Firebase).
+ * Данные mop_name/rop_name/mopCode/ropCode уже есть в ctx.data.user.
  */
-async function resolveChain(ctx){
-  const db=getDatabase(getApp());
+function resolveChain(ctx){
   const LEVEL={
     aup :{label:'Компания',file:'aup.html',param:'aup'},
     rop :{label:'РОП',      file:'rop.html', param:'rop'},
@@ -110,28 +108,21 @@ async function resolveChain(ctx){
     realtor:{label:'Партнёр',file:'index.html',param:'agent'},
   };
 
-  // target user уже есть в ctx.data.user — не читаем повторно
   const target=ctx.data?.user;
   if(!target) return [];
 
   const targetCode=String(ctx.target);
-  const ropCode=target.ropCode||null;
-  const mopCode=target.mopCode||null;
-
-  // РОП + МОП параллельно (независимы друг от друга)
-  const pRop=(ropCode&&String(ropCode)!==targetCode)?get(ref(db,'users/'+ropCode)):Promise.resolve(null);
-  const pMop=(mopCode&&String(mopCode)!==targetCode)?get(ref(db,'users/'+mopCode)):Promise.resolve(null);
-  const [ropSnap,mopSnap]=await Promise.all([pRop,pMop]);
-
   const chain=[];
-  if(ropSnap&&ropSnap.exists()){
-    const u=ropSnap.val();
-    chain.push({...LEVEL.rop,name:shorten(u.name),code:String(ropCode)});
+
+  // РОП — если есть ropCode и имя отличается от имени target
+  if(target.ropCode&&String(target.ropCode)!==targetCode&&target.rop_name&&target.rop_name!==target.name){
+    chain.push({...LEVEL.rop,name:shorten(target.rop_name),code:String(target.ropCode)});
   }
-  if(mopSnap&&mopSnap.exists()){
-    const u=mopSnap.val();
-    chain.push({...LEVEL.mop,name:shorten(u.name),code:String(mopCode)});
+  // МОП — если есть mopCode и имя отличается от имени target
+  if(target.mopCode&&String(target.mopCode)!==targetCode&&target.mop_name&&target.mop_name!==target.name){
+    chain.push({...LEVEL.mop,name:shorten(target.mop_name),code:String(target.mopCode)});
   }
+  // Сам просматриваемый
   chain.push({
     ...LEVEL[target.role]||LEVEL.realtor,
     name:shorten(target.name),
@@ -190,12 +181,12 @@ function buildBreadcrumbs(ctx,chain){
  * Async-обёртка: резолвим цепочку, потом обновляем DOM.
  * Вызывается из initNav() после render().
  */
-async function renderBreadcrumbsAsync(ctx){
+function renderBreadcrumbsAsync(ctx){
   if(!ctx) return;
   const viewingSelf=!ctx.target||String(ctx.me)===String(ctx.target);
   let chain=null;
   if(!viewingSelf&&ctx.target){
-    chain=await resolveChain(ctx);
+    chain=resolveChain(ctx);
   }
   const crumbsSpan=document.querySelector('.logo .nav-crumbs');
   if(crumbsSpan){
@@ -208,7 +199,8 @@ function buildTeamMenu(ctx){
   if(!ctx||ctx.role==='realtor') return '';
   const members=ctx.data?.team_cards?.members||[];
   if(!members.length) return '';
-  // Фильтруем: МОП видит партнёров, РОП видит МОПов, АУП видит РОПов
+  // Маппинг ссылок по РОЛИ MEMBER'А (не смотрящего):
+  // МОП→members=партнёры→index.html?agent=, РОП→members=МОПы→mop.html?mop=, АУП→members=РОПы→rop.html?rop=
   const drillParam={mop:'agent',rop:'mop',aup:'rop',admin:'rop'}[ctx.role]||'agent';
   const drillFile={mop:'index.html',rop:'mop.html',aup:'rop.html',admin:'rop.html'}[ctx.role]||'index.html';
   const items=members.filter(m=>!m.is_self).sort((a,b)=>(a.short_name||a.name||'').localeCompare(b.short_name||b.name||'','ru')).map(m=>{
@@ -346,14 +338,18 @@ async function doSearch(q){
     return;
   }
 
-  // Маппинг ссылок по роли просматриваемого (как в team menu)
-  const drillParam={mop:'agent',rop:'mop',aup:'rop',admin:'rop'}[navCtx?.role]||'agent';
-  const drillFile={mop:'index.html',rop:'mop.html',aup:'rop.html',admin:'rop.html'}[navCtx?.role]||'index.html';
+  // Маппинг ссылок по РОЛИ НАЙДЕННОГО пользователя:
+  // realtor/mop → index.html?agent=, rop → mop.html?mop=, aup → rop.html?rop=
+  // Если роль неизвестна (team_cards) — fallback по роли смотрящего
+  const byRoleFile={realtor:'index.html',mop:'index.html',rop:'mop.html',aup:'rop.html'};
+  const byRoleParam={realtor:'agent',mop:'agent',rop:'mop',aup:'rop'};
+  const fallbackParam={mop:'agent',rop:'mop',aup:'rop',admin:'rop'}[navCtx?.role]||'agent';
+  const fallbackFile={mop:'index.html',rop:'mop.html',aup:'rop.html',admin:'rop.html'}[navCtx?.role]||'index.html';
 
   resultsEl.innerHTML=results.slice(0,10).map(r=>{
     const href=r.role
-      ?`${{realtor:'index.html',mop:'index.html',rop:'mop.html',aup:'rop.html'}[r.role]||'index.html'}?${{realtor:'agent',mop:'agent',rop:'mop',aup:'rop'}[r.role]||'agent'}=${encodeURIComponent(r.code)}`
-      :`${drillFile}?${drillParam}=${encodeURIComponent(r.code)}`;
+      ?`${byRoleFile[r.role]||'index.html'}?${byRoleParam[r.role]||'agent'}=${encodeURIComponent(r.code)}`
+      :`${fallbackFile}?${fallbackParam}=${encodeURIComponent(r.code)}`;
     const roleLabel=r.role?({realtor:'Партнёр',mop:'МОП',rop:'РОП',aup:'АУП'}[r.role]||''):'';
     return `<a class="nav-search-item" href="${href}">
       <span>${esc(r.name||'')}</span>
