@@ -52,25 +52,26 @@ const CSS = `
 
 /* --- Бургер (мобильное меню хедера) --- */
 .nav-burger{display:none;font-size:var(--fs-13);color:var(--muted);background:transparent;padding:6px 10px;border-radius:20px;border:1px solid var(--line);cursor:pointer;font-family:inherit;line-height:1}
+.nav-burger-menu{
+  display:none;position:absolute;top:100%;left:0;right:0;
+  flex-direction:column;align-items:stretch;gap:8px;
+  background:var(--surface);border-bottom:1px solid var(--line);
+  padding:12px 16px;box-shadow:0 8px 30px rgba(20,30,55,.12);z-index:200;
+}
+.nav-burger-menu.on{display:flex}
+.nav-burger-menu .btn,.nav-burger-menu .nav-search-btn{width:100%;justify-content:flex-start}
 
 @media(max-width:560px){
-  /* Бургер видим, остальные правые кнопки скрыты (пока меню закрыто) */
+  /* Бургер видим */
   .nav-burger{display:inline-flex;align-items:center}
-  .app-header-right > :not(#navBurger){display:none}
-  /* Открытое меню — выпадайка full-width под хедером, кнопки в столбик */
-  .app-header-right.nav-burger-open{
-    position:absolute;top:var(--app-header-h,56px);left:0;right:0;
-    flex-direction:column;align-items:stretch;gap:8px;
-    background:var(--surface);border-bottom:1px solid var(--line);
-    padding:12px 16px;box-shadow:0 8px 30px rgba(20,30,55,.12);z-index:200;
-  }
-  .app-header-right.nav-burger-open > :not(#navBurger){display:flex;width:100%;justify-content:flex-start}
-  .app-header-right.nav-burger-open > #navBurger{display:none}
-  /* Внутри открытого бургер-меню поиск — инпут во весь Width, без отдельного попапа */
-  .app-header-right.nav-burger-open .nav-search-box{position:static;width:100%;right:auto;transform:none;opacity:1;pointer-events:auto;border:1px solid var(--line);box-shadow:none}
-  .app-header-right.nav-burger-open .nav-search-btn{display:none}
-  /* Breadcrumbs — усечение многоточием, не выталкивает кнопки */
-  .nav-crumbs{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100vw - 140px);display:inline-block;vertical-align:middle}
+  /* Хедер — многострочный: breadcrumbs переносятся, правая группа — второй строкой */
+  .app-header{height:auto;min-height:56px;flex-wrap:wrap;padding:8px 12px;gap:6px;align-items:center}
+  .logo{flex:1 1 100%;min-width:0}
+  .app-header-right{flex:1 1 100%;justify-content:space-between;gap:8px}
+  /* Breadcrumbs — перенос строк (не многоточие) */
+  .nav-crumbs{white-space:normal;max-width:none}
+  /* Табы — не прилипают (высота хедера варьируется) */
+  .rtab-bar{position:static}
 }
 
 @media(max-width:480px){
@@ -274,6 +275,15 @@ function render(ctx){
       headerRight.appendChild(burger);
     }
   }
+  // Выпадающее бургер-меню (внутри .app-header — top:100% считается от хедера).
+  // Бургерные кнопки (Подключения, Найти, Выход, Прогноша) переезжают сюда на мобильном.
+  const appHeader=document.querySelector('.app-header');
+  if(appHeader&&!document.getElementById('navBurgerMenu')){
+    const menu=document.createElement('div');
+    menu.id='navBurgerMenu';
+    menu.className='nav-burger-menu';
+    appHeader.appendChild(menu);
+  }
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -292,6 +302,7 @@ export function initNav(ctx){
   navCtx=ctx;
   render(ctx);
   renderBreadcrumbsAsync(ctx); // асинхронно подтягиваем полную цепочку
+  layoutBurger(); // на мобильном — переложить бургерные кнопки в #navBurgerMenu
   // Обработчики для поиска
   const input=document.getElementById('navSearchInput');
   if(input){
@@ -375,15 +386,47 @@ window.__navSearchToggle=()=>{
   }
 };
 
+// Бургерные элементы хедера: Подключения, Найти сотрудника, Прогноша (только aup), Выход.
+// На мобильном (≤560px) переезжают в #navBurgerMenu; на десктопе остаются в .app-header-right.
+// При перемещении сохраняем исходные позиции (nextSibling) — возврат восстанавливает desktop-порядок.
+let burgerSaved=[];
+function getBurgerEls(){
+  const els=[];
+  const integTrigger=document.querySelector('.app-header-right .integ-trigger');
+  if(integTrigger) els.push(integTrigger.parentElement); // обёртка Подключений (display:contents)
+  const navTools=document.getElementById('navTools');
+  if(navTools) els.push(navTools);
+  // Прогноша (только aup) — кнопка без id, не logout и не бургер
+  const prognoza=document.querySelector('.app-header-right > button:not(#logoutBtn):not(.nav-burger)');
+  if(prognoza) els.push(prognoza);
+  const logout=document.getElementById('logoutBtn');
+  if(logout) els.push(logout);
+  return els;
+}
+function layoutBurger(){
+  const menu=document.getElementById('navBurgerMenu');
+  if(!menu) return;
+  const mobile=window.matchMedia('(max-width:560px)').matches;
+  const hr=document.querySelector('.app-header-right');
+  if(mobile){
+    if(!burgerSaved.length){
+      getBurgerEls().forEach(el=>{ if(el) burgerSaved.push({el,next:el.nextSibling}); });
+    }
+    burgerSaved.forEach(({el})=>{ if(el.parentElement!==menu) menu.appendChild(el); });
+  }else{
+    if(hr){
+      burgerSaved.forEach(({el,next})=>{ if(el.parentElement!==hr||el.nextSibling!==next) hr.insertBefore(el,next); });
+    }
+    burgerSaved=[];
+    menu.classList.remove('on');
+  }
+}
 // Бургер: открыть/закрыть мобильное меню хедера (≤560px)
 window.__navBurgerToggle=()=>{
-  const hr=document.querySelector('.app-header-right');
-  if(!hr) return;
-  hr.classList.toggle('nav-burger-open');
-  if(hr.classList.contains('nav-burger-open')){
-    const inp=document.getElementById('navSearchInput');
-    if(inp) setTimeout(()=>inp.focus(),100);
-  }
+  const menu=document.getElementById('navBurgerMenu');
+  if(!menu) return;
+  if(!menu.classList.contains('on')) layoutBurger(); // элементы уже в меню
+  menu.classList.toggle('on');
 };
 
 // Закрытие при клике вне
@@ -393,16 +436,23 @@ document.addEventListener('click',e=>{
     const b=document.getElementById('navSearchBox');
     if(b) b.classList.remove('on');
   }
-  // Закрыть бургер при клике вне .app-header-right (и вне самого бургера)
-  const hr=document.querySelector('.app-header-right');
-  if(hr&&hr.classList.contains('nav-burger-open')&&!e.target.closest('.app-header-right')){
-    hr.classList.remove('nav-burger-open');
+  // Закрыть бургер-меню при клике вне хедера
+  const menu=document.getElementById('navBurgerMenu');
+  if(menu&&menu.classList.contains('on')&&!e.target.closest('.app-header')){
+    menu.classList.remove('on');
   }
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(searchOpen){searchOpen=false;const b=document.getElementById('navSearchBox');if(b)b.classList.remove('on');}
-    const hr=document.querySelector('.app-header-right');
-    if(hr&&hr.classList.contains('nav-burger-open')) hr.classList.remove('nav-burger-open');
+    const menu=document.getElementById('navBurgerMenu');
+    if(menu&&menu.classList.contains('on')) menu.classList.remove('on');
   }
+});
+
+// При переходе через брейкпоинт 560px — переложить элементы и закрыть меню
+let _resizeT=null;
+window.addEventListener('resize',()=>{
+  if(_resizeT) clearTimeout(_resizeT);
+  _resizeT=setTimeout(layoutBurger,120);
 });
