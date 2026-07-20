@@ -1651,92 +1651,130 @@ function renderTasks(d){
 const POOL_TOTAL={newbie:386,experienced:934};
 function poolTotals(d){ const t=(d.meta&&d.meta.system_totals)||{}; return {newbie:t.svetofor_newbie||POOL_TOTAL.newbie, experienced:t.svetofor_experienced||POOL_TOTAL.experienced}; }
 const POOL_CLR={newbie:'#16a34a',experienced:'#2b6cb0'};
-// ── TZ: линейный график места + калькулятор с пирамидой зон (таб «Светофор»)
-function svetoforForecastCard(d){
+// ── TZ: таб «Светофор» — график движения (карточка 1) + калькулятор с пирамидой (карточка 2)
+function svetoforGraphCard(d){
  const u=d.user;
  const h=(d.position_history||[]).filter(p=>p.position!=null);
- const income=u.income_month||0, stazh=u.stazh_months||0;
- // SVG-график (показываем если есть хоть одна точка)
- let svgBlock='';
- if(h.length>=1){
-  const PT=poolTotals(d);
-  const W=720,H=260,padX=40,padT=28,padB=36;
-  const plotW=W-padX*2, plotH=H-padT-padB;
-  // 6 точек по месяцам (или сколько есть); n<=6
-  const n=h.length; const X=i=>padX+(n>1?i*(plotW/(n-1)):plotW/2);
-  const yFrac=p=>{ const tot=PT[p.pool]||PT.experienced; return Math.max(0,Math.min(1,1-(p.position/tot))); };
-  const Y=p=>padT+(1-yFrac(p))*plotH;
-  // сдвиг так, чтобы последняя точка была текущая
-  // фон: если текущий пул — newbie, отметим фоновый регион; граница перехода
-  const isNewbie=u.svetofor_pool==='newbie';
-  // Определяем последнюю точку как текущую
-  const last=h[h.length-1];
-  // Если факт в зоне новичка — для SVG-стиля берём текущий пул
-  // Построим точки и сегменты
-  const pts=h.map((p,i)=>({i,p,x:X(i),y:Y(p),pool:p.pool,position:p.position}));
-  // Фон новичок/опытные (если последний — newbie, рисуем весь граф в newbie; если experienced — используем transition)
-  // Простой подход: рисуем в одном регионе (новый цвет); переход = dashed line между месяцами смены пула
-  const poolClr=POOL_CLR[last.pool]||POOL_CLR.experienced;
-  // генерим сегменты и точки
-  let segs='',dots='',marks='';
-  // фон пула (свежий)
-  svgBlock+=`<rect x="${padX}" y="${padT}" width="${plotW}" height="${plotH}" fill="${poolClr}" opacity="0.06"/>`;
-  for(let i=0;i<n;i++){
-   const cur=pts[i];
-   if(i>0){
-    const prev=pts[i-1];
-    const diff=prev.pool!==cur.pool;
-    segs+=`<polyline points="${prev.x},${prev.y} ${cur.x},${cur.y}" fill="none" stroke="${diff?'#94a3b8':poolClr}" stroke-width="${i===n-1?3:2.5}" stroke-dasharray="${diff?'5 4':''}" stroke-linecap="round"/>`;
-    if(diff){ marks+=`<line x1="${cur.x}" y1="${padT}" x2="${cur.x}" y2="${padT+plotH}" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>`; }
-   }
-   const isLast=i===n-1;
-   dots+=`<circle cx="${cur.x}" cy="${cur.y}" r="${isLast?5.5:3.5}" fill="#fff" stroke="${poolClr}" stroke-width="${isLast?3.5:2.5}"/>`;
-   // подпись ранга у каждой точки
-   dots+=`<text x="${cur.x}" y="${cur.y-9}" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1f2e">#${cur.position}</text>`;
-  }
-  // сетка
-  for(let g=0;g<=3;g++){
-   const gy=padT+plotH*g/3;
-   segs+=`<line x1="${padX}" y1="${gy}" x2="${padX+plotW}" y2="${gy}" stroke="#eef0f4" stroke-width="1"/>`;
-  }
-  segs+=`<text x="${padX-6}" y="${padT+4}" text-anchor="end" font-size="9" fill="#b4b9c5">топ</text>`;
-  segs+=`<text x="${padX-6}" y="${padT+plotH+2}" text-anchor="end" font-size="9" fill="#b4b9c5">низ</text>`;
-  // подписи месяцев
-  pts.forEach((p,i)=>{
-   svgBlock+=`<text x="${p.x}" y="${H-10}" text-anchor="middle" font-size="10" fill="#7a8194">${esc(h[i].label.split(' ')[0])}</text>`;
-  });
-  // подпись границы перехода пула
-  for(let i=1;i<n;i++){ if(pts[i].pool!==pts[i-1].pool){
-    svgBlock+=`<text x="${pts[i].x}" y="${padT-10}" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">смена пула</text>`;
-  }}
-  svgBlock=`<div class="sv-svg-wrap"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${marks}${segs}${dots}</svg></div>`;
+ if(h.length<1){
+  return `<div class="card"><div class="section-title">📈 Как я двигался в светофоре</div>
+  <div class="soon" style="margin-top:8px">История движения накапливается — график появится в ближайшие месяцы.</div></div>`;
  }
- // Калькулятор + пирамида (всегда показываем если есть income и stazh)
- let calcBlock='';
- if(income>0 && stazh>0){
-  // Безопасно сериализуем данные для JS
-  const safeIncome=Number(income)||0, safeStazh=Number(stazh)||0;
-  calcBlock=`<div class="sv-calc"><label class="sv-calc-label">нужно сделать вала, ₽
-   <input id="svV" type="number" inputmode="numeric" step="10000" placeholder="введи вал">
-  </label>
-  <div class="sv-calc-out" id="svOut"></div>
-  <div class="sv-pyr" id="svPyr"></div></div>`;
+ const PT=poolTotals(d);
+ const W=720,H=260,padX=40,padT=32,padB=36;
+ const plotW=W-padX*2, plotH=H-padT-padB;
+ const n=h.length;
+ const X=i=>padX+(n>1?i*(plotW/(n-1)):plotW/2);
+ const yFrac=p=>{ const tot=PT[p.pool]||PT.experienced; return Math.max(0,Math.min(1,1-(p.position/tot))); };
+ const Y=p=>padT+(1-yFrac(p))*plotH;
+ const last=h[h.length-1];
+ const pts=h.map((p,i)=>({i,p,x:X(i),y:Y(p),pool:p.pool,position:p.position,ym:p.ym,label:p.label}));
+ // Фоны регионов по фактической последовательности пулов
+ let bgRects='';
+ let curX=padX;
+ for(let i=0;i<n;i++){
+  const p=pts[i].pool;
+  const segStart=i;
+  while(i+1<n && pts[i+1].pool===p) i++;
+  const segEnd=i;
+  const x1=X(segStart), x2=X(segEnd);
+  const w=x2-x1;
+  const bg=POOL_CLR[p]||'#94a3b8';
+  bgRects+=`<rect x="${x1}" y="${padT}" width="${w}" height="${plotH}" fill="${bg}" opacity="0.07"/>`;
  }
- const noteSvg=h.length<1?'<div class="soon" style="margin-top:8px">История движения накапливается — график появится в ближайшие месяцы.</div>':'';
+ // подписи регионов сверху (если разные пулы есть)
+ let regionLabels='';
+ if(n>0){
+  let i=0;
+  while(i<n){
+   const p=pts[i].pool;
+   let j=i; while(j+1<n && pts[j+1].pool===p) j++;
+   const x1=X(i), x2=X(j), cx=(x1+x2)/2;
+   const lab=p==='newbie'?'светофор новичков':'светофор опытных';
+   const col=p==='newbie'?'#16a34a':'#3b82f6';
+   regionLabels+=`<text x="${cx}" y="${padT-14}" text-anchor="middle" font-size="10" font-weight="700" fill="${col}">${lab}</text>`;
+   i=j+1;
+  }
+ }
+ let segs='',dots='',marks='';
+ for(let i=0;i<n;i++){
+  const cur=pts[i];
+  if(i>0){
+   const prev=pts[i-1];
+   const diff=prev.pool!==cur.pool;
+   const clr=POOL_CLR[cur.pool]||'#94a3b8';
+   segs+=`<polyline points="${prev.x},${prev.y} ${cur.x},${cur.y}" fill="none" stroke="${diff?'#94a3b8':clr}" stroke-width="${i===n-1?3:2.5}" stroke-dasharray="${diff?'5 4':''}" stroke-linecap="round"/>`;
+   if(diff){ marks+=`<line x1="${cur.x}" y1="${padT}" x2="${cur.x}" y2="${padT+plotH}" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>`; }
+  }
+  const isLast=i===n-1;
+  const clr=POOL_CLR[cur.pool]||'#94a3f8';
+  dots+=`<circle cx="${cur.x}" cy="${cur.y}" r="${isLast?5.5:3.5}" fill="#fff" stroke="${clr}" stroke-width="${isLast?3.5:2.5}"/>`;
+  dots+=`<text x="${cur.x}" y="${cur.y-9}" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1f2e">#${cur.position}</text>`;
+ }
+ for(let g=0;g<=3;g++){ const gy=padT+plotH*g/3; segs+=`<line x1="${padX}" y1="${gy}" x2="${padX+plotW}" y2="${gy}" stroke="#eef0f4"/>`; }
+ segs+=`<text x="${padX-6}" y="${padT+4}" text-anchor="end" font-size="9" fill="#b4b9c5">топ</text>`;
+ segs+=`<text x="${padX-6}" y="${padT+plotH+2}" text-anchor="end" font-size="9" fill="#b4b9c5">низ</text>`;
+ const monthLabels=pts.map((p,i)=>`<text x="${p.x}" y="${H-10}" text-anchor="middle" font-size="10" fill="#7a8194">${esc(p.label.split(' ')[0])}</text>`).join('');
+ const svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${regionLabels}${bgRects}${marks}${segs}${dots}${monthLabels}</svg>`;
+ // обоснование движения
+ const samePool=pts.every(p=>p.pool===pts[0].pool);
+ let reason='';
+ if(samePool){
+  const first=pts[0].position, lastP=pts[n-1].position, delta=first-lastP;
+  const poolLab=pts[0].pool==='newbie'?'светофоре новичков':'светофоре опытных';
+  if(delta>0) reason=`За ${n} мес ты поднялся на <b>${delta} ${delta===1?'позицию':'позиции'}</b> в ${poolLab}.`;
+  else if(delta<0) reason=`За ${n} мес место снизилось на <b>${Math.abs(delta)}</b> в ${poolLab}.`;
+  else reason=`Позиция в ${poolLab} держится стабильно ${n} мес.`;
+ } else {
+  // смена пула — покажем момент
+  for(let i=1;i<n;i++) if(pts[i].pool!==pts[i-1].pool){
+   reason=`На <b>${pts[i].label}</b> — переход из светофора новичков в опытные (старший рейтинг, поэтому место «выше по номеру»).`;
+   break;
+  }
+ }
+ // легенда
+ const legend=`<div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px">
+  <span><span style="display:inline-block;width:11px;height:3px;background:#94a3b8;vertical-align:middle;margin-right:5px"></span> факт</span>
+  <span><span style="display:inline-block;width:11px;height:3px;background:#16a34a;vertical-align:middle;margin-right:5px"></span> новички</span>
+  <span><span style="display:inline-block;width:11px;height:3px;background:#3b82f6;vertical-align:middle;margin-right:5px"></span> опытные</span>
+  <span><span style="display:inline-block;width:11px;height:3px;border-top:2px dashed #94a3b8;vertical-align:middle;margin-right:5px"></span> смена пула</span>
+ </div>`;
  return `<div class="card">
- <div class="section-title">🚦 Куда ты движешься в светофоре</div>
- <div class="muted" style="font-size:12px;margin-bottom:10px">Место в светофоре по месяцам + прогноз по валу. Переход в опытные — на 7-м месяце стажа.</div>
- ${svgBlock}${noteSvg}
- ${calcBlock}
- <div class="muted" style="font-size:12px;margin-top:8px;line-height:1.55">
-  По <b>archive.income</b> (средний доход за окно min(стаж, 12) мес) и стажу из /users: <b>new_avg = (income × период + вал × 0,48) / (период + 1)</b>. Ничего дополнительно грузить не надо.
- </div>
+  <div class="section-title">📈 Как я двигался в светофоре</div>
+  <div class="sv-svg-wrap">${svg}</div>
+  ${legend}
+  <div class="muted" style="font-size:12px;margin-top:10px;line-height:1.55">${reason}</div>
  </div>`;
 }
 
-// Инициализация калькулятора светофора (после рендера DOM)
+function svetoforCalculatorCard(d){
+ const u=d.user||{};
+ const inc=u.income_month||0, stz=u.stazh_months||0;
+ if(!(inc>0 && stz>0)){
+  return `<div class="card"><div class="section-title">🧮 Куда попадёшь в светофоре</div>
+  <div class="soon">Калькулятор станет доступен, когда появятся данные о доходе.</div></div>`;
+ }
+ return `<div class="card">
+  <div class="section-title">🧮 Калькулятор: куда попадёшь в светофоре</div>
+  <div class="muted" style="font-size:12px;margin-bottom:10px">Введи средний вал в месяц — покажу, в какую зону светофора ты попадёшь в следующем месяце.</div>
+  <div class="sv-calc"><label class="sv-calc-label">нужно сделать вала, ₽
+   <input id="svV" type="number" inputmode="numeric" step="10000" placeholder="введи вал">
+  </label>
+  <div class="sv-calc-out" id="svOut"></div>
+  <div class="sv-pyr" id="svPyr"></div>
+  <div class="muted sv-calc-note" id="svNote"></div>
+  </div>
+ </div>`;
+}
+
+// Объединённый рендер (две карточки) — для удобства вызывать из renderSvetofor
+function svetoforForecastCard(d){
+ return svetoforGraphCard(d) + svetoforCalculatorCard(d);
+}
+
+// Инициализация калькулятора + обоснование (вызывается из initSvetoforCalcWithData)
 window.initSvetoforCalc=function(){
  const out=document.getElementById('svOut');
+ const note=document.getElementById('svNote');
  const pyr=document.getElementById('svPyr');
  const inp=document.getElementById('svV');
  if(!out||!pyr||!inp) return;
@@ -1750,17 +1788,18 @@ window.initSvetoforCalc=function(){
  [501,600,119252,'Средние'],[601,700,94768,'Слабые'],[701,800,78809,'Слабые'],
  [801,1000,13646,'Низкоэффективные']];
  const CC={'Самые лучшие':['#16a34a','#fff'],'Лучшие':['#22c55e','#fff'],'Хорошие':['#84cc16','#0f172a'],'Средние':['#f59e0b','#0f172a'],'Слабые':['#f97316','#fff'],'Низкоэффективные':['#dc2626','#fff']};
- const inc=Number(document.getElementById('svV').dataset.income)||0, stz=Number(document.getElementById('svV').dataset.stazh)||0;
+ const inc=Number(inp.dataset.income)||0, stz=Number(inp.dataset.stazh)||0;
  const f=function(n){n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e3) return Math.round(n/1e3)+'к'; return String(Math.round(n));};
  const zi=function(a){for(let i=0;i<Z.length;i++) if(Z[i][2]&&a>=Z[i][2]) return i; return Z.length-1;};
  const pz=function(a,idx){const z=Z[idx]; if(idx<=0||!z[2]) return z[0]; const hi=Z[idx-1][2]; if(!hi||a>=hi) return z[0]; const t=(a-z[2])/(hi-z[2]); return Math.max(z[0], Math.round(z[1]-t*(z[1]-z[0])));};
- // рендер пирамиды
- function renderPyr(landedCat){
+ // Рендер пирамиды (с подсветкой текущей и прогнозной ступенек)
+ function renderPyr(curCat,youCat){
   let html='';
   Z.forEach(function(z,i){
    const bg=CC[z[3]]?CC[z[3]][0]:'#94a3b8', tc=CC[z[3]]?CC[z[3]][1]:'#fff';
    const w=(18+(i/(Z.length-1))*82).toFixed(0)+'%';
-   html+='<div class="sv-pyr-row'+(z[3]===landedCat?' you':'')+'" data-idx="'+i+'" style="width:'+w+';background:'+bg+';color:'+tc+'">'
+   const cls=(z[3]===youCat?' you':'')+(z[3]===curCat?' cur':'');
+   html+='<div class="sv-pyr-row'+cls+'" data-idx="'+i+'" style="width:'+w+';background:'+bg+';color:'+tc+'">'
      +'<span class="sv-pyr-l">#'+z[0]+'–'+z[1]+' <span class="sv-pyr-r">≈ '+f(z[2])+'₽</span></span>'
      +'<span class="sv-pyr-you">ты будешь здесь</span>'
      +'<span class="sv-pyr-cur">сейчас</span></div>';
@@ -1769,24 +1808,45 @@ window.initSvetoforCalc=function(){
  }
  function calc(){
   const v=+inp.value||0;
+  // Сброс подсветки
   document.querySelectorAll('#svPyr .sv-pyr-row').forEach(function(r){r.classList.remove('you');r.classList.remove('cur');});
   const curIdx=zi(inc), curPos=pz(inc,curIdx);
+  const curZ=Z[curIdx];
   const curRow=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+curIdx+'"]');
   if(curRow) curRow.classList.add('cur');
+  // Обоснование «сейчас» (всегда)
+  const reasonNow='<b>Сейчас ~#'+curPos+'</b> («'+curZ[3]+'»), доход <b>'+f(inc)+' ₽/мес</b> — средний за '+stz+' мес стажа. Зона от порога '+f(curZ[2])+' ₽ — твой доход '+(inc>=curZ[2]?'выше':'ниже')+'.';
   if(v<=0){
-   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ~#'+curPos+', '+Z[curIdx][3]+' · доход <b>'+f(inc)+' ₽</b>';
-   renderPyr(null);
+   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ' + reasonNow;
+   if(note) note.innerHTML='Зона зависит от <b>среднего дохода</b>. Введи вал — покажу, куда попадёшь.';
+   renderPyr(curZ[3],null);
    return;
   }
   const period=Math.min(stz,12), newPeriod=Math.min(stz+1,12);
   const doch=Math.round(v*0.48);
   const newAvg=(inc*period+doch)/newPeriod;
   const resIdx=zi(newAvg), resPos=pz(newAvg,resIdx);
+  const resZ=Z[resIdx];
   const resRow=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+resIdx+'"]');
   if(resRow){ resRow.classList.add('you'); resRow.scrollIntoView({block:'nearest',behavior:'smooth'}); }
-  renderPyr(Z[resIdx][3]);
-  out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ~#'+curPos+', '+Z[curIdx][3]+' · доход '+f(inc)+' ₽<br>'
-   +'<span class="sv-you-pill">👉 ты будешь здесь</span> при вале <b>'+f(v)+' ₽/мес</b> → ~#'+resPos+', '+Z[resIdx][3]+' <span class="sv-calc-avg">· новый доход: '+f(newAvg)+' ₽</span>';
+  renderPyr(curZ[3], resZ[3]);
+  // Обоснование прогноза — почему именно такое место
+  const fromPos=curPos, toPos=resPos, fromZ=curZ[3], toZ=resZ[3];
+  const up=fromPos-toPos;
+  const delta=up>0?'+':'';
+  let explain='';
+  if(fromZ===toZ && up===0){
+   explain='Средний доход остаётся в той же зоне «'+toZ+'» — позиция меняется на '+Math.abs(up)+' внутри диапазона.';
+  } else if(up>0){
+   explain='Вал '+f(v)+' ₽/мес ≈ доход '+f(doch)+' ₽. Средний за <b>'+newPeriod+' мес</b> = <b>'+f(newAvg)+' ₽</b> — выше порога зоны «'+toZ+'» ('+f(resZ[2])+' ₽) → место <b>↑ на '+up+'</b> в этой зоне.';
+  } else if(up<0){
+   explain='Средний доход '+f(newAvg)+' ₽ — не дотягивает до порога «'+toZ+'» ('+f(resZ[2])+' ₽), либо ты перешёл в зону с большим диапазоном рангов.';
+  } else {
+   explain='Средний доход '+f(newAvg)+' ₽ — на границе зон.';
+  }
+  out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ~#'+curPos+', '+fromZ+' · доход '+f(inc)+' ₽<br>'
+   +'<span class="sv-you-pill">👉 ты будешь здесь</span> при вале <b>'+f(v)+' ₽/мес</b> → <b>~#'+resPos+'</b>, '+toZ+' <span class="sv-calc-avg">· новый средний: '+f(newAvg)+' ₽</span>';
+  if(note) note.innerHTML=explain;
  }
  inp.addEventListener('input',calc);
  calc();
