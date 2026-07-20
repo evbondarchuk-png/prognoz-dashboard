@@ -50,9 +50,32 @@ const CSS = `
 }
 .nav-search-item:hover{background:var(--surface-2)}
 
+/* --- Бургер (мобильное меню хедера) --- */
+.nav-burger{display:none;font-size:var(--fs-13);color:var(--muted);background:transparent;padding:6px 10px;border-radius:20px;border:1px solid var(--line);cursor:pointer;font-family:inherit;line-height:1}
+
+@media(max-width:560px){
+  /* Бургер видим, остальные правые кнопки скрыты (пока меню закрыто) */
+  .nav-burger{display:inline-flex;align-items:center}
+  .app-header-right > :not(#navBurger){display:none}
+  /* Открытое меню — выпадайка full-width под хедером, кнопки в столбик */
+  .app-header-right.nav-burger-open{
+    position:absolute;top:var(--app-header-h,56px);left:0;right:0;
+    flex-direction:column;align-items:stretch;gap:8px;
+    background:var(--surface);border-bottom:1px solid var(--line);
+    padding:12px 16px;box-shadow:0 8px 30px rgba(20,30,55,.12);z-index:200;
+  }
+  .app-header-right.nav-burger-open > :not(#navBurger){display:flex;width:100%;justify-content:flex-start}
+  .app-header-right.nav-burger-open > #navBurger{display:none}
+  /* Внутри открытого бургер-меню поиск — инпут во весь Width, без отдельного попапа */
+  .app-header-right.nav-burger-open .nav-search-box{position:static;width:100%;right:auto;transform:none;opacity:1;pointer-events:auto;border:1px solid var(--line);box-shadow:none}
+  .app-header-right.nav-burger-open .nav-search-btn{display:none}
+  /* Breadcrumbs — усечение многоточием, не выталкивает кнопки */
+  .nav-crumbs{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100vw - 140px);display:inline-block;vertical-align:middle}
+}
+
 @media(max-width:480px){
   .nav-crumbs{font-size:11px}
-  .nav-search-box{right:-20px;width:240px}
+  .nav-search-box{right:-12px;width:min(240px,calc(100vw - 32px))}
 }
 `;
 
@@ -239,6 +262,17 @@ function render(ctx){
     } else {
       headerRight.appendChild(toolsDiv);
     }
+    // Бургер для мобильного меню (виден на ≤560px). Добавляем последним в .app-header-right.
+    if(!document.getElementById('navBurger')){
+      const burger=document.createElement('button');
+      burger.id='navBurger';
+      burger.className='nav-burger';
+      burger.type='button';
+      burger.textContent='☰';
+      burger.setAttribute('aria-label','Меню');
+      burger.addEventListener('click',()=>window.__navBurgerToggle&&window.__navBurgerToggle());
+      headerRight.appendChild(burger);
+    }
   }
 }
 
@@ -341,6 +375,17 @@ window.__navSearchToggle=()=>{
   }
 };
 
+// Бургер: открыть/закрыть мобильное меню хедера (≤560px)
+window.__navBurgerToggle=()=>{
+  const hr=document.querySelector('.app-header-right');
+  if(!hr) return;
+  hr.classList.toggle('nav-burger-open');
+  if(hr.classList.contains('nav-burger-open')){
+    const inp=document.getElementById('navSearchInput');
+    if(inp) setTimeout(()=>inp.focus(),100);
+  }
+};
+
 // Закрытие при клике вне
 document.addEventListener('click',e=>{
   if(searchOpen&&!e.target.closest('.nav-search-trigger')){
@@ -348,9 +393,16 @@ document.addEventListener('click',e=>{
     const b=document.getElementById('navSearchBox');
     if(b) b.classList.remove('on');
   }
+  // Закрыть бургер при клике вне .app-header-right (и вне самого бургера)
+  const hr=document.querySelector('.app-header-right');
+  if(hr&&hr.classList.contains('nav-burger-open')&&!e.target.closest('.app-header-right')){
+    hr.classList.remove('nav-burger-open');
+  }
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(searchOpen){searchOpen=false;const b=document.getElementById('navSearchBox');if(b)b.classList.remove('on');}
+    const hr=document.querySelector('.app-header-right');
+    if(hr&&hr.classList.contains('nav-burger-open')) hr.classList.remove('nav-burger-open');
   }
 });
