@@ -6,6 +6,7 @@
 
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 
 let injected = false;
 let navCtx = null;
@@ -329,30 +330,30 @@ async function doSearch(q){
   if(!resultsEl) return;
   resultsEl.innerHTML='<div class="nav-search-empty">Ищу…</div>';
 
-  const qLow=q.toLowerCase().trim();
-  if(!qLow){resultsEl.innerHTML='';return;}
+  const qq=String(q||'').trim();
+  if(qq.length<2){resultsEl.innerHTML='';return;}
+  const qLow=qq.toLowerCase();
 
-  // Режим A: ищем по уже загруженным team_cards.members (мгновенно, 0 запросов)
-  const members=navCtx?.data?.team_cards?.members||[];
-  const results=[];
-  members.forEach(m=>{
-    if(m.is_self) return;
-    const name=(m.short_name||m.name||'').toLowerCase();
-    const code=String(m.code||'');
-    if(name.includes(qLow)||code.includes(qLow)) results.push({code:m.code,name:m.short_name||m.name||''});
-  });
-
-  // Режим B: если введён числовой код — прямое чтение /users/{code}
-  // (для АУП/admin найдёт любого; для МОП/РОП — только если в subordinates)
-  if(/^\d+$/.test(q)){
-    try{
-      const db=getDatabase(getApp());
-      const s=await get(ref(db,'users/'+q));
-      if(s.exists()&&!results.find(r=>String(r.code)===q)){
-        const u=s.val();
-        results.push({code:q,name:u.name||'',role:u.role||''});
+  // Источник — onCall searchUsers (бэкенд ищет по всем доступным по иерархии,
+  // регистронезависимо, посимвольно). При ошибке — fallback на team_cards (прямые подчинённые).
+  let results=[];
+  try{
+    const fn=httpsCallable(getFunctions(getApp(),'europe-west1'),'searchUsers',{timeout:30000});
+    const res=await fn({q:qq});
+    results=((res.data&&res.data.results)||[]).map(r=>({code:r.code,name:r.name||'',role:r.role||''}));
+  }catch(e){
+    const members=navCtx?.data?.team_cards?.members||[];
+    members.forEach(m=>{
+      if(m.is_self) return;
+      const name=(m.short_name||m.name||'').toLowerCase();
+      if(name.includes(qLow)||String(m.code||'').includes(qLow)){
+        results.push({code:m.code,name:m.short_name||m.name||'',role:m.role||''});
       }
-    }catch(e){}
+    });
+    if(!results.length){
+      resultsEl.innerHTML='<div class="nav-search-empty">Поиск недоступен, попробуйте позже</div>';
+      return;
+    }
   }
 
   if(!results.length){
@@ -360,22 +361,25 @@ async function doSearch(q){
     return;
   }
 
-  // Маппинг ссылок по РОЛИ НАЙДЕННОГО пользователя:
-  // realtor/mop → index.html?agent=, rop → mop.html?mop=, aup → rop.html?rop=
-  // Если роль неизвестна (team_cards) — fallback по роли смотрящего
-  const byRoleFile={realtor:'index.html',mop:'index.html',rop:'mop.html',aup:'rop.html'};
-  const byRoleParam={realtor:'agent',mop:'agent',rop:'mop',aup:'rop'};
+  // Маппинг по РОЛИ НАЙДЕННОГО → его собственный кабинет:
+  // realtor→index?agent, mop→mop?mop, rop→rop?rop, aup/admin→aup.html
+  // (раньше было криво: mop→index?agent, rop→mop?mop, aup→rop?rop — открывалось в чужом ЛК)
+  // Если роль неизвестна (fallback team_cards) — ссылка по роли смотрящего.
+  const byRoleFile={realtor:'index.html',mop:'mop.html',rop:'rop.html',aup:'aup.html',admin:'aup.html'};
+  const byRoleParam={realtor:'agent',mop:'mop',rop:'rop',aup:'aup',admin:'aup'};
   const fallbackParam={mop:'agent',rop:'mop',aup:'rop',admin:'rop'}[navCtx?.role]||'agent';
   const fallbackFile={mop:'index.html',rop:'mop.html',aup:'rop.html',admin:'rop.html'}[navCtx?.role]||'index.html';
+  const roleLabel={realtor:'Партнёр',mop:'МОП',rop:'РОП',aup:'АУП',admin:'АУП'};
 
   resultsEl.innerHTML=results.slice(0,10).map(r=>{
-    const href=r.role
-      ?`${byRoleFile[r.role]||'index.html'}?${byRoleParam[r.role]||'agent'}=${encodeURIComponent(r.code)}`
-      :`${fallbackFile}?${fallbackParam}=${encodeURIComponent(r.code)}`;
-    const roleLabel=r.role?({realtor:'Партнёр',mop:'МОП',rop:'РОП',aup:'АУП'}[r.role]||''):'';
+    const hasRole=r.role&&byRoleFile[r.role];
+    const file=hasRole?byRoleFile[r.role]:fallbackFile;
+    const param=hasRole?byRoleParam[r.role]:fallbackParam;
+    const href=`${file}?${param}=${encodeURIComponent(r.code)}`;
+    const lbl=roleLabel[r.role]||'';
     return `<a class="nav-search-item" href="${href}">
       <span>${esc(r.name||'')}</span>
-      ${roleLabel?`<span style="color:var(--muted);font-size:10px">${roleLabel} ${esc(String(r.code))}</span>`:''}
+      ${lbl?`<span style="color:var(--muted);font-size:10px">${lbl} ${esc(String(r.code))}</span>`:''}
     </a>`;
   }).join('');
 }
