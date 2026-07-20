@@ -1,6 +1,6 @@
 /**
  * nav.js — навигационный слой для всех кабинетов.
- * Breadcrumbs в лого + меню «Моя команда» + глобальный поиск.
+ * Breadcrumbs в лого + глобальный поиск.
  * Данные: CTX (role, me, target, data).
  */
 
@@ -9,7 +9,6 @@ import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.7.0
 
 let injected = false;
 let navCtx = null;
-let teamDropOpen = false;
 let searchOpen = false;
 let searchTimer = null;
 
@@ -23,38 +22,8 @@ const CSS = `
 .nav-sep{color:var(--muted-2);margin:0 2px;font-weight:var(--fw-r)}
 .nav-current{color:var(--ink);font-weight:var(--fw-sb)}
 
-/* --- Меню команд + поиск (в .app-header-right) --- */
+/* --- Поиск (в .app-header-right) --- */
 .nav-tools{display:flex;align-items:center;gap:6px}
-.nav-team-trigger{position:relative}
-.nav-team-btn{font-size:var(--fs-12);color:var(--muted);background:transparent;padding:5px 10px;border-radius:20px;border:1px solid var(--line);cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-family:inherit}
-.nav-team-btn:hover{background:var(--surface-2)}
-.nav-team-drop{
-  position:absolute;top:calc(100% + 6px);right:0;
-  width:260px;max-height:320px;overflow-y:auto;
-  background:var(--surface);border:1px solid var(--line);
-  border-radius:var(--r-lg);box-shadow:0 8px 30px rgba(20,30,55,.12);
-  opacity:0;transform:translateY(-6px);pointer-events:none;
-  transition:opacity .15s ease,transform .15s ease;z-index:200;
-}
-.nav-team-drop.on{opacity:1;transform:translateY(0);pointer-events:auto}
-.nav-team-item{
-  display:flex;align-items:center;gap:8px;
-  padding:8px 12px;cursor:pointer;
-  font-size:var(--fs-12);color:var(--ink);
-  border-bottom:1px solid var(--line);
-  text-decoration:none;
-}
-.nav-team-item:last-child{border-bottom:none}
-.nav-team-item:hover{background:var(--surface-2)}
-.nav-team-avatar{
-  width:28px;height:28px;border-radius:50%;
-  background:var(--brand-soft);color:var(--brand);
-  display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:var(--fw-b);flex-shrink:0;
-}
-.nav-team-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nav-team-role{font-size:10px;color:var(--muted)}
-
 .nav-search-trigger{position:relative}
 .nav-search-btn{font-size:var(--fs-12);color:var(--muted);background:transparent;padding:5px 8px;border-radius:20px;border:1px solid var(--line);cursor:pointer;font-family:inherit}
 .nav-search-box{
@@ -83,7 +52,6 @@ const CSS = `
 
 @media(max-width:480px){
   .nav-crumbs{font-size:11px}
-  .nav-team-drop{right:-40px;width:220px}
   .nav-search-box{right:-20px;width:240px}
 }
 `;
@@ -220,29 +188,6 @@ async function renderBreadcrumbsAsync(ctx){
   }
 }
 
-/* --- Меню команд --- */
-function buildTeamMenu(ctx){
-  if(!ctx||ctx.role==='realtor') return '';
-  const members=ctx.data?.team_cards?.members||[];
-  if(!members.length) return '';
-  // Маппинг ссылок по РОЛИ MEMBER'А:
-  // МОП→members=партнёры→index.html?agent=, РОП→members=МОПы→mop.html?mop=, АУП→members=РОПы→rop.html?rop=
-  const drillParam={mop:'agent',rop:'mop',aup:'rop',admin:'rop'}[ctx.role]||'agent';
-  const drillFile={mop:'index.html',rop:'mop.html',aup:'rop.html',admin:'rop.html'}[ctx.role]||'index.html';
-  const items=members.filter(m=>!m.is_self).sort((a,b)=>(a.short_name||a.name||'').localeCompare(b.short_name||b.name||'','ru')).map(m=>{
-    const initials=(m.short_name||m.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2);
-    return `<a class="nav-team-item" href="${drillFile}?${drillParam}=${encodeURIComponent(m.code)}">
-      <div class="nav-team-avatar">${esc(initials)}</div>
-      <div class="nav-team-name">${esc(m.short_name||m.name||'')}</div>
-    </a>`;
-  }).join('');
-  if(!items) return '';
-  return `<div class="nav-team-trigger">
-    <button class="nav-team-btn" onclick="window.__navTeamToggle()" >👥 Моя команда ▾</button>
-    <div class="nav-team-drop" id="navTeamDrop">${items}</div>
-  </div>`;
-}
-
 /* --- Поиск --- */
 function buildSearch(ctx){
   if(!ctx||ctx.role==='realtor') return '';
@@ -283,10 +228,14 @@ function render(ctx){
     const toolsDiv=document.createElement('div');
     toolsDiv.id='navTools';
     toolsDiv.className='nav-tools';
-    toolsDiv.innerHTML=buildTeamMenu(ctx)+buildSearch(ctx);
+    toolsDiv.innerHTML=buildSearch(ctx);
     const logoutBtn=document.getElementById('logoutBtn');
     if(logoutBtn){
       headerRight.insertBefore(toolsDiv,logoutBtn);
+      // «← Назад» — между «Найти сотрудника» и «Выход» (только расположение,
+      // логику history.back() не трогаем). В aup.html backBtn нет — пропуск.
+      const backBtn=document.getElementById('backBtn');
+      if(backBtn) headerRight.insertBefore(backBtn,logoutBtn);
     } else {
       headerRight.appendChild(toolsDiv);
     }
@@ -382,12 +331,6 @@ async function doSearch(q){
 }
 
 /* --- Обработчики --- */
-window.__navTeamToggle=()=>{
-  const drop=document.getElementById('navTeamDrop');
-  if(!drop) return;
-  teamDropOpen=!teamDropOpen;
-  drop.classList.toggle('on',teamDropOpen);
-};
 window.__navSearchToggle=()=>{
   const box=document.getElementById('navSearchBox');
   if(!box) return;
@@ -400,11 +343,6 @@ window.__navSearchToggle=()=>{
 
 // Закрытие при клике вне
 document.addEventListener('click',e=>{
-  if(teamDropOpen&&!e.target.closest('.nav-team-trigger')){
-    teamDropOpen=false;
-    const d=document.getElementById('navTeamDrop');
-    if(d) d.classList.remove('on');
-  }
   if(searchOpen&&!e.target.closest('.nav-search-trigger')){
     searchOpen=false;
     const b=document.getElementById('navSearchBox');
@@ -413,7 +351,6 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    if(teamDropOpen){teamDropOpen=false;const d=document.getElementById('navTeamDrop');if(d)d.classList.remove('on');}
     if(searchOpen){searchOpen=false;const b=document.getElementById('navSearchBox');if(b)b.classList.remove('on');}
   }
 });
