@@ -70,6 +70,11 @@ const CSS = `
   .app-header-right{flex:1 1 100%;justify-content:space-between;gap:8px}
   /* Breadcrumbs — перенос строк (не многоточие) */
   .nav-crumbs{white-space:normal;max-width:none}
+  /* Порядок в хедере на мобильном: Дата, Назад, Прогноша(aup), бургер ☰ */
+  .app-header-right .date-badge{order:0}
+  .app-header-right #backBtn{order:1}
+  .app-header-right #prognozaBtn{order:2}
+  .app-header-right #navBurger{order:3}
   /* Табы — не прилипают (высота хедера варьируется) */
   .rtab-bar{position:static}
 }
@@ -396,9 +401,7 @@ function getBurgerEls(){
   if(integTrigger) els.push(integTrigger.parentElement); // обёртка Подключений (display:contents)
   const navTools=document.getElementById('navTools');
   if(navTools) els.push(navTools);
-  // Прогноша (только aup) — кнопка без id, не logout и не бургер
-  const prognoza=document.querySelector('.app-header-right > button:not(#logoutBtn):not(.nav-burger)');
-  if(prognoza) els.push(prognoza);
+  // Прогноша (только aup) остаётся ВНЕ бургера — в хедере между «Назад» и ☰.
   const logout=document.getElementById('logoutBtn');
   if(logout) els.push(logout);
   return els;
