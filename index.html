@@ -477,9 +477,9 @@
 .sv-pyr-row .sv-pyr-l{padding:0 12px;white-space:nowrap}
 .sv-pyr-row .sv-pyr-you{display:none;font-size:10px;font-weight:700;background:rgba(255,255,255,.9);color:#1a1f2e;padding:2px 7px;border-radius:999px;margin-left:4px}
 .sv-pyr-row .sv-pyr-cur{display:none;font-size:10px;font-weight:700;background:rgba(255,255,255,.95);color:#475569;padding:2px 7px;border-radius:999px;margin-left:4px}
-.sv-pyr-row.you{opacity:1;transform:scale(1.05);box-shadow:0 0 0 2.5px #1a1f2e,0 8px 20px rgba(20,30,55,.2);z-index:2}
+.sv-pyr-row.you{opacity:1;border:2px solid #1a1f2e;box-shadow:0 6px 18px rgba(20,30,55,.22);z-index:3;position:relative}
 .sv-pyr-row.you .sv-pyr-you{display:inline-block}
-.sv-pyr-row.cur{opacity:1;box-shadow:0 0 0 2px dashed #475569;z-index:2}
+.sv-pyr-row.cur{opacity:1;border:2px dashed #1a1f2e;background-image:linear-gradient(135deg,rgba(26,31,46,.08),rgba(26,31,46,.02));z-index:2;position:relative}
 .sv-pyr-row.cur .sv-pyr-cur{display:inline-block}
 .sv-calc-label{font-size:13px;color:var(--ink-soft);display:flex;flex-direction:column;gap:6px;margin-top:4px}
 .sv-calc-label input{font-size:14px;font-weight:600;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-md);width:100%;max-width:200px;background:var(--surface);color:var(--ink);box-sizing:border-box}
@@ -489,6 +489,17 @@
 .sv-cur-pill,.sv-you-pill{display:inline-block;background:var(--surface);border:1px solid var(--line);border-radius:999px;font-size:11px;font-weight:700;padding:2px 8px;margin-right:4px;color:#1a1f2e}
 .sv-cur-pill{color:#475569}
 .sv-calc-avg{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+.sv-stat{flex:1 1 140px;background:var(--surface-2);border-radius:var(--r-md);padding:10px 12px;min-width:140px}
+.sv-stat-cap{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:600}
+.sv-stat-val{font-size:18px;font-weight:800;color:var(--ink);margin-top:2px}
+.sv-stat-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.sv-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.sv-tbl th{text-align:left;font-weight:600;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.03em;padding:4px 6px;border-bottom:1px solid var(--line)}
+.sv-tbl th+th,.sv-tbl td+td{text-align:right;font-variant-numeric:tabular-nums}
+.sv-tbl td{padding:5px 6px;color:var(--ink);border-bottom:1px solid var(--surface-2)}
+.sv-tbl tr.fc td{color:var(--buyer);font-weight:600}
+.sv-bar{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;min-width:30px}
+.sv-bar-fill{height:100%;border-radius:3px}
 
 </style>
 </head>
@@ -1746,6 +1757,51 @@ function svetoforGraphCard(d){
  </div>`;
 }
 
+function svetoforValIncomeCard(d){
+ const u=d.user||{};
+ const inc=u.income_month||0, stz=u.stazh_months||0;
+ const fc=d.forecast||{};
+ const cm=fc.current_month||{}, nm=fc.next_month||{};
+ const factRev=Number(cm.fact_revenue)||0;
+ const fcstRev=Number(cm.forecast_revenue)||0;
+ const totRev=Number(cm.revenue_total)||0;
+ const nmTot=Number(nm.revenue_total)||0;
+ const fmt=n=>{n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e3) return Math.round(n/1e3)+'к'; return String(Math.round(n));};
+ // Средние за стаж (archive.income — средний доход, вал = доход/0.48)
+ const avgInc=inc, avgVal=inc>0?Math.round(inc/0.48):0;
+ const rows=[];
+ if(factRev>0 || totRev>0){
+  rows.push({mo:'июл · факт', val:factRev, doch:Math.round(factRev*0.48), cls:'fact'});
+ }
+ if(totRev>factRev && totRev>0){
+  rows.push({mo:'июл · прогноз', val:totRev, doch:Math.round(totRev*0.48), cls:'fc'});
+ }
+ if(nmTot>0){
+  rows.push({mo:'авг · прогноз', val:nmTot, doch:Math.round(nmTot*0.48), cls:'fc'});
+ }
+ const rowsHtml=rows.map(r=>{
+  const pct=r.val>0?Math.min(100,Math.round(r.val/Math.max(avgVal*1.5, r.val)*100)):0;
+  const fillW=Math.min(100, pct);
+  const bar=r.cls==='fact'?'background:var(--ok)':'background:var(--buyer)';
+  return `<tr class="${r.cls}"><td>${r.mo}</td><td>${fmt(r.val)}</td><td>${fmt(r.doch)}</td><td><div class="sv-bar"><div class="sv-bar-fill" style="width:${fillW}%;${bar}"></div></div></td></tr>`;
+ }).join('');
+ if(!rows.length){
+  return `<div class="card"><div class="section-title">📊 На чём основан прогноз — вал и доход</div>
+  <div class="soon">Прогноз вала появится, как только будут данные.</div></div>`;
+ }
+ return `<div class="card">
+  <div class="section-title">📊 На чём основан прогноз — вал и доход</div>
+  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+   <div class="sv-stat"><div class="sv-stat-cap">средний вал</div><div class="sv-stat-val">${fmt(avgVal)} ₽</div><div class="sv-stat-sub">за ${stz||'?'} мес стажа</div></div>
+   <div class="sv-stat"><div class="sv-stat-cap">средний доход</div><div class="sv-stat-val">${fmt(avgInc)} ₽</div><div class="sv-stat-sub">вал × 0,48</div></div>
+  </div>
+  <table class="sv-tbl"><thead><tr><th>месяц</th><th>вал</th><th>доход</th><th style="width:35%"></th></tr></thead><tbody>${rowsHtml}</tbody></table>
+  <div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">
+   Место в светофоре = <b>средний доход за окно min(стаж, 12) мес</b>. Прогноз считает new_avg = (income × период + вал×0,48) / (период+1).
+  </div>
+ </div>`;
+}
+
 function svetoforCalculatorCard(d){
  const u=d.user||{};
  const inc=u.income_month||0, stz=u.stazh_months||0;
@@ -1754,27 +1810,25 @@ function svetoforCalculatorCard(d){
   <div class="soon">Калькулятор станет доступен, когда появятся данные о доходе.</div></div>`;
  }
  return `<div class="card">
-  <div class="section-title">🧮 Калькулятор: куда попадёшь в светофоре</div>
+  <div class="section-title">🧮 Куда попадёшь в светофоре</div>
   <div class="muted" style="font-size:12px;margin-bottom:10px">Введи средний вал в месяц — покажу, в какую зону светофора ты попадёшь в следующем месяце.</div>
   <div class="sv-calc"><label class="sv-calc-label">нужно сделать вала, ₽
-   <input id="svV" type="number" inputmode="numeric" step="10000" placeholder="введи вал">
+   <input id="svV" type="number" inputmode="numeric" step="10000" min="0" placeholder="введи вал">
   </label>
   <div class="sv-calc-out" id="svOut"></div>
   <div class="sv-pyr" id="svPyr"></div>
-  <div class="muted sv-calc-note" id="svNote"></div>
   </div>
  </div>`;
 }
 
-// Объединённый рендер (две карточки) — для удобства вызывать из renderSvetofor
+// Объединённый рендер (три карточки: график → вал/доход → калькулятор)
 function svetoforForecastCard(d){
- return svetoforGraphCard(d) + svetoforCalculatorCard(d);
+ return svetoforGraphCard(d) + svetoforValIncomeCard(d) + svetoforCalculatorCard(d);
 }
 
 // Инициализация калькулятора + обоснование (вызывается из initSvetoforCalcWithData)
 window.initSvetoforCalc=function(){
  const out=document.getElementById('svOut');
- const note=document.getElementById('svNote');
  const pyr=document.getElementById('svPyr');
  const inp=document.getElementById('svV');
  if(!out||!pyr||!inp) return;
@@ -1817,8 +1871,7 @@ window.initSvetoforCalc=function(){
   // Обоснование «сейчас» (всегда)
   const reasonNow='<b>Сейчас ~#'+curPos+'</b> («'+curZ[3]+'»), доход <b>'+f(inc)+' ₽/мес</b> — средний за '+stz+' мес стажа. Зона от порога '+f(curZ[2])+' ₽ — твой доход '+(inc>=curZ[2]?'выше':'ниже')+'.';
   if(v<=0){
-   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ' + reasonNow;
-   if(note) note.innerHTML='Зона зависит от <b>среднего дохода</b>. Введи вал — покажу, куда попадёшь.';
+   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ' + reasonNow + '<div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, куда попадёшь.</div>';
    renderPyr(curZ[3],null);
    return;
   }
@@ -1845,8 +1898,7 @@ window.initSvetoforCalc=function(){
    explain='Средний доход '+f(newAvg)+' ₽ — на границе зон.';
   }
   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ~#'+curPos+', '+fromZ+' · доход '+f(inc)+' ₽<br>'
-   +'<span class="sv-you-pill">👉 ты будешь здесь</span> при вале <b>'+f(v)+' ₽/мес</b> → <b>~#'+resPos+'</b>, '+toZ+' <span class="sv-calc-avg">· новый средний: '+f(newAvg)+' ₽</span>';
-  if(note) note.innerHTML=explain;
+   +'<span class="sv-you-pill">👉 ты будешь здесь</span> при вале <b>'+f(v)+' ₽/мес</b> → <b>~#'+resPos+'</b>, '+toZ+' <span class="sv-calc-avg">· новый средний: '+f(newAvg)+' ₽</span><div class="muted" style="font-size:11px;margin-top:6px;line-height:1.5">'+explain+'</div>';
  }
  inp.addEventListener('input',calc);
  calc();
