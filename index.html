@@ -1846,13 +1846,16 @@ window.initSvetoforCalc=function(){
  const f=function(n){n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e3) return Math.round(n/1e3)+'к'; return String(Math.round(n));};
  const zi=function(a){for(let i=0;i<Z.length;i++) if(Z[i][2]&&a>=Z[i][2]) return i; return Z.length-1;};
  const pz=function(a,idx){const z=Z[idx]; if(idx<=0||!z[2]) return z[0]; const hi=Z[idx-1][2]; if(!hi||a>=hi) return z[0]; const t=(a-z[2])/(hi-z[2]); return Math.max(z[0], Math.round(z[1]-t*(z[1]-z[0])));};
- // Рендер пирамиды (с подсветкой текущей и прогнозной ступенек)
- function renderPyr(curCat,youCat){
+ // Рендер пирамиды (с подсветкой текущей и прогнозной ступенек по КОНКРЕТНОМУ idx,
+ // не по категории — иначе подсветятся все строки одной категории).
+ function renderPyr(curIdx,youIdx){
   let html='';
   Z.forEach(function(z,i){
    const bg=CC[z[3]]?CC[z[3]][0]:'#94a3b8', tc=CC[z[3]]?CC[z[3]][1]:'#fff';
    const w=(18+(i/(Z.length-1))*82).toFixed(0)+'%';
-   const cls=(z[3]===youCat?' you':'')+(z[3]===curCat?' cur':'');
+   const isYou=youIdx!=null && i===youIdx;
+   const isCur=curIdx!=null && i===curIdx;
+   const cls=(isYou?' you':'')+(isCur?' cur':'');
    html+='<div class="sv-pyr-row'+cls+'" data-idx="'+i+'" style="width:'+w+';background:'+bg+';color:'+tc+'">'
      +'<span class="sv-pyr-l">#'+z[0]+'–'+z[1]+' <span class="sv-pyr-r">≈ '+f(z[2])+'₽</span></span>'
      +'<span class="sv-pyr-you">ты будешь здесь</span>'
@@ -1862,43 +1865,39 @@ window.initSvetoforCalc=function(){
  }
  function calc(){
   const v=+inp.value||0;
-  // Сброс подсветки
-  document.querySelectorAll('#svPyr .sv-pyr-row').forEach(function(r){r.classList.remove('you');r.classList.remove('cur');});
   const curIdx=zi(inc), curPos=pz(inc,curIdx);
   const curZ=Z[curIdx];
-  const curRow=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+curIdx+'"]');
-  if(curRow) curRow.classList.add('cur');
   // Обоснование «сейчас» (всегда)
   const reasonNow='<b>Сейчас ~#'+curPos+'</b> («'+curZ[3]+'»), доход <b>'+f(inc)+' ₽/мес</b> — средний за '+stz+' мес стажа. Зона от порога '+f(curZ[2])+' ₽ — твой доход '+(inc>=curZ[2]?'выше':'ниже')+'.';
+  let youIdx=null, resIdx=null, resPos=null, resZ=null, explain='';
+  if(v>0){
+   const period=Math.min(stz,12), newPeriod=Math.min(stz+1,12);
+   const doch=Math.round(v*0.48);
+   const newAvg=(inc*period+doch)/newPeriod;
+   resIdx=zi(newAvg); resPos=pz(newAvg,resIdx); resZ=Z[resIdx];
+   youIdx=resIdx;
+   const fromPos=curPos, toPos=resPos, fromZ=curZ[3], toZ=resZ[3];
+   const up=fromPos-toPos;
+   if(fromZ===toZ && up===0){
+    explain='Средний доход остаётся в той же зоне «'+toZ+'» — позиция меняется на '+Math.abs(up)+' внутри диапазона.';
+   } else if(up>0){
+    explain='Вал '+f(v)+' ₽/мес → доход '+f(doch)+' ₽. Средний за <b>'+newPeriod+' мес</b> = <b>'+f(newAvg)+' ₽</b> — выше порога зоны «'+toZ+'» ('+f(resZ[2])+' ₽) → место <b>↑ на '+up+'</b> в этой зоне.';
+   } else if(up<0){
+    explain='Средний доход '+f(newAvg)+' ₽ — не дотягивает до порога «'+toZ+'» ('+f(resZ[2])+' ₽), либо ты перешёл в зону с большим диапазоном рангов.';
+   } else {
+    explain='Средний доход '+f(newAvg)+' ₽ — на границе зон.';
+   }
+  }
+  // Подсветка по конкретному idx (не по категории) — иначе дублируются
+  renderPyr(curIdx, youIdx);
+  // Скроллим к прогнозной ступеньке
+  if(youIdx!=null){ const el=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+youIdx+'"]'); if(el) el.scrollIntoView({block:'nearest',behavior:'smooth'}); }
   if(v<=0){
    out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ' + reasonNow + '<div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, куда попадёшь.</div>';
-   renderPyr(curZ[3],null);
    return;
   }
-  const period=Math.min(stz,12), newPeriod=Math.min(stz+1,12);
-  const doch=Math.round(v*0.48);
-  const newAvg=(inc*period+doch)/newPeriod;
-  const resIdx=zi(newAvg), resPos=pz(newAvg,resIdx);
-  const resZ=Z[resIdx];
-  const resRow=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+resIdx+'"]');
-  if(resRow){ resRow.classList.add('you'); resRow.scrollIntoView({block:'nearest',behavior:'smooth'}); }
-  renderPyr(curZ[3], resZ[3]);
-  // Обоснование прогноза — почему именно такое место
-  const fromPos=curPos, toPos=resPos, fromZ=curZ[3], toZ=resZ[3];
-  const up=fromPos-toPos;
-  const delta=up>0?'+':'';
-  let explain='';
-  if(fromZ===toZ && up===0){
-   explain='Средний доход остаётся в той же зоне «'+toZ+'» — позиция меняется на '+Math.abs(up)+' внутри диапазона.';
-  } else if(up>0){
-   explain='Вал '+f(v)+' ₽/мес ≈ доход '+f(doch)+' ₽. Средний за <b>'+newPeriod+' мес</b> = <b>'+f(newAvg)+' ₽</b> — выше порога зоны «'+toZ+'» ('+f(resZ[2])+' ₽) → место <b>↑ на '+up+'</b> в этой зоне.';
-  } else if(up<0){
-   explain='Средний доход '+f(newAvg)+' ₽ — не дотягивает до порога «'+toZ+'» ('+f(resZ[2])+' ₽), либо ты перешёл в зону с большим диапазоном рангов.';
-  } else {
-   explain='Средний доход '+f(newAvg)+' ₽ — на границе зон.';
-  }
-  out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ~#'+curPos+', '+fromZ+' · доход '+f(inc)+' ₽<br>'
-   +'<span class="sv-you-pill">👉 ты будешь здесь</span> при вале <b>'+f(v)+' ₽/мес</b> → <b>~#'+resPos+'</b>, '+toZ+' <span class="sv-calc-avg">· новый средний: '+f(newAvg)+' ₽</span><div class="muted" style="font-size:11px;margin-top:6px;line-height:1.5">'+explain+'</div>';
+  out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ~#'+curPos+', '+curZ[3]+' · доход '+f(inc)+' ₽<br>'
+   +'<span class="sv-you-pill">👉 ты будешь здесь</span> при вале <b>'+f(v)+' ₽/мес</b> → <b>~#'+resPos+'</b>, '+resZ[3]+' <span class="sv-calc-avg">· новый средний: '+f(newAvg)+' ₽</span><div class="muted" style="font-size:11px;margin-top:6px;line-height:1.5">'+explain+'</div>';
  }
  inp.addEventListener('input',calc);
  calc();
