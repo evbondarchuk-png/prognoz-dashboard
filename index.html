@@ -1835,169 +1835,133 @@ function svetoforForecastCard(d){
 }
 
 // Инициализация калькулятора + обоснование (вызывается из initSvetoforCalcWithData)
+
+// Инициализация калькулятора (ЧИСТАЯ ПЕРЕЗАПИСЬ — все переменные в одной области)
 window.initSvetoforCalc=function(){
- const pyr=document.getElementById('svPyr');
  const inp=document.getElementById('svV');
- const typed=document.getElementById('svTyped');
- const typedVal=document.getElementById('svTypedVal');
- const currPos=document.getElementById('svCurrPos');
- const currCat=document.getElementById('svCurrCat');
- const currHint=document.getElementById('svCurrHint');
- const progLine=document.getElementById('svProgLine');
- const progPos=document.getElementById('svProgPos');
- const progCat=document.getElementById('svProgCat');
- const progAvg=document.getElementById('svProgAvg');
- const note=document.getElementById('svNote');
- if(!pyr||!inp) return;
- // 22 детальные зоны светофора опытных (from, to, avg_monthly_income, категория)
- const Z=[[1,5,727040,'Самые лучшие'],[6,10,593131,'Самые лучшие'],[11,15,523601,'Самые лучшие'],
- [16,20,369000,'Лучшие'],[21,30,445266,'Лучшие'],[31,40,377702,'Лучшие'],
- [41,50,325684,'Лучшие'],[51,60,300542,'Лучшие'],[61,70,261284,'Лучшие'],
- [71,80,274555,'Лучшие'],[81,100,257527,'Лучшие'],[101,120,249300,'Хорошие'],
- [121,140,231125,'Хорошие'],[141,160,233293,'Хорошие'],[161,200,216493,'Хорошие'],
- [201,300,179969,'Средние'],[301,400,158710,'Средние'],[401,500,144083,'Средние'],
- [501,600,119252,'Средние'],[601,700,94768,'Слабые'],[701,800,78809,'Слабые'],
- [801,1000,13646,'Низкоэффективные']];
- const CC={'Самые лучшие':['#16a34a','#fff'],'Лучшие':['#22c55e','#fff'],'Хорошие':['#84cc16','#0f172a'],'Средние':['#f59e0b','#0f172a'],'Слабые':['#f97316','#fff'],'Низкоэффективные':['#dc2626','#fff']};
- const inc=Number(inp.dataset.income)||0, stz=Number(inp.dataset.stazh)||0;
- const f=function(n){n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e3) return Math.round(n/1e3)+'к'; return String(Math.round(n));};
- const zi=function(a){for(let i=0;i<Z.length;i++) if(Z[i][2]&&a>=Z[i][2]) return i; return Z.length-1;};
- const pz=function(a,idx){const z=Z[idx]; if(idx<=0||!z[2]) return z[0]; const hi=Z[idx-1][2]; if(!hi||a>=hi) return z[0]; const t=(a-z[2])/(hi-z[2]); return Math.max(z[0], Math.round(z[1]-t*(z[1]-z[0])));};
- // Рендер пирамиды (с подсветкой текущей и прогнозной ступенек по КОНКРЕТНОМУ idx,
- // не по категории — иначе подсветятся все строки одной категории).
+ const pyrEl=document.getElementById('svPyr');
+ const typedEl=document.getElementById('svTyped');
+ const typedValEl=document.getElementById('svTypedVal');
+ const currPosEl=document.getElementById('svCurrPos');
+ const currCatEl=document.getElementById('svCurrCat');
+ const currHintEl=document.getElementById('svCurrHint');
+ const progLineEl=document.getElementById('svProgLine');
+ const progPosEl=document.getElementById('svProgPos');
+ const progCatEl=document.getElementById('svProgCat');
+ const progAvgEl=document.getElementById('svProgAvg');
+ const noteEl=document.getElementById('svNote');
+ if(!inp||!pyrEl) { console.warn('[svCalc] required DOM not found'); return; }
+
+ // 22 детальные зоны светофора (from, to, avg_monthly_income, категория)
+ const Z=[[1,5,727040,'Самые лучшие'],[6,10,593131,'Самые лучшие'],[11,15,523601,'Самые лучшие'],[16,20,369000,'Лучшие'],[21,30,445266,'Лучшие'],[31,40,377702,'Лучшие'],[41,50,325684,'Лучшие'],[51,60,300542,'Лучшие'],[61,70,261284,'Лучшие'],[71,80,274555,'Лучшие'],[81,100,257527,'Лучшие'],[101,120,249300,'Хорошие'],[121,140,231125,'Хорошие'],[141,160,233293,'Хорошие'],[161,200,216493,'Хорошие'],[201,300,179969,'Средние'],[301,400,158710,'Средние'],[401,500,144083,'Средние'],[501,600,119252,'Средние'],[601,700,94768,'Слабые'],[701,800,78809,'Слабые'],[801,1000,13646,'Низкоэффективные']];
+ const CC={'Самые лучшие':'#16a34a','Лучшие':'#22c55e','Хорошие':'#84cc16','Средние':'#f59e0b','Слабые':'#f97316','Низкоэффективные':'#dc2626'};
+
+ const fNum=function(n){n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e3) return Math.round(n/1e3)+'к'; return String(Math.round(n));};
+ const findZoneIdx=function(p){ if(!p||p<1) return -1; for(let i=0;i<Z.length;i++){ if(p>=Z[i][0] && p<=Z[i][1]) return i; } return -1; };
+
  function renderPyr(curIdx,youIdx){
   let html='';
   Z.forEach(function(z,i){
-   const bg=CC[z[3]]?CC[z[3]][0]:'#94a3b8', tc=CC[z[3]]?CC[z[3]][1]:'#fff';
-   const w=(18+(i/(Z.length-1))*82).toFixed(0)+'%';
+   const bg=CC[z[3]]||'#94a3b8';
    const isYou=youIdx!=null && i===youIdx;
    const isCur=curIdx!=null && i===curIdx;
    const cls=(isYou?' you':'')+(isCur?' cur':'');
-   html+='<div class="sv-pyr-row'+cls+'" data-idx="'+i+'" style="width:'+w+';background:'+bg+';color:'+tc+'">'
-     +'<span class="sv-pyr-l">#'+z[0]+'–'+z[1]+' <span class="sv-pyr-r">≈ '+f(z[2])+'₽</span></span>'
+   html+='<div class="sv-pyr-row'+cls+'" data-idx="'+i+'" style="width:'+(18+(i/(Z.length-1))*82).toFixed(0)+'%;background:'+bg+';color:#fff">'
+     +'<span class="sv-pyr-l">#'+z[0]+'–'+z[1]+' <span class="sv-pyr-r">≈ '+fNum(z[2])+'₽</span></span>'
      +'<span class="sv-pyr-you">ты будешь здесь</span>'
      +'<span class="sv-pyr-cur">сейчас</span></div>';
   });
-  pyr.innerHTML=html;
+  pyrEl.innerHTML=html;
  }
- // Найти индекс зоны по конкретной ПОЗИЦИИ (позиция ∈ диапазону зоны)
- function idxByPos(pos){
-  if(!pos||pos<1) return null;
-  for(let i=0;i<Z.length;i++){ if(pos>=Z[i][0] && pos<=Z[i][1]) return i; }
-  return null;
- }
- function calc(){
-  // Парсим число из value (только цифры — разделители и пробелы игнорируем)
+
+ function update(){
+  // Введённое (с разделителями)
   const rawDigits=(inp.value||'').replace(/\D/g,'');
   const v=rawDigits?parseInt(rawDigits,10):0;
-  // Показываем введённое с разделителями разрядов (1 000 000)
-  if(typed){
-   if(v>0){ typed.style.display='block'; if(typedVal) typedVal.textContent=v.toLocaleString('ru-RU')+' ₽'; }
-   else { typed.style.display='none'; }
+  if(typedEl){
+   if(v>0){ typedEl.style.display='block'; if(typedValEl) typedValEl.textContent=v.toLocaleString('ru-RU')+' ₽'; }
+   else { typedEl.style.display='none'; }
   }
-  // Actual current — из n8n (НЕ из archive.income — это другая метрика).
-  const actualPos=parseInt(inp.dataset.currentPos,10);
-  let curPos, curIdx, curZ;
-  if(actualPos && idxByPos(actualPos)!=null){
-   curPos=actualPos;
-   curIdx=idxByPos(actualPos);
-   curZ=Z[curIdx];
-  } else {
-   curIdx=zi(inc); curPos=pz(inc,curIdx); curZ=Z[curIdx];
-  }
-  // Строка «СЕЙЧАС моё место» — всегда видна
-  if(currPos) currPos.textContent='#'+curPos;
-  if(currCat) currCat.textContent=curZ[3];
-  if(currHint) currHint.textContent='· порог зоны '+f(curZ[2])+' ₽ · средний доход '+f(inc)+' ₽/мес за '+(stz||'?')+' мес стажа';
-  // База для прогноза: avg(actual_zone), иначе archive.income
-  const baseIncome=(curZ && curZ[2])?curZ[2]:inc;
-  let youIdx=null, resIdx=null, resPos=null, resZ=null, explain='';
-  if(v>0){
-   const period=Math.min(stz,12), newPeriod=Math.min(stz+1,12);
-   const doch=Math.round(v*0.48);
-   const newAvg=(baseIncome*period+doch)/newPeriod;
-   resIdx=zi(newAvg); resPos=pz(newAvg,resIdx); resZ=Z[resIdx];
-   youIdx=resIdx;
-   const fromPos=curPos, toPos=resPos, fromZ=curZ[3], toZ=resZ[3];
-   const up=fromPos-toPos;
-   if(fromZ===toZ && up===0){
-    explain='Вал '+f(v)+' ₽/мес ≈ доход '+f(doch)+' ₽. Средний ≈ '+f(newAvg)+' ₽ — без изменений, остаёшься в «'+toZ+'».';
-   } else if(up>0){
-    explain='Вал '+f(v)+' ₽/мес → доход '+f(doch)+' ₽. Новый средний за <b>'+newPeriod+' мес</b> = <b>'+f(newAvg)+' ₽</b> — выше порога зоны «'+toZ+'» ('+f(resZ[2])+' ₽) → место <b>↑ на '+up+'</b> в этой зоне.';
-   } else if(up<0){
-    explain='Новый средний '+f(newAvg)+' ₽ — ниже порога «'+toZ+'» ('+f(resZ[2])+' ₽), либо ты перешёл в зону с большим диапазоном рангов.';
-   } else {
-    explain='Новый средний '+f(newAvg)+' ₽ — на границе зон.';
-   }
-  }
-  renderPyr(curIdx, youIdx);
-  if(youIdx!=null){ const el=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+youIdx+'"]'); if(el) el.scrollIntoView({block:'nearest',behavior:'smooth'}); }
-  // Строка «ТЫ БУДЕШЬ ЗДЕСЬ» — только при вводе вала > 0
-  if(v>0){
-   if(progLine) progLine.style.display='block';
-   if(progPos) progPos.textContent='~#'+resPos;
-   if(progCat) progCat.textContent=resZ[3];
-   if(progAvg) progAvg.textContent=f(newAvg)+' ₽';
-   if(note) note.innerHTML=explain;
-  } else {
-   if(progLine) progLine.style.display='none';
-   if(note) note.innerHTML='<span class="muted">Введи вал — покажу, как сдвинется позиция.</span>';
-  }
- }
- inp.addEventListener('input',calc);
- calc();
-};
-function plural(n,a,b,c){ const m10=n%10,m100=n%100; if(m10===1&&m100!==11)return a; if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b; return c; }
-function zoneColor(cat){ cat=String(cat||''); if(cat.includes('Самые'))return '#16a34a'; if(cat.includes('Лучшие'))return '#22c55e'; if(cat.includes('Хорошие'))return '#86efac'; if(cat.includes('Средние'))return '#fbbf24'; if(cat.includes('Слабые'))return '#fb923c'; return '#f87171'; }
-function renderSvetofor(d){
- const u=d.user; const pool=u.svetofor_pool;
- if(!pool){
- document.getElementById('screen-svetofor').innerHTML=`<div class="card"><div class="section-title">🚦 Светофор</div>
- <div class="soon"><span class="soon-ic">🚦</span>У тебя пока нет позиции в светофоре. Появится после первой сделки и попадания в рейтинг.</div></div>${svetoforForecastCard(d)}`;
- setTimeout(()=>initSvetoforCalcWithData(d),0);
- return;
- }
- const dc=u.position_delta_direction==='up'?'#4ade80':(u.position_delta_direction==='down'?'#f87171':'#cbd5e1');
- const head=`<div class="svet-now">
- <div style="font-size:var(--fs-12);color:#cbd5e1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">🚦 ${esc(u.svetofor_pool_label||'')}</div>
- <div class="svet-pos-huge">${u.position_in_pool!=null?'#'+u.position_in_pool:'—'}</div>
- <div class="svet-now-lbl">${esc(u.position_label||'')}</div>
- ${u.position_delta_label?`<div class="svet-move" style="color:${dc}">${esc(u.position_delta_label)}</div>`:''}</div>`;
- if(pool==='newbie'){
- document.getElementById('screen-svetofor').innerHTML=`${head}
- <div class="card"><div class="section-title">🚦 Светофор новичков</div>
- <div style="font-size:var(--fs-13);line-height:1.65">Ты в рейтинге партнёров первых <b>6 месяцев</b> работы. Здесь ты учишься, получаешь первые сделки и нарабатываешь опыт.<br><br>
- После 6 месяцев стажа автоматически перейдёшь в <b>светофор опытных</b> — там появятся зоны и доходные ориентиры (от 9к до 768к ₽/мес).<br><br>
- Сейчас задача — стабильно работать и двигаться вверх в этом светофоре.</div></div>
- ${svetoforForecastCard(d)}`;
- setTimeout(()=>initSvetoforCalcWithData(d),0);
- return;
- }
- // опытный
- const zb=u.svetofor_zone_label?`<div class="svet-zone"><div class="muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:var(--fw-b)">Твоя зона</div>
- <div class="svet-zone-name">${esc(u.svetofor_zone_category||'')} ${esc(u.svetofor_zone_label)}</div>
- ${u.svetofor_zone_avg_income_short?`<div class="svet-zone-sub">средний доход ${esc(u.svetofor_zone_avg_income_short)} ₽/мес</div>`:''}</div>`
- :`<div class="svet-zone"><div class="muted">Зона определяется по месту в светофоре опытных.</div></div>`;
- const zones=(d.meta&&d.meta.svetofor_zones_experienced)||[];
- const zlist=zones.length?`<div class="card"><div class="section-title">🚦 Зоны светофора опытных</div>
- ${zones.map(z=>`<div class="sv-league ${z.is_current?'you':''}"><span class="sv-l-tag" style="background:${zoneColor(z.category)};color:${zoneColor(z.category)==='#86efac'?'#0f172a':'#fff'}">${esc(z.range)}</span>
- <span class="sv-l-name">${esc(z.category||'')}${z.is_current?' · ты':''}</span><span class="sv-l-inc">${fmtShort(z.avg_income)} ₽</span></div>`).join('')}</div>`:'';
- document.getElementById('screen-svetofor').innerHTML=`<div class="grid-2">${head}${zb}</div>${zlist}${svetoforForecastCard(d)}`;
- setTimeout(()=>initSvetoforCalcWithData(d),0);
-}
 
-// Инициализация калькулятора (вызывается после рендера DOM)
+  // Actual current — из n8n
+  const actualPos=parseInt(inp.dataset.currentPos,10);
+  const inc=Number(inp.dataset.income)||0;
+  const stz=Number(inp.dataset.stazh)||0;
+  let curIdx=-1, curPos=null, curZ=null;
+  if(actualPos>0) curIdx=findZoneIdx(actualPos);
+  if(curIdx>=0){ curPos=actualPos; curZ=Z[curIdx]; }
+  else { curIdx=Z.length-1; curPos=curZ?null:null; }
+
+  // Обновить блок «СЕЙЧАС» (всегда виден)
+  if(curZ){
+   if(currPosEl) currPosEl.textContent=curPos?'#'+curPos:'—';
+   if(currCatEl) currCatEl.textContent=curZ[3];
+   if(currHintEl) currHintEl.textContent='· порог зоны '+fNum(curZ[2])+' ₽ · средний доход '+fNum(inc)+' ₽/мес за '+(stz||'?')+' мес стажа';
+  } else {
+   if(currPosEl) currPosEl.textContent='—';
+   if(currHintEl) currHintEl.textContent='недостаточно данных';
+  }
+
+  // Прогноз при вводе вала
+  let youIdx=null, resIdx=null, resPos=null, resZ=null, explain='';
+  if(v>0 && curZ){
+   const period=Math.min(stz||12,12), newPeriod=Math.min((stz||12)+1,12);
+   const doch=Math.round(v*0.48);
+   // База — avg(actual_zone), иначе archive.income
+   const baseIncome=curZ[2]||inc;
+   const newAvg=(baseIncome*period+doch)/newPeriod;
+   resIdx=-1;
+   for(let i=0;i<Z.length;i++) if(Z[i][2]&&newAvg>=Z[i][2]){ resIdx=i; break; }
+   if(resIdx<0) resIdx=Z.length-1;
+   resZ=Z[resIdx];
+   // Интерполяция позиции внутри зоны
+   if(resIdx<=0){ resPos=resZ[0]; }
+   else{
+    const z=resZ; const hi=Z[resIdx-1][2];
+    if(!hi||newAvg>=hi){ resPos=z[0]; }
+    else { const t=(newAvg-z[2])/(hi-z[2]); resPos=Math.max(z[0], Math.round(z[1]-t*(z[1]-z[0]))); }
+   }
+   youIdx=resIdx;
+   const fromPos=curPos||0, toPos=resPos;
+   const fromZ=curZ[3], toZ=resZ[3];
+   const up=fromPos-toPos;
+   if(fromZ===toZ && up===0){ explain='Вал '+fNum(v)+' ₽/мес ≈ доход '+fNum(doch)+' ₽. Без изменений, остаёшься в «'+toZ+'».'; }
+   else if(up>0){ explain='Вал '+fNum(v)+' → доход '+fNum(doch)+' ₽. Новый средний за '+newPeriod+' мес = '+fNum(newAvg)+' ₽ — выше порога зоны «'+toZ+'» ('+fNum(resZ[2])+' ₽) → место ↑ на '+up+'.'; }
+   else if(up<0){ explain='Новый средний '+fNum(newAvg)+' ₽ — ниже порога «'+toZ+'» ('+fNum(resZ[2])+' ₽).'; }
+   else { explain='Новый средний '+fNum(newAvg)+' ₽.'; }
+  }
+
+  // Рендер пирамиды (по idx, не по категории)
+  renderPyr(curIdx>=0?curIdx:null, youIdx);
+
+  if(youIdx!=null){
+   if(progLineEl) progLineEl.style.display='block';
+   if(progPosEl) progPosEl.textContent='~#'+resPos;
+   if(progCatEl) progCatEl.textContent=resZ[3];
+   if(progAvgEl) progAvgEl.textContent='средний: '+fNum(newAvg)+' ₽';
+   if(noteEl) noteEl.innerHTML=explain;
+   const youRow=pyrEl.querySelector('[data-idx="'+youIdx+'"]');
+   if(youRow) youRow.scrollIntoView({block:'nearest',behavior:'smooth'});
+  } else {
+   if(progLineEl) progLineEl.style.display='none';
+   if(noteEl) noteEl.innerHTML='<span style="color:var(--muted)">Введи вал — покажу, как сдвинется позиция.</span>';
+  }
+ }
+ inp.addEventListener('input',update);
+ update();
+};
+
 function initSvetoforCalcWithData(d){
- const u=d.user||{};
+ const u=(d&&d.user)||{};
  const inp=document.getElementById('svV');
- const pyr=document.getElementById('svPyr');
- if(!inp||!out||!pyr) return;
- inp.dataset.income=String(u.income_month||0);
- inp.dataset.stazh=String(u.stazh_months||0);
- // Actual current position из n8n (НЕ из archive.income — это другая метрика)
- inp.dataset.currentPos=String(u.position_in_pool||'');
+ if(inp){
+  inp.dataset.income=String(u.income_month||0);
+  inp.dataset.stazh=String(u.stazh_months||0);
+  inp.dataset.currentPos=String(u.position_in_pool||'');
+ }
  if(window.initSvetoforCalc) window.initSvetoforCalc();
 }
+
 
 /* ─── МОДАЛКА «Изменить цель» ─── */
 window.openEditGoal=()=>{
