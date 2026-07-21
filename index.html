@@ -1836,6 +1836,11 @@ function svetoforForecastCard(d){
 
 // Инициализация калькулятора + обоснование (вызывается из initSvetoforCalcWithData)
 
+function renderSvetofor(d){
+ document.getElementById('screen-svetofor').innerHTML = svetoforForecastCard(d);
+ setTimeout(()=>initSvetoforCalcWithData(d),0);
+}
+
 // Инициализация калькулятора (ЧИСТАЯ ПЕРЕЗАПИСЬ — все переменные в одной области)
 window.initSvetoforCalc=function(){
   var v=document.getElementById('svV');
