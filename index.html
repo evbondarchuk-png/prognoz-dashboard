@@ -1879,32 +1879,35 @@ window.initSvetoforCalc=function(){
    curIdx=idxByPos(actualPos);
    curZ=Z[curIdx];
   } else {
-   // Fallback: считаем из archive.income (если actual нет)
    curIdx=zi(inc); curPos=pz(inc,curIdx); curZ=Z[curIdx];
   }
+  // База для прогноза: avg(actual_zone) — НЕ archive.income (иначе при вводе
+  // малого вала archive.income=180к даёт зону #201-300 для actual=#505 — прыжок).
+  const baseIncome=(curZ && curZ[2])?curZ[2]:inc;
   let youIdx=null, resIdx=null, resPos=null, resZ=null, explain='';
   if(v>0){
    const period=Math.min(stz,12), newPeriod=Math.min(stz+1,12);
    const doch=Math.round(v*0.48);
-   const newAvg=(inc*period+doch)/newPeriod;
+   // Новый средний доход: (base_income_actual_zone × period + доход_от_вала) / new_period
+   const newAvg=(baseIncome*period+doch)/newPeriod;
    resIdx=zi(newAvg); resPos=pz(newAvg,resIdx); resZ=Z[resIdx];
    youIdx=resIdx;
    const fromPos=curPos, toPos=resPos, fromZ=curZ[3], toZ=resZ[3];
    const up=fromPos-toPos;
    if(fromZ===toZ && up===0){
-    explain='Средний доход остаётся в той же зоне «'+toZ+'» — позиция меняется на '+Math.abs(up)+' внутри диапазона.';
+    explain='Вал '+f(v)+' ₽/мес ≈ доход '+f(doch)+' ₽. Средний ≈ '+f(newAvg)+' ₽ — без изменений, остаёшься в «'+toZ+'».';
    } else if(up>0){
-    explain='Вал '+f(v)+' ₽/мес → доход '+f(doch)+' ₽. Средний за <b>'+newPeriod+' мес</b> = <b>'+f(newAvg)+' ₽</b> — выше порога зоны «'+toZ+'» ('+f(resZ[2])+' ₽) → место <b>↑ на '+up+'</b> в этой зоне.';
+    explain='Вал '+f(v)+' ₽/мес → доход '+f(doch)+' ₽. Новый средний за <b>'+newPeriod+' мес</b> = <b>'+f(newAvg)+' ₽</b> — выше порога зоны «'+toZ+'» ('+f(resZ[2])+' ₽) → место <b>↑ на '+up+'</b> в этой зоне.';
    } else if(up<0){
-    explain='Средний доход '+f(newAvg)+' ₽ — не дотягивает до порога «'+toZ+'» ('+f(resZ[2])+' ₽), либо ты перешёл в зону с большим диапазоном рангов.';
+    explain='Новый средний '+f(newAvg)+' ₽ — ниже порога «'+toZ+'» ('+f(resZ[2])+' ₽), либо ты перешёл в зону с большим диапазоном рангов.';
    } else {
-    explain='Средний доход '+f(newAvg)+' ₽ — на границе зон.';
+    explain='Новый средний '+f(newAvg)+' ₽ — на границе зон.';
    }
   }
   renderPyr(curIdx, youIdx);
   if(youIdx!=null){ const el=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+youIdx+'"]'); if(el) el.scrollIntoView({block:'nearest',behavior:'smooth'}); }
   if(v<=0){
-   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> <b>#'+curPos+'</b>, '+curZ[3]+' <div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, куда попадёшь.</div>';
+   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> <b>#'+curPos+'</b>, '+curZ[3]+' <div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, как сдвинется позиция.</div>';
    return;
   }
   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> <b>#'+curPos+'</b>, '+curZ[3]+'<br>'
