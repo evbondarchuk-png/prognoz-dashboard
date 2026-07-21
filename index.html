@@ -1808,49 +1808,37 @@ function svetoforValIncomeCard(d){
 }
 
 function svetoforCalculatorCard(d){
- const u=d.user||{};
- const inc=u.income_month||0, stz=u.stazh_months||0;
+ var u=(d&&d.user)||{};
+ var inc=u.income_month||0, stz=u.stazh_months||0;
  if(!(inc>0 && stz>0)){
   return `<div class="card"><div class="section-title">🧮 Куда попадёшь в светофоре</div>
   <div class="soon">Калькулятор станет доступен, когда появятся данные о доходе.</div></div>`;
  }
  return `<div class="card">
   <div class="section-title">🧮 Куда попадёшь в светофоре</div>
-  <div class="muted" style="font-size:12px;margin-bottom:10px">Введи средний вал в месяц — покажу, в какую зону светофора ты попадёшь.</div>
-  <div class="sv-calc"><label class="sv-calc-label">нужно сделать вала, ₽
-   <input id="svV" type="text" inputmode="numeric" autocomplete="off" placeholder="введи вал">
-  </label>
-  <div class="sv-typed" id="svTyped" style="display:none">Введено: <b id="svTypedVal">—</b></div>
-  <div class="sv-curr-line">📍 сейчас моё место: <b id="svCurrPos">—</b>, <b id="svCurrCat">—</b> <span class="muted" id="svCurrHint">—</span></div>
-  <div class="sv-prog-line" id="svProgLine" style="display:none">👉 ты будешь здесь: <b id="svProgPos">—</b>, <b id="svProgCat">—</b> · новый средний: <b id="svProgAvg">—</b></div>
-  <div class="sv-pyr" id="svPyr"></div>
-  <div class="muted" style="font-size:11px;margin-top:10px;line-height:1.5" id="svNote">—</div>
+  <div class="muted" style="font-size:12px;margin-bottom:10px">Введи средний вал в месяц — покажу, в какую зону светофора попадёшь.</div>
+  <div class="sv-calc">
+   <label class="sv-calc-label">нужно сделать вала, ₽
+    <input id="svV" type="text" inputmode="numeric" autocomplete="off" placeholder="введи вал">
+   </label>
+   <div class="sv-curr-line">📍 сейчас моё место: <b id="svCurrPos">—</b>, <b id="svCurrCat">—</b></div>
+   <div class="sv-prog-block" id="svProgBlock" style="display:none">
+    <div class="sv-prog-head">Введено: <b id="svTypedVal">—</b> → <b>ты будешь здесь: <span id="svProgPos">—</span>, <span id="svProgCat">—</span></b> <span class="muted" id="svProgAvg"></span></div>
+    <div class="sv-note" id="svNote">—</div>
+   </div>
+   <div class="sv-pyr" id="svPyr"></div>
   </div>
  </div>`;
 }
 
-// Объединённый рендер (три карточки: график → вал/доход → калькулятор)
-function svetoforForecastCard(d){
- return svetoforGraphCard(d) + svetoforValIncomeCard(d) + svetoforCalculatorCard(d);
-}
-
-// Инициализация калькулятора + обоснование (вызывается из initSvetoforCalcWithData)
-
-function renderSvetofor(d){
- document.getElementById('screen-svetofor').innerHTML = svetoforForecastCard(d);
- setTimeout(()=>initSvetoforCalcWithData(d),0);
-}
-
-// Инициализация калькулятора (ЧИСТАЯ ПЕРЕЗАПИСЬ — все переменные в одной области)
+// Инициализация калькулятора (ЧИСТАЯ ПЕРЕЗАПИСЬ — все переменные в одной области)// Инициализация калькулятора (ЧИСТАЯ ПЕРЕЗАПИСЬ — все переменные в одной области)
 window.initSvetoforCalc=function(){
   var v=document.getElementById('svV');
   var pyr=document.getElementById('svPyr');
-  var typed=document.getElementById('svTyped');
   var typedV=document.getElementById('svTypedVal');
   var curP=document.getElementById('svCurrPos');
   var curC=document.getElementById('svCurrCat');
-  var curH=document.getElementById('svCurrHint');
-  var progLn=document.getElementById('svProgLine');
+  var progBlock=document.getElementById('svProgBlock');
   var progP=document.getElementById('svProgPos');
   var progC=document.getElementById('svProgCat');
   var progA=document.getElementById('svProgAvg');
@@ -1860,57 +1848,70 @@ window.initSvetoforCalc=function(){
   var CC={'Самые лучшие':'#16a34a','Лучшие':'#22c55e','Хорошие':'#84cc16','Средние':'#f59e0b','Слабые':'#f97316','Низкоэффективные':'#dc2626'};
   function fmt(n){n=Number(n)||0;if(n>=1e6)return (n/1e6).toFixed(1).replace('.',',')+' млн';if(n>=1e3)return Math.round(n/1e3)+'к';return String(Math.round(n));}
   function findIdx(p){if(!p||p<1)return -1;for(var k=0;k<Z.length;k++)if(p>=Z[k][0]&&p<=Z[k][1])return k;return -1;}
-  function paint(){
-    var raw=(v.value||'').replace(/\D/g,'');
-    var val=raw?parseInt(raw,10):0;
-    if(typed){typed.style.display=val>0?'block':'none';if(typedV&&val>0)typedV.textContent=val.toLocaleString('ru-RU')+' ₽';}
-    var ap=parseInt(v.dataset.currentPos,10)||0;
-    var inc=Number(v.dataset.income)||0;
-    var stz=Number(v.dataset.stazh)||0;
-    var ci=findIdx(ap), cZ=null;
-    if(ci>=0)cZ=Z[ci];
-    if(curP)curP.textContent=ap>0?'#'+ap:'—';
-    if(curC)curC.textContent=cZ?cZ[3]:'—';
-    if(curH)curH.textContent=cZ?('· порог зоны '+fmt(cZ[2])+' ₽ · средний доход '+fmt(inc)+' ₽/мес за '+(stz||'?')+' мес стажа'):'недостаточно данных';
-    var youIdx=null, resIdx=-1, resPos=null, rZ=null, expl='';
-    if(val>0&&cZ){
-      var P=Math.min(stz||12,12), N=Math.min((stz||12)+1,12);
-      var doch=Math.round(val*0.48);
-      var base=cZ[2]||inc;
-      var na=(base*P+doch)/N;
-      for(var j=0;j<Z.length;j++)if(Z[j][2]&&na>=Z[j][2]){resIdx=j;break;}
-      if(resIdx<0)resIdx=Z.length-1;
-      rZ=Z[resIdx];
-      if(resIdx<=0)resPos=rZ[0];
-      else{var hi=Z[resIdx-1][2];if(!hi||na>=hi)resPos=rZ[0];else{var t=(na-rZ[2])/(hi-rZ[2]);resPos=Math.max(rZ[0],Math.round(rZ[1]-t*(rZ[1]-rZ[0])));}}
-      youIdx=resIdx;
-      var up=cpos-resPos, fZ=cZ[3], tZ=rZ[3];
-      if(fZ===tZ&&up===0)expl='Вал '+fmt(val)+' ₽ → доход '+fmt(doch)+' ₽. Без изменений.';
-      else if(up>0)expl='Вал '+fmt(val)+' → доход '+fmt(doch)+' ₽. Новый средний: '+fmt(na)+' ₽ → место ↑на '+up+'.';
-      else expl='Новый средний: '+fmt(na)+' ₽.';
-    }
+  function renderPyr(curIdx,youIdx){
     var html='';
     for(var k=0;k<Z.length;k++){
       var z=Z[k], cl='';
       if(youIdx!==null&&k===youIdx)cl=' you';
-      if(ci>=0&&k===ci)cl+=' cur';
+      if(curIdx>=0&&k===curIdx)cl+=' cur';
       var w=(18+(k/(Z.length-1))*82).toFixed(0)+'%';
       var bg=CC[z[3]]||'#94a3b8';
       html+='<div class="sv-pyr-row'+cl+'" data-idx="'+k+'" style="width:'+w+';background:'+bg+';color:#fff"><span class="sv-pyr-l">#'+z[0]+'–'+z[1]+' <span class="sv-pyr-r">≈ '+fmt(z[2])+'₽</span></span><span class="sv-pyr-you">ты будешь здесь</span><span class="sv-pyr-cur">сейчас</span></div>';
     }
     pyr.innerHTML=html;
-    if(youIdx!==null){
-      if(progLn)progLn.style.display='block';
+  }
+  function paint(){
+    console.log('[svCalc] paint called, v.value=', v.value, 'currentPos=', v.dataset.currentPos);
+    var raw=(v.value||'').replace(/\D/g,'');
+    var val=raw?parseInt(raw,10):0;
+    var ap=parseInt(v.dataset.currentPos,10)||0;
+    var inc=Number(v.dataset.income)||0;
+    var stz=Number(v.dataset.stazh)||0;
+    var ci=findIdx(ap), cZ=null;
+    if(ci>=0)cZ=Z[ci];
+    // "СЕЙЧАС" — всегда видна
+    if(curP)curP.textContent=(ap>0&&cZ)?('#'+ap):'#'+ap;
+    if(curC)curC.textContent=cZ?cZ[3]:'—';
+    var youIdx=null, resPos=null, rZ=null;
+    var newAvg=0, doch=0;
+    if(val>0&&cZ){
+      var P=Math.min(stz||12,12), N=Math.min((stz||12)+1,12);
+      doch=Math.round(val*0.48);
+      var base=cZ[2]||inc;
+      newAvg=(base*P+doch)/N;
+      for(var j=0;j<Z.length;j++)if(Z[j][2]&&newAvg>=Z[j][2]){resIdx=j;break;}
+      var resIdx=resIdx||0;
+      if(resIdx<=0){resPos=rZ?rZ[0]:Z[0][0];}
+      else{
+        var hi=Z[resIdx-1][2];
+        if(!hi||newAvg>=hi)resPos=Z[resIdx][0];
+        else{var t=(newAvg-Z[resIdx][2])/(hi-Z[resIdx][2]);resPos=Math.max(Z[resIdx][0],Math.round(Z[resIdx][1]-t*(Z[resIdx][1]-Z[resIdx][0])));}
+      }
+      rZ=Z[resIdx];
+      youIdx=resIdx;
+    }
+    renderPyr(ci>=0?ci:null, youIdx);
+    // "Введено + ты будешь здесь" — одна строка сверху, обоснование — внутри
+    if(val>0){
+      if(progBlock)progBlock.style.display='block';
+      if(typedV)typedV.textContent=val.toLocaleString('ru-RU')+' ₽';
       if(progP)progP.textContent='~#'+resPos;
-      if(progC)progC.textContent=rZ[3];
-      if(progA)progA.textContent=fmt(val)+' ₽ → средний '+fmt(na)+' ₽';
-      if(note)note.innerHTML=expl;
+      if(progC)progC.textContent=rZ?rZ[3]:'—';
+      if(progA)progA.textContent='· новый средний '+fmt(newAvg)+' ₽';
+      if(note){
+        var up=(ap||0)-resPos;
+        var fromZ=cZ?cZ[3]:'?';
+        var toZ=rZ?rZ[3]:'?';
+        if(fromZ===toZ&&up===0) note.innerHTML='Вал '+fmt(val)+' ₽ → доход '+fmt(doch)+' ₽. Без изменений.';
+        else if(up>0) note.innerHTML='Вал '+fmt(val)+' → доход '+fmt(doch)+' ₽. Новый средний: '+fmt(newAvg)+' ₽ → место ↑ на '+up+'.';
+        else note.innerHTML='Новый средний: '+fmt(newAvg)+' ₽.';
+      }
     }else{
-      if(progLn)progLn.style.display='none';
+      if(progBlock)progBlock.style.display='none';
       if(note)note.innerHTML='Введи вал — покажу, куда попадёшь.';
     }
   }
-  v.addEventListener('input',paint);
+  v.addEventListener('input',function(){ console.log('[svCalc] input event'); paint(); });
   paint();
 };
 
