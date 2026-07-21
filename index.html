@@ -1838,6 +1838,16 @@ function svetoforForecastCard(d){
 window.initSvetoforCalc=function(){
  const pyr=document.getElementById('svPyr');
  const inp=document.getElementById('svV');
+ const typed=document.getElementById('svTyped');
+ const typedVal=document.getElementById('svTypedVal');
+ const currPos=document.getElementById('svCurrPos');
+ const currCat=document.getElementById('svCurrCat');
+ const currHint=document.getElementById('svCurrHint');
+ const progLine=document.getElementById('svProgLine');
+ const progPos=document.getElementById('svProgPos');
+ const progCat=document.getElementById('svProgCat');
+ const progAvg=document.getElementById('svProgAvg');
+ const note=document.getElementById('svNote');
  if(!pyr||!inp) return;
  // 22 детальные зоны светофора опытных (from, to, avg_monthly_income, категория)
  const Z=[[1,5,727040,'Самые лучшие'],[6,10,593131,'Самые лучшие'],[11,15,523601,'Самые лучшие'],
