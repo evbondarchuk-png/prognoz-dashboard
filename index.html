@@ -489,6 +489,11 @@
 .sv-cur-pill,.sv-you-pill{display:inline-block;background:var(--surface);border:1px solid var(--line);border-radius:999px;font-size:11px;font-weight:700;padding:2px 8px;margin-right:4px;color:#1a1f2e}
 .sv-cur-pill{color:#475569}
 .sv-calc-avg{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+.sv-typed{font-size:11px;color:var(--muted);margin-top:6px;padding:6px 10px;background:var(--surface);border-radius:6px;border-left:3px solid var(--line)}
+.sv-curr-line,.sv-prog-line{font-size:var(--fs-13);margin-top:10px;padding:9px 11px;border-radius:var(--r-md);color:var(--ink);line-height:1.45}
+.sv-curr-line{background:var(--surface-2);border-left:3px solid #475569}
+.sv-prog-line{background:var(--surface-2);border-left:3px solid #16a34a}
+.sv-curr-line b,.sv-prog-line b{font-weight:800}
 .sv-stat{flex:1 1 140px;background:var(--surface-2);border-radius:var(--r-md);padding:10px 12px;min-width:140px}
 .sv-stat-cap{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:600}
 .sv-stat-val{font-size:18px;font-weight:800;color:var(--ink);margin-top:2px}
@@ -1811,12 +1816,15 @@ function svetoforCalculatorCard(d){
  }
  return `<div class="card">
   <div class="section-title">🧮 Куда попадёшь в светофоре</div>
-  <div class="muted" style="font-size:12px;margin-bottom:10px">Введи средний вал в месяц — покажу, в какую зону светофора ты попадёшь в следующем месяце.</div>
+  <div class="muted" style="font-size:12px;margin-bottom:10px">Введи средний вал в месяц — покажу, в какую зону светофора ты попадёшь.</div>
   <div class="sv-calc"><label class="sv-calc-label">нужно сделать вала, ₽
-   <input id="svV" type="number" inputmode="numeric" step="10000" min="0" placeholder="введи вал">
+   <input id="svV" type="text" inputmode="numeric" autocomplete="off" placeholder="введи вал">
   </label>
-  <div class="sv-calc-out" id="svOut"></div>
+  <div class="sv-typed" id="svTyped" style="display:none">Введено: <b id="svTypedVal">—</b></div>
+  <div class="sv-curr-line">📍 сейчас моё место: <b id="svCurrPos">—</b>, <b id="svCurrCat">—</b> <span class="muted" id="svCurrHint">—</span></div>
+  <div class="sv-prog-line" id="svProgLine" style="display:none">👉 ты будешь здесь: <b id="svProgPos">—</b>, <b id="svProgCat">—</b> · новый средний: <b id="svProgAvg">—</b></div>
   <div class="sv-pyr" id="svPyr"></div>
+  <div class="muted" style="font-size:11px;margin-top:10px;line-height:1.5" id="svNote">—</div>
   </div>
  </div>`;
 }
@@ -1831,7 +1839,17 @@ window.initSvetoforCalc=function(){
  const out=document.getElementById('svOut');
  const pyr=document.getElementById('svPyr');
  const inp=document.getElementById('svV');
- if(!out||!pyr||!inp) return;
+ const typed=document.getElementById('svTyped');
+ const typedVal=document.getElementById('svTypedVal');
+ const currPos=document.getElementById('svCurrPos');
+ const currCat=document.getElementById('svCurrCat');
+ const currHint=document.getElementById('svCurrHint');
+ const progLine=document.getElementById('svProgLine');
+ const progPos=document.getElementById('svProgPos');
+ const progCat=document.getElementById('svProgCat');
+ const progAvg=document.getElementById('svProgAvg');
+ const note=document.getElementById('svNote');
+ if(!pyr||!inp) return;
  // 22 детальные зоны светофора опытных (from, to, avg_monthly_income, категория)
  const Z=[[1,5,727040,'Самые лучшие'],[6,10,593131,'Самые лучшие'],[11,15,523601,'Самые лучшие'],
  [16,20,369000,'Лучшие'],[21,30,445266,'Лучшие'],[31,40,377702,'Лучшие'],
@@ -1870,7 +1888,14 @@ window.initSvetoforCalc=function(){
   return null;
  }
  function calc(){
-  const v=+inp.value||0;
+  // Парсим число из value (только цифры — разделители и пробелы игнорируем)
+  const rawDigits=(inp.value||'').replace(/\D/g,'');
+  const v=rawDigits?parseInt(rawDigits,10):0;
+  // Показываем введённое с разделителями разрядов (1 000 000)
+  if(typed){
+   if(v>0){ typed.style.display='block'; if(typedVal) typedVal.textContent=v.toLocaleString('ru-RU')+' ₽'; }
+   else { typed.style.display='none'; }
+  }
   // Actual current — из n8n (НЕ из archive.income — это другая метрика).
   const actualPos=parseInt(inp.dataset.currentPos,10);
   let curPos, curIdx, curZ;
@@ -1881,14 +1906,16 @@ window.initSvetoforCalc=function(){
   } else {
    curIdx=zi(inc); curPos=pz(inc,curIdx); curZ=Z[curIdx];
   }
-  // База для прогноза: avg(actual_zone) — НЕ archive.income (иначе при вводе
-  // малого вала archive.income=180к даёт зону #201-300 для actual=#505 — прыжок).
+  // Строка «СЕЙЧАС моё место» — всегда видна
+  if(currPos) currPos.textContent='#'+curPos;
+  if(currCat) currCat.textContent=curZ[3];
+  if(currHint) currHint.textContent='· порог зоны '+f(curZ[2])+' ₽ · средний доход '+f(inc)+' ₽/мес за '+(stz||'?')+' мес стажа';
+  // База для прогноза: avg(actual_zone), иначе archive.income
   const baseIncome=(curZ && curZ[2])?curZ[2]:inc;
   let youIdx=null, resIdx=null, resPos=null, resZ=null, explain='';
   if(v>0){
    const period=Math.min(stz,12), newPeriod=Math.min(stz+1,12);
    const doch=Math.round(v*0.48);
-   // Новый средний доход: (base_income_actual_zone × period + доход_от_вала) / new_period
    const newAvg=(baseIncome*period+doch)/newPeriod;
    resIdx=zi(newAvg); resPos=pz(newAvg,resIdx); resZ=Z[resIdx];
    youIdx=resIdx;
@@ -1906,16 +1933,17 @@ window.initSvetoforCalc=function(){
   }
   renderPyr(curIdx, youIdx);
   if(youIdx!=null){ const el=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+youIdx+'"]'); if(el) el.scrollIntoView({block:'nearest',behavior:'smooth'}); }
-  if(v<=0){
-   // Объяснение actual-позиции + средний доход (из archive.income) + порог зоны
-   const eqNow=(actualPos && curZ && curZ[2])
-    ? `<b>#${curPos}</b>, «${curZ[3]}» · порог зоны ${f(curZ[2])} ₽ · <b>средний доход ${f(inc)} ₽/мес</b> за ${stz} мес стажа.`
-    : `<b>#${curPos}</b>, «${curZ[3]}» · <b>средний доход ${f(inc)} ₽/мес</b>.`;
-   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ' + eqNow + '<div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, как сдвинется позиция.</div>';
-   return;
+  // Строка «ТЫ БУДЕШЬ ЗДЕСЬ» — только при вводе вала > 0
+  if(v>0){
+   if(progLine) progLine.style.display='block';
+   if(progPos) progPos.textContent='~#'+resPos;
+   if(progCat) progCat.textContent=resZ[3];
+   if(progAvg) progAvg.textContent=f(newAvg)+' ₽';
+   if(note) note.innerHTML=explain;
+  } else {
+   if(progLine) progLine.style.display='none';
+   if(note) note.innerHTML='<span class="muted">Введи вал — покажу, как сдвинется позиция.</span>';
   }
-  out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> <b>#'+curPos+'</b>, '+curZ[3]+'<br>'
-   +'<span class="sv-you-pill">👉 ты будешь здесь</span> при вале <b>'+f(v)+' ₽/мес</b> → <b>~#'+resPos+'</b>, '+resZ[3]+' <span class="sv-calc-avg">· новый средний: '+f(newAvg)+' ₽</span><div class="muted" style="font-size:11px;margin-top:6px;line-height:1.5">'+explain+'</div>';
  }
  inp.addEventListener('input',calc);
  calc();
