@@ -1907,7 +1907,11 @@ window.initSvetoforCalc=function(){
   renderPyr(curIdx, youIdx);
   if(youIdx!=null){ const el=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+youIdx+'"]'); if(el) el.scrollIntoView({block:'nearest',behavior:'smooth'}); }
   if(v<=0){
-   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> <b>#'+curPos+'</b>, '+curZ[3]+' <div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, как сдвинется позиция.</div>';
+   // Объяснение actual-позиции + средний доход (из archive.income) + порог зоны
+   const eqNow=(actualPos && curZ && curZ[2])
+    ? `<b>#${curPos}</b>, «${curZ[3]}» · порог зоны ${f(curZ[2])} ₽ · <b>средний доход ${f(inc)} ₽/мес</b> за ${stz} мес стажа.`
+    : `<b>#${curPos}</b>, «${curZ[3]}» · <b>средний доход ${f(inc)} ₽/мес</b>.`;
+   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ' + eqNow + '<div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, как сдвинется позиция.</div>';
    return;
   }
   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> <b>#'+curPos+'</b>, '+curZ[3]+'<br>'
