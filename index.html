@@ -1863,12 +1863,25 @@ window.initSvetoforCalc=function(){
   });
   pyr.innerHTML=html;
  }
+ // Найти индекс зоны по конкретной ПОЗИЦИИ (позиция ∈ диапазону зоны)
+ function idxByPos(pos){
+  if(!pos||pos<1) return null;
+  for(let i=0;i<Z.length;i++){ if(pos>=Z[i][0] && pos<=Z[i][1]) return i; }
+  return null;
+ }
  function calc(){
   const v=+inp.value||0;
-  const curIdx=zi(inc), curPos=pz(inc,curIdx);
-  const curZ=Z[curIdx];
-  // Обоснование «сейчас» (всегда)
-  const reasonNow='<b>Сейчас ~#'+curPos+'</b> («'+curZ[3]+'»), доход <b>'+f(inc)+' ₽/мес</b> — средний за '+stz+' мес стажа. Зона от порога '+f(curZ[2])+' ₽ — твой доход '+(inc>=curZ[2]?'выше':'ниже')+'.';
+  // Actual current — из n8n (НЕ из archive.income — это другая метрика).
+  const actualPos=parseInt(inp.dataset.currentPos,10);
+  let curPos, curIdx, curZ;
+  if(actualPos && idxByPos(actualPos)!=null){
+   curPos=actualPos;
+   curIdx=idxByPos(actualPos);
+   curZ=Z[curIdx];
+  } else {
+   // Fallback: считаем из archive.income (если actual нет)
+   curIdx=zi(inc); curPos=pz(inc,curIdx); curZ=Z[curIdx];
+  }
   let youIdx=null, resIdx=null, resPos=null, resZ=null, explain='';
   if(v>0){
    const period=Math.min(stz,12), newPeriod=Math.min(stz+1,12);
@@ -1888,15 +1901,13 @@ window.initSvetoforCalc=function(){
     explain='Средний доход '+f(newAvg)+' ₽ — на границе зон.';
    }
   }
-  // Подсветка по конкретному idx (не по категории) — иначе дублируются
   renderPyr(curIdx, youIdx);
-  // Скроллим к прогнозной ступеньке
   if(youIdx!=null){ const el=document.querySelector('#svPyr .sv-pyr-row[data-idx="'+youIdx+'"]'); if(el) el.scrollIntoView({block:'nearest',behavior:'smooth'}); }
   if(v<=0){
-   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ' + reasonNow + '<div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, куда попадёшь.</div>';
+   out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> <b>#'+curPos+'</b>, '+curZ[3]+' <div class="muted" style="font-size:11px;margin-top:6px">Введи вал — покажу, куда попадёшь.</div>';
    return;
   }
-  out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> ~#'+curPos+', '+curZ[3]+' · доход '+f(inc)+' ₽<br>'
+  out.innerHTML='<span class="sv-cur-pill">📍 сейчас</span> <b>#'+curPos+'</b>, '+curZ[3]+'<br>'
    +'<span class="sv-you-pill">👉 ты будешь здесь</span> при вале <b>'+f(v)+' ₽/мес</b> → <b>~#'+resPos+'</b>, '+resZ[3]+' <span class="sv-calc-avg">· новый средний: '+f(newAvg)+' ₽</span><div class="muted" style="font-size:11px;margin-top:6px;line-height:1.5">'+explain+'</div>';
  }
  inp.addEventListener('input',calc);
@@ -1950,6 +1961,8 @@ function initSvetoforCalcWithData(d){
  if(!inp||!out||!pyr) return;
  inp.dataset.income=String(u.income_month||0);
  inp.dataset.stazh=String(u.stazh_months||0);
+ // Actual current position из n8n (НЕ из archive.income — это другая метрика)
+ inp.dataset.currentPos=String(u.position_in_pool||'');
  if(window.initSvetoforCalc) window.initSvetoforCalc();
 }
 
