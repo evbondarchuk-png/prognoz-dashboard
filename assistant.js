@@ -8,6 +8,7 @@
 
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+import { getDatabase, ref as dbRef, query, orderByChild, equalTo, get as dbGet, update as dbUpdate } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 
 let ctxData = null;
 let opened = false;
@@ -237,6 +238,110 @@ function injectCss() {
   cssInjected = true;
 }
 
+// ── Управление задачами (аналог MAX: показ задач + кнопка «закрыть») ──
+
+let _tasksFn = null;
+
+async function fetchMyTasks() {
+  const code = ctxData && ctxData.user && ctxData.user.code;
+  if (!code) return [];
+  const db = getDatabase();
+  const tasksRef = dbRef(db, '/tasks');
+  const q = query(tasksRef, orderByChild('assignee_code'), equalTo(code));
+  const snap = await dbGet(q);
+  const tasks = [];
+  if (snap && snap.exists()) {
+    snap.forEach((ch) => {
+      const t = ch.val();
+      if (t && (t.status === 'active' || t.status === 'expired')) {
+        tasks.push({ id: ch.key, ...t });
+      }
+    });
+  }
+  // Сортировка: просроченные первыми, потом по due_date
+  const today = new Date().toISOString().slice(0, 10);
+  tasks.sort((a, b) => {
+    const aOver = a.due_date && a.due_date < today ? 0 : 1;
+    const bOver = b.due_date && b.due_date < today ? 0 : 1;
+    if (aOver !== bOver) return aOver - bOver;
+    return (a.due_date || 'z').localeCompare(b.due_date || 'z');
+  });
+  return tasks;
+}
+
+function renderTaskList(tasks) {
+  if (!tasks.length) {
+    addMsg('bot', '<div class="p-bubble">🎉 Активных задач нет — всё чисто!</div>');
+    return;
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue = tasks.filter(t => t.due_date && t.due_date < today);
+  const todayTasks = tasks.filter(t => t.due_date === today);
+  const rest = tasks.filter(t => !overdue.includes(t) && !todayTasks.includes(t));
+
+  let html = `<div class="p-bubble">`;
+  html += `<div style="font-weight:700;margin-bottom:8px">📋 Задачи (${tasks.length} всего`;
+  if (overdue.length) html += `, <span style="color:var(--bad)">${overdue.length} просрочено</span>`;
+  if (todayTasks.length) html += `, ${todayTasks.length} на сегодня`;
+  html += `)</div>`;
+
+  const renderTask = (t) => {
+    const over = t.due_date && t.due_date < today;
+    const dueLabel = t.due_date || 'без даты';
+    const badge = over ? `<span style="color:var(--bad);font-size:11px;font-weight:700">⚠️ просрочено</span>` :
+                 t.due_date === today ? `<span style="color:var(--warn);font-size:11px;font-weight:700">📅 сегодня</span>` :
+                 `<span style="color:var(--muted);font-size:11px">${dueLabel}</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${esc(t.title || 'без названия')}</div>
+        <div style="font-size:11px;color:var(--muted)">${badge}</div>
+      </div>
+      <button onclick="window.__pCloseTask('${t.id}')" style="font-size:11px;padding:4px 10px;border:1px solid var(--ok);color:var(--ok);background:transparent;border-radius:12px;cursor:pointer;white-space:nowrap">✅ Закрыть</button>
+    </div>`;
+  };
+
+  if (overdue.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--bad);margin-top:4px">⚠️ Просрочено</div>`;
+    overdue.forEach(t => html += renderTask(t));
+  }
+  if (todayTasks.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--warn);margin-top:8px">📅 На сегодня</div>`;
+    todayTasks.forEach(t => html += renderTask(t));
+  }
+  if (rest.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-top:8px">📋 Остальные</div>`;
+    rest.forEach(t => html += renderTask(t));
+  }
+  html += `</div>`;
+  addMsg('bot', html);
+}
+
+window.__pShowTasks = async () => {
+  addMsg('user', '<div class="p-bubble">📋 Покажи мои задачи</div>');
+  const typing = showTyping();
+  try {
+    const tasks = await fetchMyTasks();
+    typing.remove();
+    renderTaskList(tasks);
+  } catch (e) {
+    typing.remove();
+    addMsg('bot', `<div class="p-bubble">Не удалось загрузить задачи: ${esc(e.message || e)}</div>`);
+  }
+};
+
+window.__pCloseTask = async (taskId) => {
+  try {
+    if (!_tasksFn) _tasksFn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'updateTaskStatus');
+    await _tasksFn({ task_id: taskId, status: 'done' });
+    // Обновим кнопку в DOM
+    const btn = document.querySelector(`button[onclick="window.__pCloseTask('${taskId}')"]`);
+    if (btn) { btn.textContent = '✅ Закрыта'; btn.disabled = true; btn.style.borderColor = 'var(--muted)'; btn.style.color = 'var(--muted)'; }
+    addMsg('bot', '<div class="p-bubble" style="font-size:12px;color:var(--ok)">✅ Задача закрыта!</div>');
+  } catch (e) {
+    addMsg('bot', `<div class="p-bubble" style="color:var(--bad)">Не удалось закрыть: ${esc(e.message || e)}</div>`);
+  }
+};
+
 export function initAssistant(data) {
   injectCss();
   ctxData = data;
@@ -320,10 +425,12 @@ function renderBrief() {
       ${body}
     </div>
     <div class="p-suggests">
+      <button class="p-suggest" onclick="window.__pShowTasks()">📋 Мои задачи</button>
       <button class="p-suggest" onclick="window.__pAsk('Что сделать сегодня?')">📋 Что сделать сегодня?</button>
-      <button class="p-suggest" onclick="window.__pAsk('Почему ИР такой?')">🎓 Почему ИР такой?</button>
+      <button class="p-suggest" onclick="window.__pAsk('Дай бриф на сегодня')">📊 Мой бриф</button>
       <button class="p-suggest" onclick="window.__pAsk('Про доход и вал')">💰 Про доход и вал</button>
       <button class="p-suggest" onclick="window.__pAsk('Как поднять доход?')">🎯 Как поднять доход?</button>
+      <button class="p-suggest" onclick="window.__pAsk('Кто в моей группе?')">👥 Моя группа</button>
     </div>`;
   document.getElementById('p-body').innerHTML = html;
 }
@@ -438,7 +545,7 @@ function generateAnswer(q) {
     const forecastRev = cm.forecast_revenue || 0;
     const totalRev = cm.revenue_total || (factRev + forecastRev);
     const income = cm.fact_income || 0;
-    return `<b>Вал</b> — это оборот твоих сделок (комиссия агентства). По нему считаются план и ИР.<br><br><b>Доход</b> — твоя ЗП. Это ≈ <em>48%</em> от вала.<br><br>За текущий месяц: вал факт <b>${fmt(factRev)} ₽</b>${forecastRev > 0 ? `, прогноз-остаток <b>+${fmt(forecastRev)}</b> → итого <b>${fmt(totalRev)} ₽</b>` : ''}. Доход факт: <b>${fmt(income)} ₽</b>.`;
+    return `<b>Вал</b> — это оборот твоих сделок (комиссия агентства). По нему считаются план и ИР.<br><br><b>Доход</b> — это ≈ <em>48%</em> от вала.<br><br>За текущий месяц: вал факт <b>${fmt(factRev)} ₽</b>${forecastRev > 0 ? `, прогноз-остаток <b>+${fmt(forecastRev)}</b> → итого <b>${fmt(totalRev)} ₽</b>` : ''}. Доход факт: <b>${fmt(income)} ₽</b>.`;
   }
 
   // Как поднять доход / что делать
