@@ -717,9 +717,18 @@ function renderHero(d){
  // вал текущего месяца (факт+прогноз) + прогноз следующего (TZ: вал у шапки, показываем даже 0)
  const fc=d.forecast; let valBar='';
  if(fc){
+ // % плана за текущий месяц: факт вала / план вала текущего месяца (зеркало next_month)
+ const cmPlan=d.plan&&d.plan.current_month?d.plan.current_month:null;
+ const cmTarget=cmPlan?Number(cmPlan.target_revenue)||0:0;
+ const cmFact=Number(fc.current_month.fact_revenue)||0;
+ const cmPct=cmTarget>0?Math.round(cmFact/cmTarget*100):null;
+ const cmSubParts=[];
+ if(cmTarget>0)cmSubParts.push(`план ${esc(cmPlan.target_revenue_short)} ₽ · ${cmPct}% выполнения`);
+ if(fc.current_month.forecast_revenue>0)cmSubParts.push(`+ прогноз ${esc(fc.current_month.forecast_revenue_label)} ₽ → итого ${esc(fc.current_month.revenue_label)} ₽`);
+ const cmSub=cmSubParts.length?cmSubParts.join(' · '):'без прогноза';
  valBar=`<div class="val-bar">
- <div class="val-cell"><div class="vb-cap">вал за ${esc(fc.current_month.label||'месяц')}</div><div class="vb-row"><div class="vb-num">${esc(fc.current_month.fact_revenue_label)} ₽</div>${fc.current_month.fact_income>0?`<div class="vb-zp">≈ ЗП ${esc(fc.current_month.fact_income_label)} ₽</div>`:''}</div><div class="vb-sub">${fc.current_month.forecast_revenue>0?`+ прогноз ${esc(fc.current_month.forecast_revenue_label)} ₽ → итого ${esc(fc.current_month.revenue_label)} ₽`:'без прогноза'}</div></div>
- <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-row"><div class="vb-num">${fc.next_month.revenue>0?esc(fc.next_month.revenue_label)+' ₽':'—'}</div>${fc.next_month.income>0?`<div class="vb-zp">≈ ЗП ${esc(fc.next_month.income_label)} ₽</div>`:''}</div><div class="vb-sub">${fc.next_month.target_revenue>0?`план ${esc(fc.next_month.target_revenue_label)} ₽ · ${fc.next_month.progress_pct}% выполнения`:(fc.next_month.revenue>0?'по прогнозу воронки n8n':'нет горячих/задатков на следующий месяц')}</div></div>
+ <div class="val-cell"><div class="vb-cap">вал за ${esc(fc.current_month.label||'месяц')}</div><div class="vb-row"><div class="vb-num">${esc(fc.current_month.fact_revenue_label)} ₽</div>${fc.current_month.fact_income>0?`<div class="vb-zp">≈ доход ${esc(fc.current_month.fact_income_label)} ₽</div>`:''}</div><div class="vb-sub">${cmSub}</div></div>
+ <div class="val-cell"><div class="vb-cap">прогноз на ${esc(fc.next_month.label||'след.')}</div><div class="vb-row"><div class="vb-num">${fc.next_month.revenue>0?esc(fc.next_month.revenue_label)+' ₽':'—'}</div>${fc.next_month.income>0?`<div class="vb-zp">≈ доход ${esc(fc.next_month.income_label)} ₽</div>`:''}</div><div class="vb-sub">${fc.next_month.target_revenue>0?`план ${esc(fc.next_month.target_revenue_label)} ₽ · ${fc.next_month.progress_pct}% выполнения`:(fc.next_month.revenue>0?'по прогнозу воронки n8n':'нет горячих/задатков на следующий месяц')}</div></div>
  </div>`;
  }
 
@@ -1008,21 +1017,21 @@ function renderPrognoz(d){
         ${valPlan>0?`<div style="display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;margin-top:7px;background:#dbeafe;color:#1e40af">${valPct}% плана</div>`:''}
       </div>
       <div style="background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;padding:14px 16px">
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Доход · моя ЗП</div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Доход</div>
         <div style="font-size:24px;font-weight:800;color:#0e7a4f;margin:5px 0 2px">${_prgFmtFull(incFact)} ₽</div>
         <div style="font-size:12px;color:var(--muted)">${goalRevMonth>0?'личная цель '+_prgFmtFull(incGoal):'≈ 48% от вала'} ₽</div>
         ${incGoal>0?`<div style="display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;margin-top:7px;background:#d1f0df;color:#0b5236">${incPct}% цели</div>`:''}
       </div>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:10px">💡 <b>Вал</b> — оборот (комиссия агентства, по нему план и ИР). <b>Доход</b> — твоя ЗП (≈ 48% от вала).</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">💡 <b>Вал</b> — оборот (комиссия агентства, по нему план и ИР). <b>Доход</b> — это ≈ 48% от вала.</div>
   </div>`);
 
   // ── 2. График по месяцам — переключатель Доход/Вал ──
   out.push(`<div class="card">
     <div class="section-title">📊 Цикл по месяцам</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Переключи: <b>доход</b> (твоя ЗП, к ней цель) или <b>вал</b> (оборот, план). Зелёное — факт, синее — прогноз, штриховка — план.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Переключи: <b>доход</b> (к нему цель) или <b>вал</b> (оборот, план). Зелёное — факт, синее — прогноз, штриховка — план.</div>
     <div style="display:inline-flex;background:var(--surface-2,#f1f3f7);border-radius:999px;padding:3px;gap:2px;margin-bottom:12px">
-      <button onclick="prgSetMode('dohod')" id="prg-btn-dohod" style="border:none;background:${mode==='dohod'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='dohod'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='dohod'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Доход (моя ЗП)</button>
+      <button onclick="prgSetMode('dohod')" id="prg-btn-dohod" style="border:none;background:${mode==='dohod'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='dohod'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='dohod'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Доход</button>
       <button onclick="prgSetMode('val')" id="prg-btn-val" style="border:none;background:${mode==='val'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='val'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='val'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Вал (оборот)</button>
     </div>
     <div id="prg-bars-wrap"></div>
@@ -1167,7 +1176,7 @@ function prgRenderBars(pt, mode){
       <span><i style="display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:linear-gradient(180deg,#3b82f6,#1e63d9)"></i>прогноз</span>
     </div>
     <div style="font-size:12px;padding-top:8px;color:var(--muted)">
-      За цикл: <b style="color:var(--ink)">${_prgFmtK(factTotal)}</b> из ${_prgFmtK(planTotal)} ${isDohod?'ЗП':'вала'} · прогноз след: <b style="color:var(--ink)">${_prgFmtK(fcstNext)}</b>
+      За цикл: <b style="color:var(--ink)">${_prgFmtK(factTotal)}</b> из ${_prgFmtK(planTotal)} ${isDohod?'дохода':'вала'} · прогноз след: <b style="color:var(--ink)">${_prgFmtK(fcstNext)}</b>
     </div>
   </div>`;
 }
@@ -1244,7 +1253,7 @@ function prgRenderGoalSvg(pt){
   });
 
   // ── Прогнозная линия (синяя) ──
-  // От последней past точки → current (fact + прогноз-остаток к концу мес) → next_month (прогноз ЗП).
+  // От последней past точки → current (fact + прогноз-остаток к концу мес) → next_month (прогноз дохода).
   // Показываем «куда партнёр придёт если сохранит темп».
   const fpts_forecast = [];
   let baseAcc = 0;

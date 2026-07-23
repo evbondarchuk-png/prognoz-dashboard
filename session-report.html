@@ -565,7 +565,7 @@ function goalsHTML(g) {
 function salaryGoalHTML(sg) {
   if (!sg) return '';
   return `<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-    <div class="block-title">Цель по ЗП (ставит сам) · цикл 6 мес</div>
+    <div class="block-title">Цель по доходу (ставит сам) · цикл 6 мес</div>
     <div class="salary">
       <div class="sal-now">${fmtK(sg.current)} ₽<span>текущая цель${sg.is_auto ? ' (авто)' : ''}</span></div>
       ${sg.change_count > 0 ? `<div class="muted">менял ${sg.change_count} раз</div>` : '<div class="muted">не менял</div>'}
