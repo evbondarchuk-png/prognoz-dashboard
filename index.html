@@ -544,6 +544,7 @@
 <div class="modal-overlay" id="modalMgr"><div class="modal" id="modalMgrBody"></div></div>
 <div class="modal-overlay" id="modalTask"><div class="modal" id="modalTaskBody"></div></div>
 <div class="modal-overlay" id="modalNotif"><div class="modal" id="modalNotifBody"></div></div>
+<div class="modal-overlay" id="modalCycle"><div class="modal" id="modalCycleBody"></div></div>
 
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
@@ -1975,7 +1976,10 @@ window.saveGoal=async()=>{
 /* ─── МОДАЛКА «Зал славы» (заглушка) ─── */
 window.openHof=()=>{
  const ach=CTX.data.achievements||[];
- const list=ach.length?ach.map(a=>`<div class="hof-item">${esc(a.emoji)} ${esc(a.text)}</div>`).join(''):'<div class="muted">Пока нет достижений — они появятся по мере роста показателей.</div>';
+ const cyc=CTX.data.cycle_awards||[];
+ const cycHtml=cyc.map(a=>`<div class="hof-item"><span>${esc(a.emoji)} ${esc(a.text)}</span><span class="muted" style="margin-left:auto;font-size:11px">${esc(a.ended_month||a.started_month||'')}</span></div>`).join('');
+ const achHtml=ach.length?ach.map(a=>`<div class="hof-item">${esc(a.emoji)} ${esc(a.text)}</div>`).join(''):'';
+ const list=(cycHtml||achHtml)?(cycHtml+achHtml):'<div class="muted">Пока нет достижений — они появятся по мере роста показателей.</div>';
  document.getElementById('modalHofBody').innerHTML=`
  <div class="modal-head"><div class="modal-title">🏆 Зал славы</div><button class="modal-x" onclick="closeModal('modalHof')">✕</button></div>
  ${list}
@@ -1983,7 +1987,66 @@ window.openHof=()=>{
  document.getElementById('modalHof').classList.add('on');
 };
 
-function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); }
+/* ─── Финиш 6-мес цикла: мини-отчёт + награда + CTA «новый цикл» ─── */
+function _cycleBars(rep){
+ const ms=rep.monthly||[]; if(!ms.length) return '';
+ const max=Math.max(1,...ms.map(m=>Math.max(m.plan_income||0,m.fact_income||0)));
+ const bars=ms.map(m=>{
+  const ph=Math.round((m.plan_income||0)/max*100), fh=Math.round((m.fact_income||0)/max*100);
+  const done=(m.pct!=null&&m.pct>=100), fclr=done?'#16a34a':'#f59e0b';
+  return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0">
+   <div style="height:88px;display:flex;align-items:flex-end;gap:3px">
+    <div title="план ${_prgFmtK(m.plan_income)} ₽" style="width:9px;height:${ph}%;background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 3px,transparent 3px,transparent 6px);border-radius:3px 3px 0 0"></div>
+    <div title="факт ${_prgFmtK(m.fact_income)} ₽" style="width:13px;height:${fh}%;background:${fclr};border-radius:3px 3px 0 0"></div>
+   </div>
+   <div style="font-size:10px;color:var(--muted);white-space:nowrap">${esc((m.label||'').split(' ')[0])}</div>
+   <div style="font-size:10px;font-weight:700;color:${done?'#16a34a':'#b45309'}">${m.pct!=null?m.pct+'%':'—'}</div>
+  </div>`;
+ }).join('');
+ return `<div style="display:flex;gap:6px;align-items:flex-end;margin:14px 0 6px">${bars}</div>
+ <div style="display:flex;gap:14px;justify-content:center;font-size:11px;color:var(--muted);margin-bottom:6px">
+  <span><i style="display:inline-block;width:10px;height:8px;background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 2px,transparent 2px,transparent 4px);vertical-align:middle;margin-right:4px"></i>план</span>
+  <span><i style="display:inline-block;width:10px;height:8px;background:#16a34a;vertical-align:middle;margin-right:4px"></i>факт</span>
+ </div>`;
+}
+window.openCycleFinish=()=>{
+ const rep=CTX.data&&CTX.data.cycle_report; if(!rep) return;
+ const ok=!!rep.achieved;
+ const head=ok
+  ? `<div style="font-size:34px">🏆</div><div class="modal-title" style="color:#0e7a4f">Цикл пройден — цель выполнена!</div>`
+  : `<div style="font-size:34px">🎖</div><div class="modal-title">6-месячный цикл пройден!</div>`;
+ const first=(rep.monthly&&rep.monthly[0]&&rep.monthly[0].label)||'';
+ const last=(rep.monthly&&rep.monthly[rep.monthly.length-1]&&rep.monthly[rep.monthly.length-1].label)||'';
+ const summary=`<div style="text-align:center;margin:6px 0">
+  <div style="font-size:13px;color:var(--muted)">6-месячный цикл · ${esc(first)} — ${esc(last)}</div>
+  <div style="font-size:15px;margin-top:6px">Доход за цикл: <b>${_prgFmtK(rep.fact_income_6mo)} ₽</b> из <b>${_prgFmtK(rep.target_income_6mo)} ₽</b> · <b style="color:${ok?'#0e7a4f':'#b45309'}">${rep.pct}%</b></div>
+ </div>`;
+ const ai=rep.ai_text?`<div class="ai-card" style="margin:10px 0"><div class="ai-text" style="color:#fff">${esc(rep.ai_text)}</div></div>`:'';
+ const cta=`<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px">
+  <button class="btn-primary" onclick="window.__cycleRestart()">🎯 Задать доход и начать новый цикл</button>
+  <button class="btn-secondary" onclick="window.__cycleDismiss()">Позже</button>
+ </div>`;
+ document.getElementById('modalCycleBody').innerHTML=`
+  <div class="modal-head"><div></div><button class="modal-x" onclick="window.__cycleDismiss()">✕</button></div>
+  <div style="text-align:center">${head}</div>
+  ${summary}${_cycleBars(rep)}${ai}${cta}`;
+ document.getElementById('modalCycle').classList.add('on');
+};
+window.__cycleDismiss=()=>{
+ const rep=CTX.data&&CTX.data.cycle_report; window.closeModal('modalCycle');
+ if(rep&&CTX.target){
+  try{ localStorage.setItem('cycle_seen_'+CTX.target+'_'+rep.started_month,'1'); }catch(e){}
+  if(window.__call) window.__call('markCycleReportSeen',{code:CTX.target,started_month:rep.started_month}).catch(()=>{});
+ }
+};
+window.__cycleRestart=()=>{ window.__cycleDismiss(); if(window.openEditGoal) window.openEditGoal(); };
+function maybeShowCycleFinish(d){
+ const rep=d&&d.cycle_report; if(!rep||!rep.pending) return;
+ let seen=false; try{ seen=localStorage.getItem('cycle_seen_'+CTX.target+'_'+rep.started_month)==='1'; }catch(e){}
+ if(seen) return;
+ setTimeout(()=>window.openCycleFinish(),450);
+}
+function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); maybeShowCycleFinish(d); }
 
 (async ()=>{
  const me=await requireAuth();
