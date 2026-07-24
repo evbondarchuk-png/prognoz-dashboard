@@ -1977,7 +1977,7 @@ window.saveGoal=async()=>{
 window.openHof=()=>{
  const ach=CTX.data.achievements||[];
  const cyc=CTX.data.cycle_awards||[];
- const cycHtml=cyc.map(a=>`<div class="hof-item"><span>${esc(a.emoji)} ${esc(a.text)}</span><span class="muted" style="margin-left:auto;font-size:11px">${esc(a.ended_month||a.started_month||'')}</span></div>`).join('');
+ const cycHtml=cyc.map(a=>`<div class="hof-item" style="cursor:pointer" onclick="window.openCycleReport('${a.started_month}')"><span>${esc(a.emoji)} Цикл ${a.cycle_no} — ${a.achieved?('выполнен на '+a.pct+'%'):(a.pct+'% цели')}</span><span class="muted" style="margin-left:auto;font-size:11px">${esc(a.ended_month||a.started_month||'')} ›</span></div>`).join('');
  const achHtml=ach.length?ach.map(a=>`<div class="hof-item">${esc(a.emoji)} ${esc(a.text)}</div>`).join(''):'';
  const list=(cycHtml||achHtml)?(cycHtml+achHtml):'<div class="muted">Пока нет достижений — они появятся по мере роста показателей.</div>';
  document.getElementById('modalHofBody').innerHTML=`
@@ -2009,12 +2009,12 @@ function _cycleBars(rep){
   <span><i style="display:inline-block;width:10px;height:8px;background:#16a34a;vertical-align:middle;margin-right:4px"></i>факт</span>
  </div>`;
 }
-window.openCycleFinish=()=>{
- const rep=CTX.data&&CTX.data.cycle_report; if(!rep) return;
- const ok=!!rep.achieved;
+function _renderCycleModal(rep,opts){
+ opts=opts||{}; const pending=!!opts.pending, ok=!!rep.achieved;
+ const no=rep.cycle_no?`Цикл ${rep.cycle_no} · `:'';
  const head=ok
-  ? `<div style="font-size:34px">🏆</div><div class="modal-title" style="color:#0e7a4f">Цикл пройден — цель выполнена!</div>`
-  : `<div style="font-size:34px">🎖</div><div class="modal-title">6-месячный цикл пройден!</div>`;
+  ? `<div style="font-size:34px">🏆</div><div class="modal-title" style="color:#0e7a4f">${no}цель выполнена!</div>`
+  : `<div style="font-size:34px">🎖</div><div class="modal-title">${no}6-месячный цикл пройден</div>`;
  const first=(rep.monthly&&rep.monthly[0]&&rep.monthly[0].label)||'';
  const last=(rep.monthly&&rep.monthly[rep.monthly.length-1]&&rep.monthly[rep.monthly.length-1].label)||'';
  const summary=`<div style="text-align:center;margin:6px 0">
@@ -2022,16 +2022,18 @@ window.openCycleFinish=()=>{
   <div style="font-size:15px;margin-top:6px">Доход за цикл: <b>${_prgFmtK(rep.fact_income_6mo)} ₽</b> из <b>${_prgFmtK(rep.target_income_6mo)} ₽</b> · <b style="color:${ok?'#0e7a4f':'#b45309'}">${rep.pct}%</b></div>
  </div>`;
  const ai=rep.ai_text?`<div class="ai-card" style="margin:10px 0"><div class="ai-text" style="color:#fff">${esc(rep.ai_text)}</div></div>`:'';
- const cta=`<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px">
-  <button class="btn-primary" onclick="window.__cycleRestart()">🎯 Задать доход и начать новый цикл</button>
-  <button class="btn-secondary" onclick="window.__cycleDismiss()">Позже</button>
- </div>`;
+ const cta=pending
+  ? `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px"><button class="btn-primary" onclick="window.__cycleRestart()">🎯 Задать доход и начать новый цикл</button><button class="btn-secondary" onclick="window.__cycleDismiss()">Позже</button></div>`
+  : `<div style="text-align:center;margin-top:12px"><button class="btn-secondary" onclick="closeModal('modalCycle')">Закрыть</button></div>`;
+ const xClose=pending?'window.__cycleDismiss()':"closeModal('modalCycle')";
  document.getElementById('modalCycleBody').innerHTML=`
-  <div class="modal-head"><div></div><button class="modal-x" onclick="window.__cycleDismiss()">✕</button></div>
+  <div class="modal-head"><div></div><button class="modal-x" onclick="${xClose}">✕</button></div>
   <div style="text-align:center">${head}</div>
   ${summary}${_cycleBars(rep)}${ai}${cta}`;
  document.getElementById('modalCycle').classList.add('on');
-};
+}
+window.openCycleFinish=()=>{ const rep=CTX.data&&CTX.data.cycle_report; if(rep) _renderCycleModal(rep,{pending:true}); };
+window.openCycleReport=(sm)=>{ const list=(CTX.data&&CTX.data.cycle_awards)||[]; const rep=list.find(r=>r.started_month===sm); if(rep){ closeModal('modalHof'); _renderCycleModal(rep,{pending:false}); } };
 window.__cycleDismiss=()=>{
  const rep=CTX.data&&CTX.data.cycle_report; window.closeModal('modalCycle');
  if(rep&&CTX.target){
