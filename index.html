@@ -545,6 +545,31 @@
 <div class="modal-overlay" id="modalTask"><div class="modal" id="modalTaskBody"></div></div>
 <div class="modal-overlay" id="modalNotif"><div class="modal" id="modalNotifBody"></div></div>
 <div class="modal-overlay" id="modalCycle"><div class="modal" id="modalCycleBody"></div></div>
+<style>
+.hof-lvl{background:var(--surface-2,#f1f3f7);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:6px}
+.hof-lvl-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:12.5px}
+.hof-lvl-name{font-weight:800;font-size:14px}
+.hof-xp{height:9px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
+.hof-xp-f{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--brand,#2563eb),#7c3aed)}
+.hof-cyc{display:flex;flex-direction:column;margin:12px 0 4px}
+.hof-cat{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:14px 0 8px}
+.hof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px}
+.hb{border:1px solid var(--line);border-radius:12px;padding:10px 8px 8px;text-align:center;position:relative;overflow:hidden}
+.hb .hb-m{font-size:23px;line-height:1.1}
+.hb .hb-t{font-size:11px;font-weight:600;margin-top:4px;line-height:1.2}
+.hb .hb-s{font-size:10px;margin-top:3px}
+.hb::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rc,#94a3b8)}
+.hb.r-common{--rc:#5b7089}.hb.r-rare{--rc:#0d9488}.hb.r-epic{--rc:#7c3aed}.hb.r-legend{--rc:#d9820a}
+.hb.e{background:color-mix(in srgb,var(--rc) 10%,transparent)}
+.hb.l .hb-m,.hb.soon .hb-m{filter:grayscale(1);opacity:.4}
+.hb.soon{opacity:.6}
+.aw-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:14px;
+  background:linear-gradient(135deg,var(--brand,#2563eb),#7c3aed);color:#fff;padding:12px 16px;border-radius:14px;
+  box-shadow:0 8px 30px rgba(20,30,50,.35);max-width:92vw;cursor:pointer;animation:awup .35s ease}
+.aw-toast button{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;width:26px;height:26px;cursor:pointer;font-size:13px;flex:none}
+@keyframes awup{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){.aw-toast{animation:none}}
+</style>
 
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
@@ -710,7 +735,7 @@ function renderHero(d){
  <div class="it-bar"><div class="it-bar-fill" style="width:${pct}%"></div></div>
  <div class="it-foot">
  ${g.can_edit===false?`<span class="it-link" style="opacity:.55;cursor:default" title="${esc(g.edit_block_reason||'')}">🔒 цель меняет руководитель</span>`:`<span class="it-link" onclick="openEditGoal()">изменить цель</span>`}
- <span class="it-link" onclick="openHof()">🏆 Зал славы</span>
+ <span class="it-link" onclick="openHof()">🏆 Зал славы${d.rewards?` · Ур.${d.rewards.level}`:''}</span>
  <span>${toGoal}${autoTxt?' · '+autoTxt:''}</span>
  ${dp?`<span>⏱ ${dp.passed} / ${dp.total} дней пути</span>`:''}
  </div></div>`; }
@@ -1975,17 +2000,52 @@ window.saveGoal=async()=>{
 
 /* ─── МОДАЛКА «Зал славы» (заглушка) ─── */
 window.openHof=()=>{
- const ach=CTX.data.achievements||[];
+ const rw=CTX.data.rewards;
  const cyc=CTX.data.cycle_awards||[];
- const cycHtml=cyc.map(a=>`<div class="hof-item" style="cursor:pointer" onclick="window.openCycleReport('${a.started_month}')"><span>${esc(a.emoji)} Цикл ${a.cycle_no} — ${a.achieved?('выполнен на '+a.pct+'%'):(a.pct+'% цели')}</span><span class="muted" style="margin-left:auto;font-size:11px">${esc(a.ended_month||a.started_month||'')} ›</span></div>`).join('');
- const achHtml=ach.length?ach.map(a=>`<div class="hof-item">${esc(a.emoji)} ${esc(a.text)}</div>`).join(''):'';
- const list=(cycHtml||achHtml)?(cycHtml+achHtml):'<div class="muted">Пока нет достижений — они появятся по мере роста показателей.</div>';
+ const cycHtml=cyc.length?`<div class="hof-cyc">${cyc.map(a=>`<div class="hof-item" style="cursor:pointer" onclick="window.openCycleReport('${a.started_month}')"><span>${esc(a.emoji)} Цикл ${a.cycle_no} — ${a.achieved?('выполнен на '+a.pct+'%'):(a.pct+'% цели')}</span><span class="muted" style="margin-left:auto;font-size:11px">${esc(a.ended_month||a.started_month||'')} ›</span></div>`).join('')}</div>`:'';
+ let body='';
+ if(rw){
+  const span=(rw.level_next!=null)?(rw.level_next-rw.level_min):1;
+  const pct=(rw.level_next!=null)?Math.max(0,Math.min(100,Math.round((rw.xp-rw.level_min)/span*100))):100;
+  const nextTxt=(rw.level_next!=null)?`до «${esc(rw.level_next_name)}» — ${rw.level_next-rw.xp} XP`:'максимальный уровень 🏆';
+  body+=`<div class="hof-lvl">
+    <div class="hof-lvl-top"><span class="hof-lvl-name">🏅 Уровень ${rw.level} · ${esc(rw.level_name)}</span><span class="muted">${rw.xp} XP · ${rw.earned_count}/${rw.total_active} наград</span></div>
+    <div class="hof-xp"><div class="hof-xp-f" style="width:${pct}%"></div></div>
+    <div class="muted" style="font-size:11.5px;margin-top:5px">${nextTxt}</div>
+  </div>`;
+  const cats=rw.cat_label||{}; const order=['career','plans','streaks','growth','cycles','compete'];
+  const byCat={}; (rw.badges||[]).forEach(b=>{(byCat[b.cat]=byCat[b.cat]||[]).push(b);});
+  for(const c of order){ const arr=byCat[c]; if(!arr||!arr.length) continue;
+   arr.sort((a,b)=>(b.earned-a.earned)||(b.active-a.active));
+   body+=`<div class="hof-cat">${esc(cats[c]||c)}</div><div class="hof-grid">`;
+   for(const b of arr){
+    const cls=b.earned?'e':(b.active?'l':'soon');
+    const pctTxt=(b.pct!=null)?`у ${b.pct}%`:'';
+    const sub=b.earned?(pctTxt||'получено ✓'):(b.active?(pctTxt||'ещё не получена'):'скоро');
+    body+=`<div class="hb ${cls} r-${b.tier}" title="${esc(b.title)}"><div class="hb-m">${esc(b.emoji)}</div><div class="hb-t">${esc(b.title)}</div><div class="hb-s muted">${sub}</div></div>`;
+   }
+   body+=`</div>`;
+  }
+ } else { body='<div class="muted">Награды появятся после ближайшего ночного пересчёта.</div>'; }
  document.getElementById('modalHofBody').innerHTML=`
  <div class="modal-head"><div class="modal-title">🏆 Зал славы</div><button class="modal-x" onclick="closeModal('modalHof')">✕</button></div>
- ${list}
- <div class="muted" style="margin-top:12px">Полная система достижений появится после слёта.</div>`;
+ ${cycHtml}${body}`;
  document.getElementById('modalHof').classList.add('on');
 };
+// тост-поздравление при новой награде (за 3 дня, из d.rewards.newly)
+function maybeAwardToast(d){
+ const rw=d&&d.rewards; if(!rw||!rw.newly||!rw.newly.length) return;
+ const key='aw_seen_'+CTX.target+'_'+rw.newly.map(x=>x.id).sort().join(',');
+ try{ if(localStorage.getItem(key)==='1') return; }catch(e){}
+ const items=rw.newly.map(x=>`${x.emoji} ${esc(x.title)}`).join(' · ');
+ const el=document.createElement('div'); el.className='aw-toast';
+ el.innerHTML=`<div><b>🎉 Новая награда!</b><div style="font-size:12px;margin-top:2px;opacity:.95">${items}</div></div><button title="Закрыть">✕</button>`;
+ const dismiss=()=>{ try{localStorage.setItem(key,'1');}catch(e){} el.remove(); };
+ el.querySelector('button').onclick=(ev)=>{ev.stopPropagation();dismiss();};
+ el.onclick=()=>{ dismiss(); window.openHof(); };
+ document.body.appendChild(el);
+ setTimeout(dismiss,12000);
+}
 
 /* ─── Финиш 6-мес цикла: мини-отчёт + награда + CTA «новый цикл» ─── */
 function _cycleBars(rep){
@@ -2048,7 +2108,7 @@ function maybeShowCycleFinish(d){
  if(seen) return;
  setTimeout(()=>window.openCycleFinish(),450);
 }
-function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); maybeShowCycleFinish(d); }
+function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); maybeShowCycleFinish(d); maybeAwardToast(d); }
 
 (async ()=>{
  const me=await requireAuth();
