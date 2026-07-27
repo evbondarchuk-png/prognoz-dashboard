@@ -569,6 +569,14 @@
 .aw-toast button{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;width:26px;height:26px;cursor:pointer;font-size:13px;flex:none}
 @keyframes awup{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
 @media (prefers-reduced-motion:reduce){.aw-toast{animation:none}}
+.sf-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.sf-row .sf-mini{margin-top:0}
+.hero-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;cursor:pointer;background:var(--surface-2);border-radius:10px;padding:6px 10px}
+.hbadge{width:29px;height:29px;border-radius:50%;display:inline-grid;place-items:center;font-size:15px;
+  background:color-mix(in srgb,var(--rc,#5b7089) 16%,transparent);border:1.5px solid color-mix(in srgb,var(--rc,#5b7089) 55%,transparent)}
+.hbadge.r-common{--rc:#5b7089}.hbadge.r-rare{--rc:#0d9488}.hbadge.r-epic{--rc:#7c3aed}.hbadge.r-legend{--rc:#d9820a}
+.hbadge.more{font-size:12px;font-weight:700;color:var(--muted);background:transparent;border-style:dashed}
+.hbadge-lvl{font-size:12px;font-weight:700;color:var(--brand);margin-left:2px;white-space:nowrap}
 </style>
 
 <script type="module">
@@ -719,6 +727,9 @@ function renderHero(d){
  const sfPos=(u.position_in_pool!=null?u.position_in_pool:u.position_in_company);
  const sfMini=sfPos!=null?`<div class="sf-mini" onclick="goTab('svetofor')"><b>#${sfPos}</b><span class="sf-z muted">${esc(u.svetofor_zone_label||'')} · светофор ›</span></div>`:'';
  const ach=(d.achievements||[]).map(a=>`<div class="ach-chip">${esc(a.emoji)} ${esc(a.text)}</div>`).join('');
+ // медальоны полученных наград в шапке (клик → Зал славы)
+ const _rwE=(d.rewards&&Array.isArray(d.rewards.badges))?d.rewards.badges.filter(b=>b.earned):[];
+ const rwChips=_rwE.length?`<div class="hero-badges" onclick="openHof()" title="Открыть Зал славы">${_rwE.slice(0,8).map(b=>`<span class="hbadge r-${b.tier}">${esc(b.emoji)}</span>`).join('')}${_rwE.length>8?`<span class="hbadge more">+${_rwE.length-8}</span>`:''}<span class="hbadge-lvl">Ур.${d.rewards.level}</span></div>`:'';
 
  // income-track
  const inc=u.income_month, tgt=g?g.target_revenue_month:null;
@@ -786,7 +797,7 @@ function renderHero(d){
  ${u.is_group_zero?`<span class="g0-pill" title="Группа 0: твой ИР и план не учитываются в группе/отделе/компании. Факт-вал суммируется. Обычно — болезнь / декрет / длительный отпуск.">🛌 группа 0</span>`:''}
  <div class="hero-name">${esc(u.name)}</div>
  <div class="hero-sub">${meta.join(' · ')}</div>
- ${sfMini}</div></div>
+ <div class="sf-row">${sfMini}${rwChips}</div></div></div>
  ${track}
  ${valBar}
  </div>`;
