@@ -587,7 +587,9 @@
 .bd-rar{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--rc);margin-top:5px}
 .bd-status{display:inline-block;margin:13px 0;font-size:13px;font-weight:600;padding:5px 13px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
 .bd-status.ok{background:color-mix(in srgb,#16a34a 15%,transparent);color:#16a34a}
-.bd-desc{font-size:14px;color:var(--ink);line-height:1.55;max-width:46ch;margin:0 auto;text-align:left;opacity:.85}
+.bd-crit{text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 auto 10px;max-width:46ch;font-size:13.5px;color:var(--ink)}
+.bd-crit-l{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:3px}
+.bd-desc{font-size:13.5px;color:var(--ink);line-height:1.55;max-width:46ch;margin:0 auto;text-align:left;opacity:.8}
 </style>
 
 <script type="module">
@@ -2071,7 +2073,8 @@ window.openBadge=(id)=>{
     <div class="bd-title">${esc(b.title)}</div>
     <div class="bd-rar">${esc(TL[b.tier]||b.tier)}${pctTxt}</div>
     ${status}
-    <div class="bd-desc">${esc(b.desc||'')}</div>
+    ${b.crit?`<div class="bd-crit"><span class="bd-crit-l">За что даётся</span>${esc(b.crit)}</div>`:''}
+    ${b.desc?`<div class="bd-desc">${esc(b.desc)}</div>`:''}
   </div>`;
  document.getElementById('modalBadge').classList.add('on');
 };
