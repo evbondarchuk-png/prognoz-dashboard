@@ -434,6 +434,39 @@
 
 <div class="modal-overlay" id="modalMgr"><div class="modal" id="modalMgrBody"></div></div>
 <div class="modal-overlay" id="modalTask"><div class="modal" id="modalTaskBody"></div></div>
+<div class="modal-overlay" id="modalHof"><div class="modal" id="modalHofBody"></div></div>
+<div class="modal-overlay" id="modalBadge"><div class="modal" id="modalBadgeBody"></div></div>
+<style>
+.rw-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.rw-hall{font-size:13px;font-weight:700;color:var(--brand);cursor:pointer;white-space:nowrap}
+.hero-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;cursor:pointer}
+.hbadge{width:29px;height:29px;border-radius:50%;display:inline-grid;place-items:center;font-size:15px;background:color-mix(in srgb,var(--rc,#5b7089) 16%,transparent);border:1.5px solid color-mix(in srgb,var(--rc,#5b7089) 55%,transparent)}
+.hbadge.r-common{--rc:#5b7089}.hbadge.r-rare{--rc:#0d9488}.hbadge.r-epic{--rc:#7c3aed}.hbadge.r-legend{--rc:#d9820a}
+#modalBadge{z-index:2000}
+.hof-lvl{background:var(--surface-2,#f1f3f7);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:6px}
+.hof-lvl-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:12.5px}
+.hof-lvl-name{font-weight:800;font-size:14px}
+.hof-xp{height:9px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
+.hof-xp-f{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--brand,#2563eb),#7c3aed)}
+.hof-cat{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:14px 0 8px}
+.hof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px}
+.hb{border:1px solid var(--line);border-radius:12px;padding:10px 8px 8px;text-align:center;position:relative;overflow:hidden}
+.hb .hb-m{font-size:23px;line-height:1.1}.hb .hb-t{font-size:11px;font-weight:600;margin-top:4px;line-height:1.2}.hb .hb-s{font-size:10px;margin-top:3px}
+.hb::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rc,#94a3b8)}
+.hb.r-common{--rc:#5b7089}.hb.r-rare{--rc:#0d9488}.hb.r-epic{--rc:#7c3aed}.hb.r-legend{--rc:#d9820a}
+.hb.e{background:color-mix(in srgb,var(--rc) 10%,transparent)}
+.hb.l .hb-m,.hb.soon .hb-m{filter:grayscale(1);opacity:.4}.hb.soon{opacity:.6}
+.bd-wrap{text-align:center;padding:6px 4px}.bd-medal{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-size:38px;margin:6px auto 12px;background:color-mix(in srgb,var(--rc,#5b7089) 16%,transparent);border:3px solid color-mix(in srgb,var(--rc,#5b7089) 55%,transparent)}
+.bd-wrap.r-common{--rc:#5b7089}.bd-wrap.r-rare{--rc:#0d9488}.bd-wrap.r-epic{--rc:#7c3aed}.bd-wrap.r-legend{--rc:#d9820a}
+.bd-title{font-size:19px;font-weight:800}.bd-rar{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--rc);margin-top:5px}
+.bd-status{display:inline-block;margin:13px 0;font-size:13px;font-weight:600;padding:5px 13px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.bd-status.ok{background:color-mix(in srgb,#16a34a 15%,transparent);color:#16a34a}
+.bd-crit{text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 auto 10px;max-width:46ch;font-size:13.5px;color:var(--ink)}
+.bd-crit-l{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:3px}
+.bd-desc{font-size:13.5px;color:var(--ink);line-height:1.55;max-width:46ch;margin:0 auto;text-align:left;opacity:.8}
+.aw-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--brand,#2563eb),#7c3aed);color:#fff;padding:12px 16px;border-radius:14px;box-shadow:0 8px 30px rgba(20,30,50,.35);max-width:92vw;cursor:pointer}
+.aw-toast button{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;width:26px;height:26px;cursor:pointer;font-size:13px;flex:none}
+</style>
 <div class="tile-modal" id="tileModal" onclick="if(event.target.id==='tileModal')closeTileModal()">
   <div class="tile-modal-card">
     <div class="tile-modal-head">
@@ -750,6 +783,8 @@ window.closeTileModal=function(){ document.getElementById('tileModal').classList
 /* ─── HERO ─── */
 function renderHero(d){
  const u=d.user,a=d.aggregates;
+ const _rw=d.rewards; const _rwE=(_rw&&Array.isArray(_rw.badges))?_rw.badges.filter(b=>b.earned):[];
+ const rwRow=_rw?`<div class="rw-row"><span class="rw-hall" onclick="openHof()">🏆 Зал славы · Ур.${_rw.level}</span>${_rwE.length?`<span class="hero-badges" onclick="openHof()">${_rwE.slice(0,8).map(b=>`<span class="hbadge r-${b.tier}" style="cursor:pointer" onclick="event.stopPropagation();openBadge('${b.id}')" title="${esc(b.title)}">${esc(b.emoji)}</span>`).join('')}</span>`:''}</div>`:'';
  const totalP=a&&(a.scope.active_count!=null?a.scope.active_count:a.scope.members_count);
  const inIR=a&&a.scope.members_count;
  const meta=[]; if(a){meta.push(totalP+' партнёров'); if(a.groups_summary)meta.push(a.groups_summary.total+' групп');}
@@ -789,7 +824,7 @@ function renderHero(d){
  <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
  <span class="role-tag">${esc(u.role_label||'Управляющий партнёр')}</span>
  <div class="hero-name">${esc(u.name)}</div>
- <div class="hero-sub">${meta.join(' · ')}</div></div></div>
+ <div class="hero-sub">${meta.join(' · ')}</div>${rwRow}</div></div>
  ${stats}${heroRevenueBar(a)}${fcStats}${gline}</div>`;
 }
 
@@ -1315,7 +1350,46 @@ function renderTasks(d){
  const dot = document.getElementById('taskDot'); if (dot) dot.textContent = cnt?' '+cnt:'';
 }
 
-function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups(d); renderTasks(d); window.initIrCards&&window.initIrCards(); }
+/* ─── Награды отдела: Зал славы + детали + тост ─── */
+window.openHof=()=>{
+ const rw=CTX.data.rewards; let body='';
+ if(rw){
+  const span=(rw.level_next!=null)?(rw.level_next-rw.level_min):1;
+  const pct=(rw.level_next!=null)?Math.max(0,Math.min(100,Math.round((rw.xp-rw.level_min)/span*100))):100;
+  const nextTxt=(rw.level_next!=null)?`до «${esc(rw.level_next_name)}» — ${rw.level_next-rw.xp} XP`:'максимальный уровень 🏆';
+  body+=`<div class="hof-lvl"><div class="hof-lvl-top"><span class="hof-lvl-name">🏅 Уровень ${rw.level} · ${esc(rw.level_name)}</span><span class="muted">${rw.xp} XP · ${rw.earned_count}/${rw.total_active} наград</span></div><div class="hof-xp"><div class="hof-xp-f" style="width:${pct}%"></div></div><div class="muted" style="font-size:11.5px;margin-top:5px">${nextTxt}</div></div>`;
+  const cats=rw.cat_label||{}; const order=['career','plans','result','people','streaks','growth','cycles','compete','mentor'];
+  const byCat={}; (rw.badges||[]).forEach(b=>{(byCat[b.cat]=byCat[b.cat]||[]).push(b);});
+  for(const c of order){ const arr=byCat[c]; if(!arr||!arr.length) continue;
+   arr.sort((a,b)=>(b.earned-a.earned)||(b.active-a.active));
+   body+=`<div class="hof-cat">${esc(cats[c]||c)}</div><div class="hof-grid">`;
+   for(const b of arr){ const cls=b.earned?'e':(b.active?'l':'soon'); const pctTxt=(b.pct!=null)?`у ${b.pct}%`:''; const sub=b.earned?(pctTxt||'получено ✓'):(b.active?(pctTxt||'ещё не получена'):'скоро');
+    body+=`<div class="hb ${cls} r-${b.tier}" style="cursor:pointer" onclick="openBadge('${b.id}')" title="Подробнее"><div class="hb-m">${esc(b.emoji)}</div><div class="hb-t">${esc(b.title)}</div><div class="hb-s muted">${sub}</div></div>`; }
+   body+=`</div>`;
+  }
+ } else body='<div class="muted">Награды появятся после ночного пересчёта.</div>';
+ document.getElementById('modalHofBody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:17px;font-weight:800">🏆 Зал славы</div><button onclick="closeModal('modalHof')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">✕</button></div>${body}`;
+ document.getElementById('modalHof').classList.add('on');
+};
+window.openBadge=(id)=>{
+ const rw=CTX.data.rewards; if(!rw) return; const b=(rw.badges||[]).find(x=>x.id===id); if(!b) return;
+ const TL={common:'обычная',rare:'редкая',epic:'эпическая',legend:'легендарная'};
+ const pctTxt=(b.pct!=null)?` · есть у ${b.pct}%`:'';
+ let status; if(b.earned){ let dt=''; try{ if(b.earned_at) dt=' · '+new Date(b.earned_at).toLocaleDateString('ru-RU'); }catch(e){} status=`<div class="bd-status ok">✓ Получена${dt}</div>`; } else if(b.active){ status='<div class="bd-status">Ещё не получена</div>'; } else { status='<div class="bd-status">🔜 Скоро — в разработке</div>'; }
+ document.getElementById('modalBadgeBody').innerHTML=`<div style="display:flex;justify-content:flex-end"><button onclick="closeModal('modalBadge')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">✕</button></div><div class="bd-wrap r-${b.tier}"><div class="bd-medal">${esc(b.emoji)}</div><div class="bd-title">${esc(b.title)}</div><div class="bd-rar">${esc(TL[b.tier]||b.tier)}${pctTxt}</div>${status}${b.crit?`<div class="bd-crit"><span class="bd-crit-l">За что даётся</span>${esc(b.crit)}</div>`:''}${b.desc?`<div class="bd-desc">${esc(b.desc)}</div>`:''}</div>`;
+ document.getElementById('modalBadge').classList.add('on');
+};
+function maybeAwardToast(d){ const rw=d&&d.rewards; if(!rw||!rw.newly||!rw.newly.length) return;
+ const key='aw_seen_'+CTX.target+'_'+rw.newly.map(x=>x.id).sort().join(',');
+ try{ if(localStorage.getItem(key)==='1') return; }catch(e){}
+ const items=rw.newly.map(x=>`${x.emoji} ${esc(x.title)}`).join(' · ');
+ const el=document.createElement('div'); el.className='aw-toast';
+ el.innerHTML=`<div><b>🎉 Новая награда!</b><div style="font-size:12px;margin-top:2px;opacity:.95">${items}</div></div><button title="Закрыть">✕</button>`;
+ const dismiss=()=>{ try{localStorage.setItem(key,'1');}catch(e){} el.remove(); };
+ el.querySelector('button').onclick=(ev)=>{ev.stopPropagation();dismiss();}; el.onclick=()=>{ dismiss(); window.openHof(); };
+ document.body.appendChild(el); setTimeout(dismiss,12000);
+}
+function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups(d); renderTasks(d); window.initIrCards&&window.initIrCards(); maybeAwardToast(d); }
 
 (async ()=>{
  const me=await requireAuth();
