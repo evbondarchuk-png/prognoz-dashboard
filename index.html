@@ -545,6 +545,7 @@
 <div class="modal-overlay" id="modalTask"><div class="modal" id="modalTaskBody"></div></div>
 <div class="modal-overlay" id="modalNotif"><div class="modal" id="modalNotifBody"></div></div>
 <div class="modal-overlay" id="modalCycle"><div class="modal" id="modalCycleBody"></div></div>
+<div class="modal-overlay" id="modalBadge"><div class="modal" id="modalBadgeBody"></div></div>
 <style>
 .hof-lvl{background:var(--surface-2,#f1f3f7);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:6px}
 .hof-lvl-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:12.5px}
@@ -577,6 +578,16 @@
 .hbadge.r-common{--rc:#5b7089}.hbadge.r-rare{--rc:#0d9488}.hbadge.r-epic{--rc:#7c3aed}.hbadge.r-legend{--rc:#d9820a}
 .hbadge.more{font-size:12px;font-weight:700;color:var(--muted);background:transparent;border-style:dashed}
 .hbadge-lvl{font-size:12px;font-weight:700;color:var(--brand);margin-left:2px;white-space:nowrap}
+#modalBadge{z-index:2000}
+.bd-wrap{text-align:center;padding:6px 4px 6px;position:relative}
+.bd-medal{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-size:38px;margin:6px auto 12px;
+  background:color-mix(in srgb,var(--rc,#5b7089) 16%,transparent);border:3px solid color-mix(in srgb,var(--rc,#5b7089) 55%,transparent)}
+.bd-wrap.r-common{--rc:#5b7089}.bd-wrap.r-rare{--rc:#0d9488}.bd-wrap.r-epic{--rc:#7c3aed}.bd-wrap.r-legend{--rc:#d9820a}
+.bd-title{font-size:19px;font-weight:800;letter-spacing:-.01em}
+.bd-rar{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--rc);margin-top:5px}
+.bd-status{display:inline-block;margin:13px 0;font-size:13px;font-weight:600;padding:5px 13px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.bd-status.ok{background:color-mix(in srgb,#16a34a 15%,transparent);color:#16a34a}
+.bd-desc{font-size:14px;color:var(--ink);line-height:1.55;max-width:46ch;margin:0 auto;text-align:left;opacity:.85}
 </style>
 
 <script type="module">
@@ -729,7 +740,7 @@ function renderHero(d){
  const ach=(d.achievements||[]).map(a=>`<div class="ach-chip">${esc(a.emoji)} ${esc(a.text)}</div>`).join('');
  // медальоны полученных наград в шапке (клик → Зал славы)
  const _rwE=(d.rewards&&Array.isArray(d.rewards.badges))?d.rewards.badges.filter(b=>b.earned):[];
- const rwChips=_rwE.length?`<div class="hero-badges" onclick="openHof()" title="Открыть Зал славы">${_rwE.slice(0,8).map(b=>`<span class="hbadge r-${b.tier}">${esc(b.emoji)}</span>`).join('')}${_rwE.length>8?`<span class="hbadge more">+${_rwE.length-8}</span>`:''}<span class="hbadge-lvl">Ур.${d.rewards.level}</span></div>`:'';
+ const rwChips=_rwE.length?`<div class="hero-badges" onclick="openHof()" title="Открыть Зал славы">${_rwE.slice(0,8).map(b=>`<span class="hbadge r-${b.tier}" style="cursor:pointer" onclick="event.stopPropagation();openBadge('${b.id}')" title="${esc(b.title)}">${esc(b.emoji)}</span>`).join('')}${_rwE.length>8?`<span class="hbadge more">+${_rwE.length-8}</span>`:''}<span class="hbadge-lvl">Ур.${d.rewards.level}</span></div>`:'';
 
  // income-track
  const inc=u.income_month, tgt=g?g.target_revenue_month:null;
@@ -2033,7 +2044,7 @@ window.openHof=()=>{
     const cls=b.earned?'e':(b.active?'l':'soon');
     const pctTxt=(b.pct!=null)?`у ${b.pct}%`:'';
     const sub=b.earned?(pctTxt||'получено ✓'):(b.active?(pctTxt||'ещё не получена'):'скоро');
-    body+=`<div class="hb ${cls} r-${b.tier}" title="${esc(b.title)}"><div class="hb-m">${esc(b.emoji)}</div><div class="hb-t">${esc(b.title)}</div><div class="hb-s muted">${sub}</div></div>`;
+    body+=`<div class="hb ${cls} r-${b.tier}" style="cursor:pointer" onclick="openBadge('${b.id}')" title="Подробнее"><div class="hb-m">${esc(b.emoji)}</div><div class="hb-t">${esc(b.title)}</div><div class="hb-s muted">${sub}</div></div>`;
    }
    body+=`</div>`;
   }
@@ -2042,6 +2053,27 @@ window.openHof=()=>{
  <div class="modal-head"><div class="modal-title">🏆 Зал славы</div><button class="modal-x" onclick="closeModal('modalHof')">✕</button></div>
  ${cycHtml}${body}`;
  document.getElementById('modalHof').classList.add('on');
+};
+// модалка деталей награды: что это, редкость, когда получена, как получить
+window.openBadge=(id)=>{
+ const rw=CTX.data.rewards; if(!rw) return;
+ const b=(rw.badges||[]).find(x=>x.id===id); if(!b) return;
+ const TL={common:'обычная',rare:'редкая',epic:'эпическая',legend:'легендарная'};
+ const pctTxt=(b.pct!=null)?` · есть у ${b.pct}% риэлторов`:'';
+ let status;
+ if(b.earned){ let dt=''; try{ if(b.earned_at) dt=' · '+new Date(b.earned_at).toLocaleDateString('ru-RU'); }catch(e){} status=`<div class="bd-status ok">✓ Получена${dt}</div>`; }
+ else if(b.active){ status=`<div class="bd-status">Ещё не получена</div>`; }
+ else { status=`<div class="bd-status">🔜 Скоро — награда в разработке</div>`; }
+ document.getElementById('modalBadgeBody').innerHTML=`
+  <div class="modal-head"><div></div><button class="modal-x" onclick="closeModal('modalBadge')">✕</button></div>
+  <div class="bd-wrap r-${b.tier}">
+    <div class="bd-medal">${esc(b.emoji)}</div>
+    <div class="bd-title">${esc(b.title)}</div>
+    <div class="bd-rar">${esc(TL[b.tier]||b.tier)}${pctTxt}</div>
+    ${status}
+    <div class="bd-desc">${esc(b.desc||'')}</div>
+  </div>`;
+ document.getElementById('modalBadge').classList.add('on');
 };
 // тост-поздравление при новой награде (за 3 дня, из d.rewards.newly)
 function maybeAwardToast(d){
