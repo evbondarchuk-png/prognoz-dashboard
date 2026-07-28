@@ -1898,7 +1898,7 @@ function svetoforForecastCard(d){
 
 function renderSvetofor(d){
  document.getElementById('screen-svetofor').innerHTML = svetoforForecastCard(d);
- setTimeout(function(){initSvetoforCalcWithData(d);},0);
+ if(document.getElementById('svV')) setTimeout(function(){initSvetoforCalcWithData(d);},0);
 }
 
 // Инициализация калькулятора (ЧИСТАЯ ПЕРЕЗАПИСЬ — все переменные в одной области)
