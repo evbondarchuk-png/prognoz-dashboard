@@ -856,8 +856,10 @@ function stageCard(side,st){
     const sep=(sg.has_fact&&sg.has_forecast)?'<span class="seg-sep">/</span>':'';
     return `<div class="seg-row"><span class="sv">${esc(sg.label)}</span><span class="seg-numbers">${f}${sep}${fc}</span></div>`;
    }
+   // v1.1: показываем +Y новых для seller objects
+   const segNewLabel = (sg.factNew != null && sg.factNew > 0) ? ` <span style="color:var(--gold);font-size:var(--fs-11)">+${sg.factNew} новых</span>` : '';
    const subStage={fact:sg.fact,plan:sg.plan,fact_label:sg.fact_label,plan_label:sg.plan_label,forecast:null};
-   return `<div style="margin-bottom:8px"><div class="seg-row" style="margin-bottom:4px"><span class="sv">${esc(sg.label)}</span><span style="color:var(--muted);font-size:var(--fs-11)">${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span></div>${renderFpBar(subStage,{compact:true})}</div>`;
+   return `<div style="margin-bottom:8px"><div class="seg-row" style="margin-bottom:4px"><span class="sv">${esc(sg.label)}</span><span style="color:var(--muted);font-size:var(--fs-11)">${esc(sg.fact_label)}${segNewLabel} / ${esc(sg.plan_label)}</span></div>${renderFpBar(subStage,{compact:true})}</div>`;
   }).join('');
   // Втыкаем block раскрытия внутрь funnel-stage — делает его кликабельным
   html=html.replace(/<\/div>\s*$/, `<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}</div></div>`);
@@ -2261,6 +2263,10 @@ function renderStage(stage){
   const u = is_revenue ? ' ₽' : '';
   const labFact = esc(fact_label) + u;
   const labPlan = esc(plan_label) + u;
+  // v1.1: для seller objects показываем +Y новых за месяц
+  const objectsNewLabel = (stage.objectsNew != null && stage.objectsNew > 0) ? ` <span style="color:var(--gold);font-size:var(--fs-11);font-weight:var(--fw-sb)">+${stage.objectsNew} новых</span>` : '';
+  const labFactWithNew = labFact + objectsNewLabel;
+
   let numbers;
   // TZ-A26 уточнение: прогноз = ПРИРАЩЕНИЕ (forecast - fact, «+X к»), не итог.
   // Если приращения нет (forecast == fact или null) — показываем только факт и план.
@@ -2269,9 +2275,9 @@ function renderStage(stage){
     const fmtDelta=(d)=>{ const a=Math.abs(d); if(a>=1000000) return (d/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=10000) return Math.round(d/1000)+'к'; if(a>=1000) return (d/1000).toFixed(1).replace('.',',')+' тыс'; return String(Math.round(d)); };
     const deltaLabel='+'+fmtDelta(forecast - fact) + u;
     const totalLabel=fmtDelta(forecast) + u;
-    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${labFact}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">итого</span><span style="color:#374151;font-weight:var(--fw-b)">${esc(totalLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${labPlan}</span></span>`;
+    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${labFactWithNew}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">итого</span><span style="color:#374151;font-weight:var(--fw-b)">${esc(totalLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${labPlan}</span></span>`;
   } else {
-    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${labFact}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${labPlan}</span></span>`;
+    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${labFactWithNew}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${labPlan}</span></span>`;
   }
   return `<div class="funnel-stage ${status}"><div class="funnel-head"><div class="funnel-label">${esc(label)} ${hintHtml}</div><div class="fp-numbers">${numbers}</div></div>${renderFpBar(stage)}</div>`;
 }
