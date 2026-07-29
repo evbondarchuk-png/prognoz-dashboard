@@ -1040,6 +1040,39 @@ function renderPrognoz(d){
       </div>
     </div>
   </div>`);
+  // ── Итого за цикл + per-agent расшифровка ──
+  const tot = pt.totals||{};
+  const _segL={b_new:'Новостройки',b_sec:'Вторичка',b_out:'Загородная',b_com:'Коммерческая',b_gar:'Гаражи',s_sec:'Вторичка',s_out:'Загородная',s_com:'Коммерческая',s_gar:'Гаражи'};
+  // Собираем per-agent данные за весь цикл
+  const _agentCycle={}; // code → {name, revenue:{seg:sum}, deals:{seg:sum}}
+  for(const m of(pt.monthly||[])){
+    const pa=m.per_agent||{};
+    for(const[code,ad]of Object.entries(pa)){
+      if(!_agentCycle[code])_agentCycle[code]={name:ad.name||code,r:{},d:{},monthly:{}};
+      _agentCycle[code].monthly[m.ym]={revenue:ad.revenue||{},deals:ad.deals||{}};
+      for(const[k,v]of Object.entries(ad.revenue||{})){if(v)_agentCycle[code].r[k]=(_agentCycle[code].r[k]||0)+v;}
+      for(const[k,v]of Object.entries(ad.deals||{})){if(v)_agentCycle[code].d[k]=(_agentCycle[code].d[k]||0)+v;}
+    }
+  }
+  let _mopBdHtml=`<div style="margin-top:16px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div><div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#0e7a4f">${_prgFmtFull(tot.revenue||0)} ₽</div></div></div>`;
+  const _agentEntries=Object.entries(_agentCycle).sort((a,b)=>{const aR=Object.values(a[1].r).reduce((s,v)=>s+v,0);const bR=Object.values(b[1].r).reduce((s,v)=>s+v,0);return bR-aR;});
+  if(_agentEntries.length){
+    _mopBdHtml+=`<div style="margin-top:12px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--brand);font-size:12px;font-weight:700"><span style="font-size:14px">›</span> Расшифровка по агентам</div><div style="display:none;padding:0 4px">`;
+    for(const[code,ad]of _agentEntries){
+      const aTotal=Object.values(ad.r).reduce((s,v)=>s+v,0);
+      // Monthly detail per agent
+      let monthHtml='';
+      for(const[ym,md]of Object.entries(ad.monthly)){
+        const segs=[...new Set(Object.keys(md.revenue||{}).map(k=>k.replace(/^[bs]_/,'')))];
+        if(!segs.length)continue;
+        const segRows=segs.map(seg=>{const b=(md.revenue||{})['b_'+seg]||0,s=(md.revenue||{})['s_'+seg]||0;const lb=_segL['b_'+seg]||_segL['s_'+seg]||seg;const p=[];if(b>0)p.push(`🛒 ${_prgFmtFull(b)} ₽`);if(s>0)p.push(`🏠 ${_prgFmtFull(s)} ₽`);return`<div style="display:flex;gap:8px;padding:3px 0;font-size:11px"><span style="flex:1;color:var(--muted)">${esc(lb)}</span><span>${p.join(' | ')}</span></div>`;}).join('');
+        monthHtml+=`<div style="padding:6px 0;border-top:1px dashed var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">${ym.slice(5)}月</div>${segRows}</div>`;
+      }
+      _mopBdHtml+=`<div style="border:1px solid var(--line);border-radius:8px;margin-bottom:6px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 10px"><span style="font-size:12px;color:var(--muted)">›</span><div style="flex:1;font-size:13px;font-weight:600">${esc(ad.name)}</div><div style="font-size:13px;font-weight:700;color:#0e7a4f">${_prgFmtFull(aTotal)} ₽</div></div><div style="display:none;padding:4px 10px 8px 24px;background:var(--surface-2,#f7f9fc)">${monthHtml||'<div style="color:var(--muted);font-size:11px">нет данных</div>'}</div></div>`;
+    }
+    _mopBdHtml+=`</div></div>`;
+  }
+
   out.push(`<div class="card">
     <div class="section-title">📊 Цикл по месяцам</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Помесячный вал группы vs план. Зелёное — факт, синее — прогноз, штриховка — план.</div>
@@ -1047,24 +1080,7 @@ function renderPrognoz(d){
       <button onclick="prgSetMode('val')" style="border:none;background:${mode==='val'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='val'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer">Вал (оборот)</button>
     </div>
     <div id="prg-bars-wrap"></div>
-  </div>`);
-  // ── Итого за цикл + Расшифровка по сегментам ──
-  const tot = pt.totals||{};
-  const _segLabs = {b_new:'Новостройки',b_sec:'Вторичка',b_out:'Загородная',b_com:'Коммерческая',b_gar:'Гаражи',s_sec:'Вторичка',s_out:'Загородная',s_com:'Коммерческая',s_gar:'Гаражи'};
-  const _segT={}; for(const m of(pt.monthly||[])){const bd=m.breakdown;if(!bd)continue;for(const[k,v]of Object.entries(bd.revenue||{})){if(v){if(!_segT[k])_segT[k]={r:0,d:0};_segT[k].r+=v;}}for(const[k,v]of Object.entries(bd.deals||{})){if(v){if(!_segT[k])_segT[k]={r:0,d:0};_segT[k].d+=v;}}}
-  const _hasBd=Object.keys(_segT).length>0;
-  let _bdHtml='';
-  if(_hasBd){
-    const _allSegs=[...new Set([...Object.keys(_segT).filter(k=>k.startsWith('b_')).map(k=>k.replace('b_','')),...Object.keys(_segT).filter(k=>k.startsWith('s_')).map(k=>k.replace('s_',''))])];
-    const _sRows=_allSegs.map(seg=>{const b=_segT['b_'+seg]||{r:0,d:0},s=_segT['s_'+seg]||{r:0,d:0};const lb=_segLabs['b_'+seg]||_segLabs['s_'+seg]||seg;const p=[];if(b.d>0)p.push(`<span style="color:var(--muted)">🛒 <b style="color:var(--ink)">${Math.round(b.d*10)/10}</b> · ${_prgFmtFull(b.r)} ₽</span>`);if(s.d>0)p.push(`<span style="color:var(--muted)">🏠 <b style="color:var(--ink)">${Math.round(s.d*10)/10}</b> · ${_prgFmtFull(s.r)} ₽</span>`);return`<div style="display:flex;align-items:center;gap:11px;padding:7px 0;border-top:1px dashed var(--line)"><div style="flex:1;font-size:13px;font-weight:600">${esc(lb)}</div><div style="font-size:11px;display:flex;gap:11px;flex-wrap:wrap">${p.join('')}</div><div style="font-size:12px;font-weight:700;color:#0e7a4f;white-space:nowrap">${_prgFmtFull(b.r+s.r)} ₽</div></div>`;}).join('');
-    _bdHtml=`<div style="margin-top:12px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--brand);font-size:12px;font-weight:700"><span style="font-size:14px">›</span> Расшифровка по сегментам</div><div style="display:none;padding:0 4px">${_sRows}</div></div>`;
-  }
-  out.push(`<div class="card">
-    <div style="padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div></div>
-      <div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#0e7a4f">${_prgFmtFull(tot.revenue||0)} ₽ <span style="font-size:11px;color:var(--muted);font-weight:600">вал</span></div><div style="font-size:13px;font-weight:700;color:#0e7a4f">${_prgFmtFull(tot.income||0)} ₽ <span style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase">доход</span></div></div>
-    </div>
-    ${_bdHtml}
+    ${_mopBdHtml}
   </div>`);
   root.innerHTML = out.join('');
   prgRenderBars(pt, mode);
