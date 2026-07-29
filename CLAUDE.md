@@ -275,7 +275,7 @@ nightly идемпотентен (если браузер оборвёт сое�
 `removeAllArchiveTriggers`. Детали — auto-memory
 `reference_archiver_apps_script.md` и `project_nightly_data_cycle.md`.
 
-Дальше досчитывают ночные кроны: `nightlySnapshot` 05:00 МСК →
+Дальше досчитывают ночные кроны: `nightlySnapshot` 06:00 МСК (A1-сдвиг с 05:00, см. §19) →
 `recomputeIRGroups`/`Departments`. **Планы a8v5 ночью НЕ трогаем** —
 пересчёт ручной (`recomputePlansAdmin`); но `setGoal` пересчитывает план
 конкретного партнёра сразу при смене ЗП.
@@ -832,19 +832,33 @@ email проставлен всем, планы выданы (`assignAutoGoalsAd
   риелторам из листа `data`, столбцы 11–19).
 - v1.2 добавляет 2 setup-функции для ночных триггеров (включены 2026-06-17).
 
-**Ночное расписание (МСК) с 2026-07-06 (архиватор v3.9):**
+**Ночное расписание (МСК), обновл. 2026-07-29 (архиватор v4.3 + A1/A2-сторожа):**
 ```
-23:30  archiveMonthEnd                 — лист data → /archive, ТОЛЬКО последний
-                                         день месяца (28/29/30/31); в остальные — молчит
-03:30  archiveMorning                  — лист data → /archive, кроме 1-го числа
+23:00  checkObjectsMonthEnd (CF)       — ТОЛЬКО последний день: c1_seller по компании,
+                                         при массовых нулях лог + MAX Егору (до archiveMonthEnd)
+23:30  archiveMonthEnd (Apps Script)   — лист data → /archive, ТОЛЬКО последний день месяца
+03:30  archiveMorning (Apps Script)    — лист data → /archive, кроме 1-го; v4.3 ГАРД полноты:
+                                         не пишет срез с пустыми объектами продавца (actONCur)
 04:10  rosterReconcile_write           — выверка состава /users + /roster_events
 04:15  extendUsers_write               — стаж, позиция, зона, лига, email, newbie_position
 04:20  importAvgCommissions_write      — городские чеки в /data_division
+04:30  archiveMorningRetry (v4.3)      — повтор archiveToday, ТОЛЬКО если утренний гард сработал
 04:30  importDataDivision_write        — ТОЛЬКО 1-го числа, обновление 24 зон/грейдов
-05:00  nightlySnapshot (Cloud Func)    — снапшоты + прогнозы (читает /data_division)
-05:30  recomputeIRGroups               — агрегаты групп
-06:00  recomputeIRDepartments          — агрегаты отделов
+06:00  nightlySnapshot (CF)            — A1: сдвиг с 05:00 → буфер 1.5ч после ретрая архиватора
+06:15  dataHealthDaily (CF)            — A2: все 6 составляющих ИР vs вчера + сдвиг ИР; флаг
+                                         /data_health блокирует ложную эскалацию + MAX Егору
+06:30  recomputeIRGroups (CF)          — агрегаты групп
+07:00  recomputeIRDepartments (CF)     — агрегаты отделов
+07:30  escalateNRiskDaily (CF)         — Н1-Н4; при /data_health.escalation_safe=false пропускает
+07:45  computeAwardsDaily (CF)         — награды
+08:00  maxSendBrief (пн-пт) + assignAutoGoals — брифы MAX + автоцели
+09:00  runScenariosDaily (CF)          — авто-задачи по сценариям
 ```
+**Слои защиты объектов (инцидент 28.07):** гард архиватора (не пишет битый срез) →
+`archiveMorningRetry` (дописывает, когда лист готов) → `dataHealthDaily` (ловит любую
+из 6 обнулившихся составляющих + флаг + MAX) → `checkObjectsMonthEnd` (месячное закрытие).
+Разбор — `functions/monitorObjects.js`, справка `~/Downloads/spravka-kolya-objects-2026-07-28.md`,
+скрипт `~/Downloads/archive-v4.3.gs`. Причина: гонка «архиватор читает лист раньше n8n».
 
 **Логика гибрида (см. §10):** за 30/31 (последний день месяца) снимок пишется
 ВЕЧЕРОМ того же дня — до того как n8n на утро 1-го перепишет cur-поля. 1-го
