@@ -1080,32 +1080,42 @@ function renderPrognoz(d){
 
   // ── 2. График по месяцам — переключатель Доход/Вал + Итого + Расшифровка ──
   const tot = pt.totals||{};
-  // Собираем расшифровку по сегментам из breakdown
   const _segL={b_new:'Новостройки',b_sec:'Вторичка',b_out:'Загородная',b_com:'Коммерческая',b_gar:'Гаражи',s_sec:'Вторичка',s_out:'Загородная',s_com:'Коммерческая',s_gar:'Гаражи'};
-  const _segR={},_segI={};
-  for(const m of(pt.monthly||[])){const bd=m.breakdown;if(!bd)continue;for(const[k,v]of Object.entries(bd.revenue||{})){if(v)_segR[k]=(_segR[k]||0)+v;}for(const[k,v]of Object.entries(bd.income||{})){if(v)_segI[k]=(_segI[k]||0)+v;}}
-  function _renderSegTable(segData){
-    if(!segData||!Object.keys(segData).length)return'';
-    const segs=[...new Set(Object.keys(segData).map(k=>k.replace(/^[bs]_/,'')))];
-    return segs.map(seg=>{const b=segData['b_'+seg]||0,s=segData['s_'+seg]||0;const lb=_segL['b_'+seg]||_segL['s_'+seg]||seg;const p=[];if(b>0)p.push(`<span style="color:var(--muted)">🛒 ${_prgFmtFull(b)} ₽</span>`);if(s>0)p.push(`<span style="color:var(--muted)">🏠 ${_prgFmtFull(s)} ₽</span>`);return`<div style="display:flex;align-items:center;gap:11px;padding:6px 0;border-top:1px dashed var(--line)"><div style="flex:1;font-size:13px;font-weight:600">${esc(lb)}</div><div style="font-size:11px;display:flex;gap:11px">${p.join('')}</div><div style="font-size:12px;font-weight:700;color:#0e7a4f;white-space:nowrap">${_prgFmtFull(b+s)} ₽</div></div>`;}).join('');
+  const _monthBd = (pt.monthly||[]).map(m=>{
+    const bd=m.breakdown||{};
+    const rev=bd.revenue||{}, inc=bd.income||{};
+    return {ym:m.ym, fact_rev:m.fact_revenue||0, fact_inc:m.fact_income||0, rev, inc, hasR:Object.keys(rev).length>0, hasI:Object.keys(inc).length>0};
+  }).filter(m=>m.hasR||m.hasI);
+  function _rSeg(sd){
+    if(!sd||!Object.keys(sd).length)return'';
+    const segs=[...new Set(Object.keys(sd).map(k=>k.replace(/^[bs]_/,'')))];
+    return segs.map(seg=>{const b=sd['b_'+seg]||0,s=sd['s_'+seg]||0;const lb=_segL['b_'+seg]||_segL['s_'+seg]||seg;const p=[];if(b>0)p.push(`🛒 ${_prgFmtFull(b)} ₽`);if(s>0)p.push(`🏠 ${_prgFmtFull(s)} ₽`);return`<div style="display:flex;gap:8px;padding:3px 0;font-size:11px"><span style="flex:1;color:var(--muted)">${esc(lb)}</span><span>${p.join(' | ')}</span></div>`;}).join('');
   }
-  const _hasSegR=Object.keys(_segR).length>0;
-  const _hasSegI=Object.keys(_segI).length>0;
-
+  const _hasBd=_monthBd.length>0;
   out.push(`<div class="card">
     <div class="section-title">📊 Цикл по месяцам</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Переключи: <b>доход</b> (к нему цель) или <b>вал</b> (оборот, план). Зелёное — факт, синее — прогноз, штриховка — план.</div>
     <div style="display:inline-flex;background:var(--surface-2,#f1f3f7);border-radius:999px;padding:3px;gap:2px;margin-bottom:12px">
-      <button onclick="prgSetMode('dohod')" id="prg-btn-dohod" style="border:none;background:${mode==='dohod'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='dohod'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='dohod'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Доход</button>
-      <button onclick="prgSetMode('val')" id="prg-btn-val" style="border:none;background:${mode==='val'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='val'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='val'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Вал (оборот)</button>
+      <button onclick="prgSetMode('dohod');if(window.prgUpdateSegVis)prgUpdateSegVis()" id="prg-btn-dohod" style="border:none;background:${mode==='dohod'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='dohod'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='dohod'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Доход</button>
+      <button onclick="prgSetMode('val');if(window.prgUpdateSegVis)prgUpdateSegVis()" id="prg-btn-val" style="border:none;background:${mode==='val'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='val'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer;${mode==='val'?'box-shadow:0 1px 2px rgba(0,0,0,.1)':''}">Вал (оборот)</button>
     </div>
     <div id="prg-bars-wrap"></div>
     <div style="margin-top:16px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div>
-      <div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#0e7a4f">${_prgFmtFull(tot.revenue||0)} ₽ <span style="font-size:11px;color:var(--muted);font-weight:600">вал</span></div><div style="font-size:13px;font-weight:700;color:#0e7a4f">${_prgFmtFull(tot.income||0)} ₽ <span style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase">доход</span></div></div>
+      <div style="text-align:right"><div class="prg-tot-rev" style="font-size:18px;font-weight:800;color:#0e7a4f;display:${mode==='val'?'':'none'}">${_prgFmtFull(tot.revenue||0)} ₽</div><div class="prg-tot-inc" style="font-size:18px;font-weight:800;color:#0e7a4f;display:${mode==='dohod'?'':'none'}">${_prgFmtFull(tot.income||0)} ₽</div></div>
     </div>
-    ${(_hasSegR||_hasSegI)?`<div style="margin-top:12px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--brand);font-size:12px;font-weight:700"><span style="font-size:14px">›</span> Расшифровка по сегментам</div><div id="prg-seg-breakdown" style="display:none;padding:0 4px"><div id="prg-seg-dohod" style="display:${mode==='dohod'?'block':'none'}">${_hasSegI?_renderSegTable(_segI):'<div style="color:var(--muted);font-size:12px;padding:8px 0">Нет данных по доходам</div>'}</div><div id="prg-seg-val" style="display:${mode==='val'?'block':'none'}">${_hasSegR?_renderSegTable(_segR):'<div style="color:var(--muted);font-size:12px;padding:8px 0">Нет данных по валу</div>'}</div></div></div>`:''}
+    ${_hasBd?`<div style="margin-top:12px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--brand);font-size:12px;font-weight:700"><span style="font-size:14px">›</span> Расшифровка по месяцам</div><div id="prg-seg-breakdown" style="display:none;padding:0 4px">${_monthBd.map(m=>`<div class="prg-sm" data-rv="${m.fact_rev}" data-ic="${m.fact_inc}" style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer" onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'"><span style="font-size:12px;color:var(--muted)">›</span><div style="flex:1;font-size:13px;font-weight:700">${_monthShortRu(m.ym)}</div><div class="prg-smt" style="font-size:13px;font-weight:700;color:#0e7a4f">${_prgFmtFull(mode==='dohod'?m.fact_inc:m.fact_rev)} ₽</div></div><div style="display:none;padding:2px 0 4px 20px"><div class="prg-smd" style="display:${mode==='dohod'?'block':'none'}">${_rSeg(m.inc)||'<div style="color:var(--muted);font-size:11px">нет данных</div>'}</div><div class="prg-smv" style="display:${mode==='val'?'block':'none'}">${_rSeg(m.rev)||'<div style="color:var(--muted);font-size:11px">нет данных</div>'}</div></div></div>`).join('')}</div></div>`:''}
   </div>`);
+  window.prgUpdateSegVis=function(){
+    var md=localStorage.getItem(PRG_MODE_KEY)||'dohod';var isD=md==='dohod';
+    var rv=document.querySelector('.prg-tot-rev');if(rv)rv.style.display=isD?'none':'';
+    var ri=document.querySelector('.prg-tot-inc');if(ri)ri.style.display=isD?'':'none';
+    document.querySelectorAll('.prg-sm').forEach(function(el){
+      var t=el.querySelector('.prg-smt');if(t)t.textContent=_prgFmtFull(isD?Number(el.dataset.ic):Number(el.dataset.rv))+' ₽';
+      var d=el.querySelector('.prg-smd');if(d)d.style.display=isD?'block':'none';
+      var v=el.querySelector('.prg-smv');if(v)v.style.display=isD?'none':'block';
+    });
+  };
 
   // ── 3. Путь к цели по доходу ──
   out.push(`<div class="card">

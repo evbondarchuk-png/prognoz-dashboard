@@ -879,17 +879,13 @@ function renderPrognoz(d){
     </div>
     ${pt.note?`<div style="font-size:11px;color:var(--muted);margin-top:10px">ℹ️ ${esc(pt.note)}</div>`:''}
   </div>`);
-  // ── Итого за цикл + расшифровка (агрегированная) ──
+  // ── Итого за цикл + помесячная расшифровка ──
   const tot = pt.totals||{};
   const _segL={b_new:'Новостройки',b_sec:'Вторичка',b_out:'Загородная',b_com:'Коммерческая',b_gar:'Гаражи',s_sec:'Вторичка',s_out:'Загородная',s_com:'Коммерческая',s_gar:'Гаражи'};
-  const _segR={};
-  for(const m of(pt.monthly||[])){const bd=m.breakdown;if(!bd)continue;for(const[k,v]of Object.entries(bd.revenue||{})){if(v)_segR[k]=(_segR[k]||0)+v;}}
+  const _monthBd = (pt.monthly||[]).map(m=>{const bd=m.breakdown||{};const rev=bd.revenue||{};return{ym:m.ym,fact_rev:m.fact_revenue||0,rev,hasR:Object.keys(rev).length>0};}).filter(m=>m.hasR);
+  function _rSeg(sd){if(!sd||!Object.keys(sd).length)return'';const segs=[...new Set(Object.keys(sd).map(k=>k.replace(/^[bs]_/,'')))];return segs.map(seg=>{const b=sd['b_'+seg]||0,s=sd['s_'+seg]||0;const lb=_segL['b_'+seg]||_segL['s_'+seg]||seg;const p=[];if(b>0)p.push(`🛒 ${_prgFmtFull(b)} ₽`);if(s>0)p.push(`🏠 ${_prgFmtFull(s)} ₽`);return`<div style="display:flex;gap:8px;padding:3px 0;font-size:11px"><span style="flex:1;color:var(--muted)">${esc(lb)}</span><span>${p.join(' | ')}</span></div>`;}).join('');}
   let _aupBdHtml=`<div style="margin-top:16px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div><div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#0e7a4f">${_prgFmtFull(tot.revenue||0)} ₽</div></div></div>`;
-  if(Object.keys(_segR).length){
-    const segs=[...new Set(Object.keys(_segR).map(k=>k.replace(/^[bs]_/,'')))];
-    const rows=segs.map(seg=>{const b=_segR['b_'+seg]||0,s=_segR['s_'+seg]||0;const lb=_segL['b_'+seg]||_segL['s_'+seg]||seg;const p=[];if(b>0)p.push(`🛒 ${_prgFmtFull(b)} ₽`);if(s>0)p.push(`🏠 ${_prgFmtFull(s)} ₽`);return`<div style="display:flex;align-items:center;gap:11px;padding:6px 0;border-top:1px dashed var(--line)"><div style="flex:1;font-size:13px;font-weight:600">${esc(lb)}</div><div style="font-size:11px;display:flex;gap:11px">${p.join(' | ')}</div><div style="font-size:12px;font-weight:700;color:#0e7a4f">${_prgFmtFull(b+s)} ₽</div></div>`;}).join('');
-    _aupBdHtml+=`<div style="margin-top:12px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--brand);font-size:12px;font-weight:700"><span style="font-size:14px">›</span> Расшифровка по сегментам</div><div style="display:none;padding:0 4px">${rows}</div></div>`;
-  }
+  if(_monthBd.length){_aupBdHtml+=`<div style="margin-top:12px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--brand);font-size:12px;font-weight:700"><span style="font-size:14px">›</span> Расшифровка по месяцам</div><div style="display:none;padding:0 4px">${_monthBd.map(m=>`<div style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer" onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'"><span style="font-size:12px;color:var(--muted)">›</span><div style="flex:1;font-size:13px;font-weight:700">${_monthShortRu(m.ym)}</div><div style="font-size:13px;font-weight:700;color:#0e7a4f">${_prgFmtFull(m.fact_rev)} ₽</div></div><div style="display:none;padding:2px 0 4px 20px">${_rSeg(m.rev)||'<div style="color:var(--muted);font-size:11px">нет данных</div>'}</div></div>`).join('')}</div></div>`;}
 
   out.push(`<div class="card">
     <div class="section-title">📊 Цикл по месяцам</div>
