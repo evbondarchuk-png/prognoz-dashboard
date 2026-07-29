@@ -1705,7 +1705,7 @@ function renderTasks(d){
  const root = document.getElementById('screen-tasks');
  if (root && !root.dataset.calMounted) {
    root.dataset.calMounted = '1';
-   root.innerHTML = '<div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
+   root.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-primary" onclick="openCreateTask()">➕ Задача</button></div><div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
    (async () => {
      try {
        const db = getDatabase(getApp());

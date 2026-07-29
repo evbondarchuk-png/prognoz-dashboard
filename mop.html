@@ -209,6 +209,13 @@
  .gap-pill{font-size:var(--fs-11);font-weight:var(--fw-sb);padding:2px 9px;border-radius:var(--r-pill);white-space:nowrap}
  .gap-ok{background:var(--ok-bg);color:var(--ok)} .gap-warn{background:var(--warn-bg);color:var(--warn)} .gap-bad{background:var(--bad-bg);color:var(--bad)}
  .funnel-subhead{font-size:var(--fs-11);color:var(--muted);margin:-2px 0 10px 2px}
+ /* TZ-mop-funnel фаза 2: «кто проседает» в раскрытии этапа */
+ .gap-list{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+ .gap-list-h{font-size:var(--fs-11);font-weight:var(--fw-b);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em}
+ .gap-row{display:flex;align-items:center;gap:8px;padding:3px 0}
+ .gap-name{flex:1;font-size:var(--fs-12);color:var(--brand);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .gap-fp{font-size:var(--fs-11);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+ .gap-more{font-size:var(--fs-11);color:var(--muted);margin-top:4px}
 
  /* воронка */
  .fs-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px}
@@ -863,7 +870,34 @@ function renderHero(d){
 }
 
 /* ─── воронка группы ─── */
-function aggStageCard(side,st){
+/* TZ-mop-funnel фаза 2: «кто проседает» — список членов команды по разрыву на этапе.
+   Ключ этапа агрегата (st.key: flow/hot/deposits/objects) + сторона → ключ в card.stages. */
+const MEMKEY={buyer:{flow:'flow',hot:'hot_buyer',deposits:'dep_buyer'},seller:{objects:'objects',hot:'hot_seller',deposits:'dep_seller'}};
+function stageGapList(side,st,members){
+ const mk=st.key&&MEMKEY[side]?MEMKEY[side][st.key]:null;
+ if(!mk||!members||!members.length) return '';
+ const rows=[];
+ members.forEach(m=>{
+  const s=m.stages&&m.stages[mk]; if(!s) return;              // без плана — не показываем
+  const plan=Number(s.plan)||0, fact=Number(s.fact)||0, planR=Math.round(plan);
+  if(planR<=0) return;
+  const gap=Math.ceil(Math.max(0,Math.ceil(plan)-fact));
+  if(gap<=0) return;                                          // не проседает — пропуск
+  rows.push({name:m.name||'',drill:m.drill_url||'',fact:Math.round(fact),plan:planR,gap,pct:fact/planR*100});
+ });
+ if(!rows.length) return '';
+ rows.sort((a,b)=>b.gap-a.gap);
+ const top=rows.slice(0,4), rest=rows.slice(4);
+ const restGap=rest.reduce((s,r)=>s+r.gap,0);
+ const items=top.map(r=>{
+  const cls=r.pct>=70?'gap-ok':r.pct>=40?'gap-warn':'gap-bad';
+  const nm=r.drill?`<a href="${esc(r.drill)}" class="gap-name">${esc(r.name)}</a>`:`<span class="gap-name">${esc(r.name)}</span>`;
+  return `<div class="gap-row">${nm}<span class="gap-fp">${r.fact}/${r.plan}</span><span class="gap-pill ${cls}">−${r.gap}</span></div>`;
+ }).join('');
+ const more=rest.length?`<div class="gap-more">ещё ${rest.length} — суммарно −${restGap}</div>`:'';
+ return `<div class="gap-list"><div class="gap-list-h">Кто проседает · по разрыву</div>${items}${more}</div>`;
+}
+function aggStageCard(side,st,members){
  const stage={...st, hint: st.hint_label, showGap:true};
  let html=renderStage(stage);
  if(st.segments && st.segments.length){
@@ -877,7 +911,8 @@ function aggStageCard(side,st){
    const subStage={fact:sg.fact,plan:sg.plan,fact_label:sg.fact_label,plan_label:sg.plan_label,forecast:null};
    return `<div style="margin-bottom:8px"><div class="seg-row" style="margin-bottom:4px"><span class="sv">${esc(sg.label)}</span><span style="color:var(--muted);font-size:var(--fs-11)">${esc(sg.fact_label)} / ${esc(sg.plan_label)}</span></div>${renderFpBar(subStage,{compact:true})}</div>`;
   }).join('');
-  html=html.replace(/<\/div>\s*$/, `<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}</div></div>`);
+  const _gl=stageGapList(side,st,members);
+  html=html.replace(/<\/div>\s*$/, `<div class="stage-seg hidden" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${segs}${_gl}</div></div>`);
   html=html.replace('class="funnel-head"',`class="funnel-head" style="cursor:pointer" onclick="toggleStage(this)"`);
   html=html.replace('<div class="funnel-label">','<div class="funnel-label"><span class="chev" style="display:inline-block;width:14px;color:var(--muted);transition:transform .15s;font-weight:var(--fw-b)">›</span> ');
  }
@@ -892,15 +927,15 @@ function aggSide(side,fs,icon){ if(!fs)return'';
  ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}`;
 }
 /* Парная сетка для агрегатов: i-й этап покуп ↔ i-й этап прод выровнены по высоте */
-function renderAggFunnelsPaired(buyer,seller,factLbl,partnersN){
+function renderAggFunnelsPaired(buyer,seller,factLbl,partnersN,members){
  const head=(fs,icon,side)=>{
    // Статус воронки по темпу месяца (_irMonthStatus), а не плоским 70/40.
    const ps=(fs.ir==null||fs.ir_status==='no_data')?'no_data':(_irMonthStatus(fs.ir)==='ok'?'green':_irMonthStatus(fs.ir)==='warn'?'yellow':'red');
    const pl=ps==='no_data'?(fs.ir_status_label||'нет данных'):({green:'в норме',yellow:'в риске',red:'провал'}[ps]);
    return `<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[ps]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(pl)}</span></div><div class="fs-legend"><span><b>факт</b> ${factLbl}</span><span>/ <b>план</b> ${factLbl}</span><span>· % выполнения</span></div></div>`;
  };
- const bs=(buyer.stages||[]).map(st=>aggStageCard('buyer',st));
- const ss=(seller.stages||[]).map(st=>aggStageCard('seller',st));
+ const bs=(buyer.stages||[]).map(st=>aggStageCard('buyer',st,members));
+ const ss=(seller.stages||[]).map(st=>aggStageCard('seller',st,members));
  const rows=Math.max(bs.length,ss.length);
  const cells=[head(buyer,'🛒','buyer'),head(seller,'🏠','seller')];
  for(let i=0;i<rows;i++){
@@ -957,7 +992,7 @@ function renderMain(d){
  <div class="ai-text">Скоро здесь появится <b>разбор группы от ИИ</b>: кто тянет вверх, кому нужна помощь, что сделать на этой неделе.</div>
  <div class="ai-note">на YandexGPT — после слёта</div></div>`);
  }
- out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'группы',a.scope&&(a.scope.active_count!=null?a.scope.active_count:a.scope.members_count))}</div>`);
+ out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'группы',a.scope&&(a.scope.active_count!=null?a.scope.active_count:a.scope.members_count),(d.team_cards&&d.team_cards.members)||[])}</div>`);
  out.push(tasksMain(d));
  } else out.push(`<div class="banner">Нет агрегатов группы — возможно, ночной пересчёт ещё не прошёл.</div>`);
  document.getElementById('screen-main').innerHTML=out.join('');
