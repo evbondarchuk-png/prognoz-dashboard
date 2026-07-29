@@ -178,6 +178,11 @@
  .status-badge{font-size:var(--fs-11);padding:3px 10px;border-radius:20px;font-weight:var(--fw-b)}
  .sb-green{background:var(--ok-bg);color:var(--ok)} .sb-yellow{background:var(--warn-bg);color:var(--warn)}
  .sb-red{background:var(--bad-bg);color:var(--bad)} .sb-no_data{background:var(--nd-bg);color:var(--muted)}
+ /* TZ-mop-funnel: плашка «не хватает N» на этапе воронки (шкала 70/40) */
+ .funnel-gap{display:flex;justify-content:flex-end;margin-top:4px}
+ .gap-pill{font-size:var(--fs-11);font-weight:var(--fw-sb);padding:2px 9px;border-radius:var(--r-pill);white-space:nowrap}
+ .gap-ok{background:var(--ok-bg);color:var(--ok)} .gap-warn{background:var(--warn-bg);color:var(--warn)} .gap-bad{background:var(--bad-bg);color:var(--bad)}
+ .funnel-subhead{font-size:var(--fs-11);color:var(--muted);margin:-2px 0 10px 2px}
 
  .fs-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px}
  .fs-title{display:flex;align-items:center;gap:8px}
@@ -461,7 +466,7 @@ function fmtNumber(n){ if(!Number.isFinite(n))return '—';
   if(a>=1000)    return (n/1000).toFixed(1).replace('.',',')+' тыс';
   return String(Math.round(n));
 }
-// Прогноз вала на следующий месяц — в стиле плашки этапа воронки.
+// Прогноз вала на следующие месяцы (пул в работе, горизонт ~1,5–2 мес) — в стиле плашки этапа воронки.
 function fcHero(fc){
  if(!fc || !fc.next_month) return '';
  const nm=fc.next_month;
@@ -472,7 +477,9 @@ function fcHero(fc){
  const fcst=Number(nm.revenue_total)||0;
  const fmt=n=>{ const a=Math.abs(n); if(a>=1000000)return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=10000)return Math.round(n/1000)+'к'; if(a>=1000)return (n/1000).toFixed(1).replace('.',',')+' тыс'; return String(Math.round(n)); };
  // В прогнозе след.мес факта ещё нет (новый месяц не наступил). fact=0, forecast=полный прогноз, plan=target.
- const stage={label:'Прогноз вала',hint:lbl,fact:0,plan:target,forecast:fcst,fact_label:'0 ₽',plan_label:target>0?fmt(target)+' ₽':'—',forecast_label:fcst>0?fmt(fcst)+' ₽':'—'};
+ const mLbl=lbl.split(' ')[0];
+ const hint=target>0?('задатки и горячие в работе · план '+mLbl+' '+fmt(target)+' ₽'):'задатки и горячие в работе';
+ const stage={label:'Прогноз вала на следующие месяцы',hint:hint,fact:0,plan:target,forecast:fcst,fact_label:'0 ₽',plan_label:target>0?fmt(target)+' ₽':'—',forecast_label:fcst>0?fmt(fcst)+' ₽':'—'};
  return `<div style="margin-top:12px">${renderStage(stage)}</div>`;
 }
 
@@ -748,7 +755,7 @@ function renderHero(d){
 
 /* ─── воронка компании ─── */
 function aggStageCard(side,st){
- const stage={...st, hint: st.hint_label};
+ const stage={...st, hint: st.hint_label, showGap:true};
  let html=renderStage(stage);
  if(st.segments && st.segments.length){
   const segs=st.segments.map(sg=>{
@@ -776,7 +783,7 @@ function aggSide(side,fs,icon){ if(!fs)return'';
  ${(fs.stages||[]).map(st=>aggStageCard(side,st)).join('')}`;
 }
 /* Парная сетка для агрегатов: i-й этап покуп ↔ i-й этап прод выровнены по высоте */
-function renderAggFunnelsPaired(buyer,seller,factLbl){
+function renderAggFunnelsPaired(buyer,seller,factLbl,partnersN){
  const head=(fs,icon,side)=>`<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>${_irSideBadge(fs)}</div><div class="fs-legend"><span><b>факт</b> ${factLbl}</span><span>/ <b>план</b> ${factLbl}</span><span>· % выполнения</span></div></div>`;
  const bs=(buyer.stages||[]).map(st=>aggStageCard('buyer',st));
  const ss=(seller.stages||[]).map(st=>aggStageCard('seller',st));
@@ -786,7 +793,8 @@ function renderAggFunnelsPaired(buyer,seller,factLbl){
   cells.push(`<div class="row-stage">${bs[i]||''}</div>`);
   cells.push(`<div class="row-stage">${ss[i]||''}</div>`);
  }
- return `<div class="funnel-grid-paired">${cells.join('')}</div>`;
+ const sub=(partnersN!=null)?`<div class="funnel-subhead">Суммы по ${partnersN} партнёрам.</div>`:'';
+ return `${sub}<div class="funnel-grid-paired">${cells.join('')}</div>`;
 }
 
 /* задачи на сегодня и неделю для Главной */
@@ -823,7 +831,7 @@ function renderMain(d){
  out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Сводка по <span>компании</span></div></div>
  <div class="ai-text">Скоро здесь появится <b>разбор компании от ИИ</b>: какие отделы лидируют, где системные риски, куда направить внимание.</div>
  <div class="ai-note">на YandexGPT — после слёта</div></div>`);
- out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'компании')}</div>`);
+ out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'компании',a.scope&&(a.scope.active_count!=null?a.scope.active_count:a.scope.members_count))}</div>`);
  out.push(tasksMain(d));
  } else out.push(`<div class="banner">Нет агрегатов — возможно, ночной пересчёт ещё не прошёл.</div>`);
  document.getElementById('screen-main').innerHTML=out.join('');
@@ -1332,7 +1340,18 @@ function renderStage(stage){
   } else {
     numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   }
-  return `<div class="funnel-stage ${status}"><div class="funnel-head"><div class="funnel-label">${esc(label)} ${hintHtml}</div><div class="fp-numbers">${numbers}</div></div>${renderFpBar(stage)}</div>`;
+  let gapHtml='';
+  if(stage.showGap && !is_revenue){
+    const pRaw=Number(plan)||0, fRaw=Number(fact)||0, planRound=Math.round(pRaw);
+    if(planRound>0){
+      const pct=(fRaw/planRound)*100;
+      if(pct<100){
+        const gap=Math.ceil(Math.max(0, Math.ceil(pRaw)-fRaw));
+        if(gap>0){ const cls=pct>=70?'gap-ok':pct>=40?'gap-warn':'gap-bad'; gapHtml=`<div class="funnel-gap"><span class="gap-pill ${cls}">не хватает ${gap}</span></div>`; }
+      }
+    }
+  }
+  return `<div class="funnel-stage ${status}"><div class="funnel-head"><div class="funnel-label">${esc(label)} ${hintHtml}</div><div class="fp-numbers">${numbers}</div></div>${gapHtml}${renderFpBar(stage)}</div>`;
 }
 
 /* TZ-A27: блок ИР с табами Сейчас/Неделя/Месяц */
