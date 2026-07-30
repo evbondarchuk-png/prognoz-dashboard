@@ -568,7 +568,7 @@ function fcHero(fc){
  // В прогнозе след.мес факта ещё нет (новый месяц не наступил). fact=0, forecast=полный прогноз, plan=target.
  const mLbl=lbl.split(' ')[0];
  const hint=target>0?('задатки и горячие в работе · план '+mLbl+' '+fmt(target)+' ₽'):'задатки и горячие в работе';
- const stage={label:'Прогноз вала на следующие месяцы',hint:hint,fact:0,plan:target,forecast:fcst,fact_label:'0 ₽',plan_label:target>0?fmt(target)+' ₽':'—',forecast_label:fcst>0?fmt(fcst)+' ₽':'—'};
+ const stage={label:'Прогноз вала на следующие месяцы',hideFact:true,hint:hint,fact:0,plan:target,forecast:fcst,fact_label:'0 ₽',plan_label:target>0?fmt(target)+' ₽':'—',forecast_label:fcst>0?fmt(fcst)+' ₽':'—'};
  return `<div style="margin-top:12px">${renderStage(stage)}</div>`;
 }
 
@@ -879,11 +879,11 @@ function stageGapList(side,st,members){
  const rows=[];
  members.forEach(m=>{
   const s=m.stages&&m.stages[mk]; if(!s) return;              // без плана — не показываем
-  const plan=Number(s.plan)||0, fact=Number(s.fact)||0, planR=Math.round(plan);
+  const plan=Number(s.plan)||0, fact=Number(s.fact)||0, planR=Math.round(plan), factR=Math.round(fact);
   if(planR<=0) return;
-  const gap=Math.ceil(Math.max(0,Math.ceil(plan)-fact));
+  const gap=Math.max(0, planR-factR);                         // разрыв = показанный план − показанный факт
   if(gap<=0) return;                                          // не проседает — пропуск
-  rows.push({name:m.name||'',drill:m.drill_url||'',fact:Math.round(fact),plan:planR,gap,pct:fact/planR*100});
+  rows.push({name:m.name||'',drill:m.drill_url||'',fact:factR,plan:planR,gap,pct:fact/planR*100});
  });
  if(!rows.length) return '';
  rows.sort((a,b)=>b.gap-a.gap);
@@ -1663,6 +1663,8 @@ function renderStage(stage){
   const {label,hint,fact_label,forecast,forecast_label,plan_label,fact,plan,is_revenue}=stage;
   const status=calcStatus(fact,forecast,plan,is_revenue);
   const hintHtml=hint?`<span class="funnel-hint">${esc(hint)}</span>`:'';
+  // hideFact — для fcHero (прогноз на будущие месяцы: факта не бывает, «факт 0 ₽» убираем)
+  const factPart = stage.hideFact ? '' : `<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span>`;
   let numbers;
   // TZ-A26 уточнение: прогноз = ПРИРАЩЕНИЕ (forecast - fact, «+X к»), не итог.
   // Если приращения нет (forecast == fact или null) — показываем только факт и план.
@@ -1672,9 +1674,9 @@ function renderStage(stage){
     const deltaLabel='+'+fmtDelta(forecast - fact);
     const totalLabel=fmtDelta(forecast);
     const u = is_revenue ? ' ₽' : '';
-    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">итого</span><span style="color:#374151;font-weight:var(--fw-b)">${esc(totalLabel + u)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+    numbers=`${factPart}<span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">итого</span><span style="color:#374151;font-weight:var(--fw-b)">${esc(totalLabel + u)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   } else {
-    numbers=`<span><span class="fp-num-lbl">факт</span><span class="fp-num-fact">${esc(fact_label)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+    numbers=`${factPart}<span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   }
   let gapHtml='';
   if(stage.showGap && !is_revenue){
@@ -1682,7 +1684,7 @@ function renderStage(stage){
     if(planRound>0){
       const pct=(fRaw/planRound)*100;
       if(pct<100){
-        const gap=Math.ceil(Math.max(0, Math.ceil(pRaw)-fRaw));
+        const gap=Math.max(0, planRound-Math.round(fRaw));
         if(gap>0){ const cls=pct>=70?'gap-ok':pct>=40?'gap-warn':'gap-bad'; gapHtml=`<div class="funnel-gap"><span class="gap-pill ${cls}">не хватает ${gap}</span></div>`; }
       }
     }
