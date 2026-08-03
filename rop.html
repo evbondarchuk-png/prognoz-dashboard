@@ -1471,11 +1471,10 @@ function renderFpBar(stage,opts){
   const forecastDiv=forecastDeltaPctVisual>0?`<div data-tooltip="${esc(forecastTt)}" class="fp-bar-forecast${forecastNarrow?' narrow':''}" style="width:${forecastDeltaPctVisual}%">+${fcDeltaLbl}%</div>`:'';
   const containerTt=factTt||forecastTt||'нет данных';
   const bar=`<div class="fp-bar${smClass}" data-tooltip="${esc(containerTt)}">${factDiv}${forecastDiv}</div>`;
-  if(factNarrow||forecastNarrow){
-    const parts=[];
-    if(factNarrow) parts.push(`<span class="o-fact">${factPct}%</span><span class="o-lbl">от плана</span>`);
-    if(forecastNarrow){ if(parts.length) parts.push('<span class="o-sep">·</span>'); parts.push(`<span class="o-forecast">+${forecastDeltaPct}%</span><span class="o-lbl">прогноз</span>`); }
-    return `<div class="fp-bar-wrap">${bar}<div class="fp-bar-outside">${parts.join('')}</div></div>`;
+  // «N% от плана» под полосой убрано — % выполнения теперь в шапке (факт/план/%).
+  // Внешне оставляем только прогноз (revenue) для узкого блока.
+  if(forecastNarrow){
+    return `<div class="fp-bar-wrap">${bar}<div class="fp-bar-outside"><span class="o-forecast">+${forecastDeltaPct}%</span><span class="o-lbl">прогноз</span></div></div>`;
   }
   return bar;
 }
@@ -1496,7 +1495,11 @@ function renderStage(stage){
     const u = is_revenue ? ' ₽' : '';
     numbers=`${factPart}<span><span class="fp-num-lbl">прогноз</span><span class="fp-num-forecast">${esc(deltaLabel)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">итого</span><span style="color:#374151;font-weight:var(--fw-b)">${esc(totalLabel + u)}</span></span><span class="fp-num-sep">/</span><span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
   } else {
-    numbers=`${factPart}<span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>`;
+    const _pR=Math.round(Number(plan)||0);
+    let _pctT='', _pctColor='var(--ink)';
+    if(_pR>0){ const _pv=(Number(fact)||0)/_pR*100; let _p=Math.round(_pv); if(!is_revenue)_p=Math.min(100,_p); _pctT=_p+'%'; _pctColor=_pv>=70?'var(--ok)':_pv>=40?'var(--warn)':'var(--bad)'; }
+    const _pctSpan=_pctT?`<span class="fp-num-sep">/</span><span style="color:${_pctColor};font-weight:var(--fw-b)">${_pctT}</span>`:'';
+    numbers=`${factPart}<span><span class="fp-num-lbl">план</span><span class="fp-num-plan">${esc(plan_label)}</span></span>${_pctSpan}`;
   }
   let gapHtml='';
   if(stage.showGap && !is_revenue){
