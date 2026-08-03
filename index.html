@@ -1469,12 +1469,17 @@ function radarRenderGaps(elId,fact,norm,labels,units){
  if(!fact||!norm){box.innerHTML='<div class="radar-nodata">В этом сегменте нет данных.</div>';return;}
  // сортируем: сначала невыполненные (по величине разницы), потом выполненные
  const rows=labels.map((lab,i)=>{
-  const diff=norm[i]-fact[i], done=fact[i]>=norm[i]-0.05, unit=units[i]==='%'?'%':'';
+  const unit=units[i]==='%'?'%':'';
+  const rawDiff=norm[i]-fact[i];
+  // счётчики (штуки) — целые, стандартное округление; конверсии — в % как есть
+  const diff=unit?rawDiff:Math.round(rawDiff);
+  const done=unit?(fact[i]>=norm[i]-0.05):(diff<=0);
   return {lab,diff,done,unit,fact:fact[i],norm:norm[i]};
  }).sort((a,b)=>(a.done-b.done)||(b.diff-a.diff));
  box.innerHTML=rows.map(r=>{
+  const fmt=(v)=>r.unit==='%'?radarFmt(v):String(Math.round(v));
   if(r.done) return '<div class="radar-gap done"><span class="k">✓ '+esc(r.lab)+'</span><span class="dd ok">есть</span></div>';
-  return '<div class="radar-gap"><span class="k">'+esc(r.lab)+' <small>'+radarFmt(r.fact)+'→'+radarFmt(r.norm)+r.unit+'</small></span><span class="dd">+'+radarFmt(r.diff)+r.unit+'</span></div>';
+  return '<div class="radar-gap"><span class="k">'+esc(r.lab)+' <small>'+fmt(r.fact)+'→'+fmt(r.norm)+r.unit+'</small></span><span class="dd">+'+fmt(r.diff)+r.unit+'</span></div>';
  }).join('');
 }
 function radarBadge(valId,mine){const vb=document.getElementById(valId);if(vb)vb.textContent=mine?radarAvg(mine)+'%':'—';}
@@ -1539,11 +1544,9 @@ function renderCoach(d){
  ${coachSide('buyer',d.coach.buyer,'Покупатель')}${coachSide('seller',d.coach.seller,'Продавец')}
  <div class="muted" style="margin-top:8px">Относительно твоей зоны${d.coach.zone_label?': '+esc(d.coach.zone_label):''} — где ты сейчас</div></div>`);
  }
- if(d.coach_target&&(d.coach_target.buyer||d.coach_target.seller)){
- out.push(`<div class="card" style="border-color:#cfe1f5"><div class="section-title">🎯 Что подтянуть для целевой зоны${d.coach_target.zone_label?' · '+esc(d.coach_target.zone_label):''}</div>
- <div class="muted" style="margin:-6px 0 10px">Куда ты стремишься — сравнение с нормами следующей зоны, а не твоей текущей</div>
- ${coachSide('buyer',d.coach_target.buyer,'Покупатель')}${coachSide('seller',d.coach_target.seller,'Продавец')}</div>`);
- }
+ // Блок «Что подтянуть для целевой зоны» (coach_target) удалён по просьбе Егора 2026-08-03:
+ // всегда показывал «идеал» (сравнение с нормами следующей зоны часто тривиально) — не информативен.
+ // Роль «что усилить» закрывает радар воронки ниже.
  if(d.ai_coach&&d.ai_coach.coach_text){
  out.unshift(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">🎓</div><div class="ai-h">Персональный <span>ИИ-тренер</span></div></div>
  <div class="ai-text" style="white-space:pre-line">${esc(d.ai_coach.coach_text)}</div>
