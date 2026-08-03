@@ -1398,7 +1398,19 @@ function prgRenderGoalSvg(pt){
 /* ─── ТРЕНЕР (диагностика + ИИ) ─── */
 function coachSide(side,c,title){ if(!c)return'';
  const rec=c.recommendation_for_realtor||c.recommendation_rop||'';
- const weak=(c.weak_points||[]).map(w=>`<div class="weak"><span>⚠ ${esc(w.bit_label)}</span><span class="muted">${esc(w.actual)} / порог ${esc(w.threshold)}</span></div>`).join('');
+ const weak=(c.weak_points||[]).map(w=>{
+  const lab=esc(w.bit_label), key=w.bit_key||'';
+  const isConv=/conversion/.test(key), isDist=/distribution/.test(key);
+  // распределение (перекос по сегментам) — без %
+  if(isDist) return `<div class="weak"><span>⚠ ${lab}</span><span class="muted">перекос по сегментам</span></div>`;
+  const a=(typeof w.actual_num==='number')?w.actual_num:null, n=(typeof w.norm==='number')?w.norm:null;
+  // нет нормы — показываем факт как есть (fallback до пересчёта)
+  if(a===null||!n||n<=0) return `<div class="weak"><span>⚠ ${lab}</span><span class="muted">${esc(w.actual)}${isConv?'%':''}</span></div>`;
+  const below=Math.max(0,Math.round((n-a)/n*100));
+  const fS=isConv?(Math.round(a)+'%'):String(Math.round(a));
+  const nS=isConv?(Math.round(n)+'%'):String(Math.round(n));
+  return `<div class="weak"><span>⚠ ${lab}</span><span class="muted">${fS} · норма ${nS} · <b style="color:var(--bad)">на ${below}% ниже</b></span></div>`;
+ }).join('');
  return `<div class="coach-side" style="border-left-color:${SIDE_COLOR[side]}"><div style="font-weight:var(--fw-b);font-size:var(--fs-13)">${esc(title)}</div>
  ${c.description?`<div class="muted" style="margin:4px 0">${esc(c.description)}</div>`:''}
  ${rec?`<div style="margin:6px 0;font-size:var(--fs-13)">💡 ${esc(rec)}</div>`:''}${weak?`<div class="weak-list">${weak}</div>`:''}</div>`;
