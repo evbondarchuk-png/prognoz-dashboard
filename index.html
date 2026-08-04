@@ -274,7 +274,9 @@
  /* ИИ */
  
 /* ─── ИИ-разбор тренера (2026-08-04) ─── */
-.cr-wrap{margin-top:10px}
+/* цвет задаём на обёртке: блок лежит внутри тёмной .ai-card (color:#fff),
+   и всё, чему цвет не прописан явно, становилось белым на белом */
+.cr-wrap{margin-top:10px;color:var(--ink)}
 .cr-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
 .cr-sec{background:#fff;border-radius:var(--r-lg);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow)}
 .cr-sec h4{margin:0 0 6px;font-size:var(--fs-15);font-weight:var(--fw-b);color:var(--ink)}
