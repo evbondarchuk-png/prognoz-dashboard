@@ -1689,8 +1689,8 @@ function crHtml(rep){
  if(rep.link_between_sides) o.push(`<div class="cr-sec"><h4>Что связывает обе стороны</h4><p>${crEsc(rep.link_between_sides)}</p></div>`);
 
  if(rep.plan&&rep.plan.months){
+  let wi=0; // сквозной счётчик недель: второй месяц продолжает первый, а не начинает заново
   const months=rep.plan.months.map(m=>{
-   let wi=0;
    const weeks=(m.weeks||[]).map(w=>{
     const tasks=(w.tasks||[]).map(t=>{
      __crTasks.push({...t,weekIdx:wi});
