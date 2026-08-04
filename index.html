@@ -312,6 +312,33 @@
 .cr-sum td{padding:6px 8px;border-top:1px solid var(--line)}
 .cr-sum td:last-child{text-align:right;font-weight:var(--fw-b)}
 .cr-meta{font-size:var(--fs-11);color:var(--muted);margin-top:10px}
+/* Разбор читается как статья, а не как дашборд: крупный ведущий абзац,
+   заголовки разделов, графики «факт против нормы зоны» вместо голых таблиц. */
+.cr-lead{font-size:var(--fs-15);line-height:1.65;color:var(--ink);margin:0 0 10px}
+.cr-art{background:#fff;border-radius:var(--r-lg);padding:18px 20px;margin:12px 0;box-shadow:var(--shadow)}
+.cr-art h3{margin:0 0 10px;font-size:var(--fs-17);font-weight:var(--fw-eb);color:var(--ink);letter-spacing:-.01em}
+.cr-art h4{margin:16px 0 6px;font-size:var(--fs-15);font-weight:var(--fw-b);color:var(--ink)}
+.cr-art p{margin:0 0 10px;font-size:var(--fs-14);line-height:1.65;color:var(--ink)}
+.cr-kicker{font-size:var(--fs-11);font-weight:var(--fw-sb);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.cr-pull{border-left:3px solid #137333;background:#f2f9f4;border-radius:0 var(--r-sm) var(--r-sm) 0;padding:10px 14px;margin:10px 0;font-size:var(--fs-14);line-height:1.6;color:var(--ink)}
+/* график: полоса факта, пунктир — норма зоны */
+.cr-chart{margin:12px 0 6px}
+.cr-chart-h{font-size:var(--fs-12);font-weight:var(--fw-sb);color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
+.cr-crow{display:grid;grid-template-columns:112px 1fr 96px;gap:10px;align-items:center;margin:7px 0}
+.cr-clabel{font-size:var(--fs-13);color:var(--ink)}
+.cr-ctrack{position:relative;height:20px;background:#eef2f7;border-radius:var(--r-pill);overflow:visible}
+.cr-cfill{height:100%;border-radius:var(--r-pill);background:#2f6fed}
+.cr-cfill.ok{background:#137333}
+.cr-cnorm{position:absolute;top:-3px;bottom:-3px;width:2px;background:#94a3b8}
+.cr-cnorm:after{content:'норма';position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9px;color:#94a3b8;white-space:nowrap}
+.cr-cnum{font-size:var(--fs-12);color:var(--muted);text-align:right;white-space:nowrap}
+.cr-cnum b{color:var(--ink)}
+.cr-legend{font-size:var(--fs-11);color:var(--muted);margin-top:8px}
+.cr-sumline{display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:var(--fs-14)}
+.cr-sumline:first-child{border-top:none}
+.cr-sumline b{text-align:right;font-size:var(--fs-15)}
+.cr-sumbar{height:8px;border-radius:var(--r-pill);background:#eef2f7;margin-top:4px;overflow:hidden}
+.cr-sumbar i{display:block;height:100%;background:linear-gradient(90deg,#2f6fed,#48a0ff)}
 /* Прогресс сборки разбора: реального процента нет, поэтому шкала идёт по этапам */
 .cr-prog{background:#fff;border-radius:var(--r-lg);padding:16px 18px;margin:10px 0;box-shadow:var(--shadow)}
 .cr-prog-h{font-weight:var(--fw-sb);margin-bottom:4px}
@@ -323,6 +350,7 @@
 /* ─── Печать: только разбор, А4, без интерфейса ─── */
 @media print{
  @page{size:A4;margin:14mm 12mm}
+ *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
  body{background:#fff!important}
  .topbar,.rtabs,.bottom-nav,nav,header,.cr-actions,.radar-segs,.btn-primary,.btn-secondary,.btn-icon{display:none!important}
  .screen:not(#screen-coach){display:none!important}
@@ -1681,35 +1709,71 @@ function crTableHtml(t){
   <tbody>${t.rows.map(r=>`<tr>${r.map(c=>`<td>${crEsc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 
+/** График «факт против нормы зоны» — вместо голой таблицы. */
+function crChart(t,title){
+ if(!t||!t.segments||!t.segments.length) return '';
+ const AX={objects:'Объектов в работе',hot:'Горячих в месяц',deals:'Сделок в месяц',
+           flow:'Обращений в месяц'};
+ const keys=[];
+ (t.segments[0].vals||[]).forEach(v=>keys.push(v.key));
+ const blocks=keys.map(k=>{
+  const rows=t.segments.map(sg=>{
+   const v=(sg.vals||[]).find(x=>x.key===k); if(!v) return '';
+   const fact=+v.fact||0, norm=+v.norm||0;
+   if(!fact&&!norm) return '';
+   const scale=Math.max(fact,norm)*1.35||1;
+   const fw=Math.max(2,Math.round(fact/scale*100));
+   const nx=Math.round(norm/scale*100);
+   const ok=norm>0&&fact>=norm;
+   const nd=(x)=>String(x).replace('.',',');
+   return `<div class="cr-crow">
+     <div class="cr-clabel">${crEsc(sg.label)}</div>
+     <div class="cr-ctrack"><div class="cr-cfill${ok?' ok':''}" style="width:${fw}%"></div>${norm>0?`<div class="cr-cnorm" style="left:${nx}%"></div>`:''}</div>
+     <div class="cr-cnum"><b>${nd(v.fact_d)}</b>${norm>0?' из '+nd(v.norm_d):''}</div>
+   </div>`;
+  }).join('');
+  if(!rows.trim()) return '';
+  return `<div class="cr-chart"><div class="cr-chart-h">${AX[k]||k}</div>${rows}</div>`;
+ }).join('');
+ return blocks?`<h4>${crEsc(title)}</h4>${blocks}<div class="cr-legend">Зелёным — где ты на уровне нормы своей зоны или выше. Серая метка — сама норма.</div>`:'';
+}
+
 function crHtml(rep){
  __crTasks=[];
  const o=[];
- if(rep.greeting) o.push(`<div class="cr-sec"><p>${crEsc(rep.greeting)}</p>${rep.money_note?`<p class="cr-quote">${crEsc(rep.money_note)}</p>`:''}</div>`);
- if(rep.praise) o.push(`<div class="cr-sec"><h4>${crEsc(rep.praise.title||'Что получается')}</h4><p>${crEsc(rep.praise.text)}</p></div>`);
- if(rep.goal) o.push(`<div class="cr-sec"><h4>${crEsc(rep.goal.title||'Куда идёшь')}</h4><p>${crEsc(rep.goal.text)}</p></div>`);
+
+ // Вступление — крупным ведущим абзацем, как в статье
+ if(rep.greeting||rep.money_note){
+  o.push(`<div class="cr-art">
+   ${rep.greeting?`<p class="cr-lead">${crEsc(rep.greeting)}</p>`:''}
+   ${rep.money_note?`<p style="color:var(--muted);font-size:var(--fs-13)">${crEsc(rep.money_note)}</p>`:''}
+  </div>`);
+ }
+ if(rep.praise) o.push(`<div class="cr-art"><div class="cr-kicker">Сильные стороны</div><h3>${crEsc(rep.praise.title||'Что у тебя получается')}</h3><p>${crEsc(rep.praise.text)}</p></div>`);
+ if(rep.goal) o.push(`<div class="cr-art"><div class="cr-kicker">Ориентир</div><h3>${crEsc(rep.goal.title||'Куда идёшь')}</h3><p>${crEsc(rep.goal.text)}</p></div>`);
 
  (rep.sides||[]).forEach(sd=>{
-  const tbl=rep.tables&&rep.tables[sd.key]?crTableHtml(rep.tables[sd.key]):'';
-  const finds=(sd.findings||[]).map(f=>`<div class="cr-find">
-    <div class="cr-find-h">${crEsc(f.title)}</div>
+  const t=rep.tables&&rep.tables[sd.key];
+  const chart=crChart(t,'Как это выглядит по сегментам');
+  const finds=(sd.findings||[]).map(f=>`<h4>${crEsc(f.title)}</h4>
     <p>${crEsc(f.text)}</p>
-    ${f.proof?`<p class="cr-proof">${crEsc(f.proof)}</p>`:''}
+    ${f.proof?`<div class="cr-pull">${crEsc(f.proof)}</div>`:''}
     ${f.calc?`<div class="cr-calc">${crEsc(f.calc)}</div>`:''}
     ${f.money?`<div class="cr-money">${crEsc(f.money)}</div>`:''}
-    ${(f.how&&f.how.length)?`<div class="cr-how"><div class="cr-how-h">Как это делается</div>${f.how.map(s=>`<div class="cr-step">${crEsc(s)}</div>`).join('')}</div>`:''}
+    ${(f.how&&f.how.length)?`<div class="cr-how"><div class="cr-how-h">Как это делается</div>${f.how.map(x=>`<div class="cr-step">${crEsc(x)}</div>`).join('')}</div>`:''}
     ${f.season?`<p class="cr-quote">${crEsc(f.season)}</p>`:''}
     ${f.objection?`<p class="cr-quote">${crEsc(f.objection)}</p>`:''}
-    ${(f.tools||[]).map(t=>`<div class="cr-tool">${crEsc(t.name)}${t.what?' — '+crEsc(t.what):''}${t.url?` · <a href="${crEsc(t.url)}" target="_blank" rel="noopener">открыть</a>`:''}</div>`).join('')}
+    ${(f.tools||[]).map(x=>`<div class="cr-tool">${crEsc(x.name)}${x.what?' — '+crEsc(x.what):''}${x.url?` · <a href="${crEsc(x.url)}" target="_blank" rel="noopener">открыть</a>`:''}</div>`).join('')}
     ${(f.courses||[]).map(c=>`<div class="cr-tool">${crEsc(c.name)}${c.meta?' ('+crEsc(c.meta)+')':''}${c.url?` · <a href="${crEsc(c.url)}" target="_blank" rel="noopener">пройти</a>`:''}</div>`).join('')}
-    ${(f.segment_materials||[]).map(m=>`<div class="cr-tool">${crEsc(m.name)}${m.what?' — '+crEsc(m.what):''}${m.url?` · <a href="${crEsc(m.url)}" target="_blank" rel="noopener">открыть</a>`:''}</div>`).join('')}
-   </div>`).join('');
-  o.push(`<div class="cr-sec"><h4>${crEsc(sd.title)}</h4>${tbl}${sd.table_note?`<p class="cr-quote">${crEsc(sd.table_note)}</p>`:''}${finds}</div>`);
+    ${(f.segment_materials||[]).map(m=>`<div class="cr-tool">${crEsc(m.name)}${m.what?' — '+crEsc(m.what):''}${m.url?` · <a href="${crEsc(m.url)}" target="_blank" rel="noopener">открыть</a>`:''}</div>`).join('')}`).join('');
+  o.push(`<div class="cr-art"><div class="cr-kicker">${sd.key==='seller'?'Твои объекты':'Твои покупатели'}</div><h3>${crEsc(sd.title)}</h3>
+   ${sd.table_note?`<p>${crEsc(sd.table_note)}</p>`:''}${chart}${finds}</div>`);
  });
 
- if(rep.link_between_sides) o.push(`<div class="cr-sec"><h4>Что связывает обе стороны</h4><p>${crEsc(rep.link_between_sides)}</p></div>`);
+ if(rep.link_between_sides) o.push(`<div class="cr-art"><div class="cr-kicker">Связка</div><h3>Что связывает обе стороны</h3><p>${crEsc(rep.link_between_sides)}</p></div>`);
 
  if(rep.plan&&rep.plan.months){
-  let wi=0; // сквозной счётчик недель: второй месяц продолжает первый, а не начинает заново
+  let wi=0; // сквозной счётчик недель: второй месяц продолжает первый
   const months=rep.plan.months.map(m=>{
    const weeks=(m.weeks||[]).map(w=>{
     const tasks=(w.tasks||[]).map(t=>{
@@ -1719,20 +1783,23 @@ function crHtml(rep){
     wi++;
     return `<div class="cr-week"><div class="cr-week-h">${crEsc(w.label)}</div>${tasks}</div>`;
    }).join('');
-   return `<div class="cr-sec"><h4>${crEsc(m.label)}</h4>${m.goal?`<p class="cr-quote">${crEsc(m.goal)}</p>`:''}${weeks}</div>`;
+   return `<div class="cr-art"><div class="cr-kicker">План</div><h3>${crEsc(m.label)}</h3>${m.goal?`<p>${crEsc(m.goal)}</p>`:''}${weeks}</div>`;
   }).join('');
-  o.push(`${rep.plan.intro?`<div class="cr-sec"><h4>План</h4><p>${crEsc(rep.plan.intro)}</p></div>`:''}${months}`);
+  o.push(`${rep.plan.intro?`<div class="cr-art"><p class="cr-lead">${crEsc(rep.plan.intro)}</p></div>`:''}${months}`);
  }
 
- if(rep.focus_note) o.push(`<div class="cr-sec"><h4>${crEsc(rep.focus_note.title||'Где сейчас фокус')}</h4><p>${crEsc(rep.focus_note.text)}</p></div>`);
+ if(rep.focus_note) o.push(`<div class="cr-art"><div class="cr-kicker">Фокус</div><h3>${crEsc(rep.focus_note.title||'На чём сосредоточиться')}</h3><p>${crEsc(rep.focus_note.text)}</p></div>`);
 
  if(rep.summary){
-  const rows=(rep.summary.rows||[]).map(r=>`<tr><td>${crEsc(r[0])}</td><td>${crEsc(r[1])}</td></tr>`).join('');
-  o.push(`<div class="cr-sec"><h4>Итог</h4><table class="cr-sum">${rows}</table>${rep.summary.note?`<p style="margin-top:8px">${crEsc(rep.summary.note)}</p>`:''}</div>`);
+  const rows=(rep.summary.rows||[]);
+  const nums=rows.map(r=>parseInt(String(r[1]).replace(/[^0-9]/g,''),10)||0);
+  const mx=Math.max(...nums,1);
+  const html=rows.map((r,i)=>`<div class="cr-sumline"><div>${crEsc(r[0])}<div class="cr-sumbar"><i style="width:${Math.round(nums[i]/mx*100)}%"></i></div></div><b>${crEsc(r[1])}</b></div>`).join('');
+  o.push(`<div class="cr-art"><div class="cr-kicker">Итог</div><h3>Куда это выводит по доходу</h3>${html}${rep.summary.note?`<p style="margin-top:12px">${crEsc(rep.summary.note)}</p>`:''}</div>`);
  }
 
  const dt=rep.generated_at?new Date(rep.generated_at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
- o.push(`<div class="cr-meta">Разбор собран ${dt} по данным на ${crEsc(rep.data_date||'')} · YandexGPT · цифры посчитаны системой</div>`);
+ o.push(`<div class="cr-meta">Разбор собран ${dt} по данным на ${crEsc(rep.data_date||'')} · цифры посчитаны системой, модель их объясняет</div>`);
  return o.join('');
 }
 
@@ -1740,11 +1807,14 @@ function crHtml(rep){
 // по времени — доходит до 92% и ждёт ответа, чтобы не врать «готово».
 const CR_STEPS=[
  [0,   'Поднимаю твои показатели за 12 месяцев'],
- [15,  'Смотрю, где у тебя сильные стороны'],
- [35,  'Считаю, сколько дохода можно добавить'],
- [60,  'Подбираю инструменты, которые помогут этого достичь'],
- [95,  'Собираю план по неделям'],
- [140, 'Дописываю разбор, ещё чуть-чуть'],
+ [10,  'Раскладываю по сегментам: вторичка, новостройки, загородка'],
+ [22,  'Сверяю с нормой твоей зоны светофора'],
+ [36,  'Смотрю, что у тебя получается лучше нормы'],
+ [52,  'Считаю, сколько дохода можно добавить'],
+ [70,  'Подбираю инструменты, которые помогут этого достичь'],
+ [90,  'Собираю план по неделям'],
+ [110, 'Проверяю расчёты и формулировки'],
+ [135, 'Дописываю, осталось совсем немного'],
 ];
 let __crTimer=null;
 function crProgStart(box){
@@ -1752,7 +1822,7 @@ function crProgStart(box){
   <div class="cr-prog-h">Собираю твой разбор</div>
   <div class="cr-prog-step" id="crProgStep">${CR_STEPS[0][1]}…</div>
   <div class="cr-prog-bar"><div class="cr-prog-fill" id="crProgFill"></div></div>
-  <div class="cr-prog-hint">Обычно занимает две-три минуты — модель разбирает твои цифры подробно</div>
+  <div class="cr-prog-hint">Обычно около двух минут — разбор пишется по твоим цифрам с нуля</div>
  </div>`;
  const t0=Date.now();
  const fill=document.getElementById('crProgFill');
@@ -1760,7 +1830,7 @@ function crProgStart(box){
  __crTimer=setInterval(()=>{
   const s=(Date.now()-t0)/1000;
   // 92% за ~70 секунд, дальше стоим и ждём ответ
-  const pct=Math.min(92,Math.round(92*(1-Math.exp(-s/70))));
+  const pct=Math.min(94,Math.round(94*(1-Math.exp(-s/52))));
   if(fill) fill.style.width=pct+'%';
   let label=CR_STEPS[0][1];
   for(const [at,txt] of CR_STEPS) if(s>=at) label=txt;
@@ -1798,15 +1868,37 @@ window.crBuild=crBuild;
 function crPrint(){ window.print(); }
 window.crPrint=crPrint;
 
+function crDocName(ext){
+ const name=(CTX.data&&CTX.data.user&&CTX.data.user.name)||CTX.target;
+ return 'Разбор ИИ-тренера — '+name+'.'+ext;
+}
+/** Выгрузка в Word: Word понимает HTML, поэтому отдаём разметку с простыми стилями. */
 function crDownload(){
  if(!__crRep) return;
- const box=document.getElementById('crBox');
- const txt=(box.innerText||'').replace(/\n{3,}/g,'\n\n');
+ const box=document.getElementById('crBox'); if(!box) return;
  const name=(CTX.data&&CTX.data.user&&CTX.data.user.name)||CTX.target;
- const blob=new Blob(['﻿'+'РАЗБОР ИИ-ТРЕНЕРА\n'+name+'\n\n'+txt],{type:'text/plain;charset=utf-8'});
+ const body=box.innerHTML
+   .replace(/<button[\s\S]*?<\/button>/g,'')          // кнопки задач в документе не нужны
+   .replace(/<div class="cr-task-btns">\s*<\/div>/g,'');
+ const css='body{font-family:Georgia,"Times New Roman",serif;font-size:11pt;line-height:1.5;color:#111}'
+  +'h3{font-size:14pt;margin:18pt 0 6pt}h4{font-size:12pt;margin:14pt 0 4pt}'
+  +'.cr-kicker{font-size:8pt;color:#666;text-transform:uppercase;letter-spacing:1pt}'
+  +'.cr-pull{border-left:3px solid #137333;padding-left:10pt;color:#111;margin:8pt 0}'
+  +'.cr-calc{background:#f4f6f8;padding:6pt 8pt;font-size:9pt;color:#444}'
+  +'.cr-money{font-weight:bold;color:#137333}'
+  +'.cr-step{margin:3pt 0 3pt 12pt}.cr-tool{margin:3pt 0 3pt 12pt;font-size:10pt}'
+  +'.cr-crow{margin:3pt 0}.cr-ctrack{display:none}'
+  +'.cr-clabel,.cr-cnum{display:inline;margin-right:8pt}'
+  +'.cr-week-h{font-weight:bold;margin-top:8pt}'
+  +'a{color:#0645ad}';
+ const html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
+  +'<head><meta charset="utf-8"><title>Разбор — '+name+'</title><style>'+css+'</style></head>'
+  +'<body><h2>Разбор ИИ-тренера</h2><p><b>'+name+'</b></p>'+body+'</body></html>';
+ const blob=new Blob(['﻿'+html],{type:'application/msword;charset=utf-8'});
  const a=document.createElement('a');
- a.href=URL.createObjectURL(blob); a.download='Разбор — '+name+'.txt';
+ a.href=URL.createObjectURL(blob); a.download=crDocName('doc');
  document.body.appendChild(a); a.click(); a.remove();
+ setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 window.crDownload=crDownload;
 
@@ -1814,16 +1906,16 @@ function crBlock(d){
  const has=d.coach_report&&d.coach_report.generated_at;
  if(has){ __crRep=d.coach_report; }
  return `<div class="ai-card cr-wrap"><div class="ai-top"><div class="ai-orb">🎓</div><div class="ai-h">Персональный <span>ИИ-тренер</span></div></div>
-  <div class="ai-text">Разбор по твоим данным за 12 месяцев: где ты относительно нормы своей зоны, сколько это в деньгах и что делать по неделям.</div>
+  <div class="ai-text">Личный разбор по твоим данным за 12 месяцев: что уже получается, где есть запас по норме твоей зоны, сколько это в деньгах и что делать по неделям.</div>
   <div class="cr-actions">
    <button class="btn-primary" id="crGo" onclick="crBuild(${has?'true':'false'})">${has?'Пересобрать разбор':'Собрать разбор'}</button>
    <span id="crExtra" style="display:${has?'flex':'none'};gap:8px">
     <button class="btn-secondary" onclick="crPrint()">Печать · PDF</button>
-    <button class="btn-secondary" onclick="crDownload()">Скачать</button>
+    <button class="btn-secondary" onclick="crDownload()">Скачать в Word</button>
    </span>
   </div>
   <div id="crBox" style="background:#fff;border-radius:var(--r-lg);padding:2px 0;margin-top:6px">${has?crHtml(d.coach_report):''}</div>
-  <div class="ai-note">на YandexGPT · цифры считает система, модель только формулирует</div></div>`;
+  <div class="ai-note">цифры считает система — модель их объясняет и ничего не выдумывает</div></div>`;
 }
 
 function renderCoach(d){
