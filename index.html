@@ -1739,19 +1739,20 @@ function crHtml(rep){
 // Этапы сборки: сервер промежуточных статусов не шлёт, поэтому шкала идёт
 // по времени — доходит до 92% и ждёт ответа, чтобы не врать «готово».
 const CR_STEPS=[
- [0,   'Поднимаю показатели за 12 месяцев'],
- [12,  'Сравниваю с нормой твоей зоны по сегментам'],
- [26,  'Считаю, сколько это в сделках и в деньгах'],
- [40,  'Подбираю инструменты и материалы под каждую недоработку'],
- [58,  'Формулирую разбор и план по неделям'],
+ [0,   'Поднимаю твои показатели за 12 месяцев'],
+ [15,  'Смотрю, где у тебя сильные стороны'],
+ [35,  'Считаю, сколько дохода можно добавить'],
+ [60,  'Подбираю инструменты, которые помогут этого достичь'],
+ [95,  'Собираю план по неделям'],
+ [140, 'Дописываю разбор, ещё чуть-чуть'],
 ];
 let __crTimer=null;
 function crProgStart(box){
  box.innerHTML=`<div class="cr-prog">
-  <div class="cr-prog-h">Собираю разбор</div>
+  <div class="cr-prog-h">Собираю твой разбор</div>
   <div class="cr-prog-step" id="crProgStep">${CR_STEPS[0][1]}…</div>
   <div class="cr-prog-bar"><div class="cr-prog-fill" id="crProgFill"></div></div>
-  <div class="cr-prog-hint">Обычно занимает 30–60 секунд</div>
+  <div class="cr-prog-hint">Обычно занимает две-три минуты — модель разбирает твои цифры подробно</div>
  </div>`;
  const t0=Date.now();
  const fill=document.getElementById('crProgFill');
@@ -1759,7 +1760,7 @@ function crProgStart(box){
  __crTimer=setInterval(()=>{
   const s=(Date.now()-t0)/1000;
   // 92% за ~70 секунд, дальше стоим и ждём ответ
-  const pct=Math.min(92,Math.round(92*(1-Math.exp(-s/26))));
+  const pct=Math.min(92,Math.round(92*(1-Math.exp(-s/70))));
   if(fill) fill.style.width=pct+'%';
   let label=CR_STEPS[0][1];
   for(const [at,txt] of CR_STEPS) if(s>=at) label=txt;
@@ -1778,7 +1779,7 @@ async function crBuild(force){
  crProgStart(box);
  try{
   // __call уже разворачивает .data — здесь лежит сам ответ функции
-  const r=await window.__call('generateCoachReport',{code:CTX.target,force:!!force});
+  const r=await window.__callLong('generateCoachReport',{code:CTX.target,force:!!force});
   const rep=r&&r.report;
   if(!rep) throw new Error(r&&r.error?String(r.error):'сервер не вернул разбор');
   crProgStop(true);
@@ -2449,6 +2450,9 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  if(params.get('agent')) document.getElementById('backBtn').style.display='inline-flex';
  const fns=getFunctions(getApp(),'europe-west1');
  window.__call=(name,data)=>httpsCallable(fns,name)(data).then(r=>r.data);
+ // Разбор тренера пишет рассуждающая модель — она думает минутами.
+ // У обычного вызова лимит около минуты, поэтому для него отдельный, длинный.
+ window.__callLong=(name,data)=>httpsCallable(fns,name,{timeout:540000})(data).then(r=>r.data);
  try{
  const res=await httpsCallable(fns,'getDashboard')({ user_code:targetCode, view:'partner' });
  const d=res.data; CTX.data=d;
