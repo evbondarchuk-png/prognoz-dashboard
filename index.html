@@ -290,6 +290,11 @@
 .cr-find-h{font-weight:var(--fw-b);font-size:var(--fs-14);margin-bottom:4px}
 .cr-calc{background:var(--surface2,#f8fafc);border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fs-12);color:var(--muted);margin:6px 0}
 .cr-money{display:inline-block;background:#e6f4ea;color:#137333;border-radius:var(--r-pill);padding:2px 10px;font-size:var(--fs-12);font-weight:var(--fw-sb)}
+.cr-proof{font-size:var(--fs-13);color:var(--ink);background:#f8fafc;border-left:3px solid var(--ok,#137333);padding:8px 10px;border-radius:var(--r-sm);margin:6px 0}
+.cr-how{margin:10px 0 6px}
+.cr-how-h{font-size:var(--fs-12);font-weight:var(--fw-sb);color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin-bottom:5px}
+.cr-step{font-size:var(--fs-13);line-height:1.5;margin:4px 0;padding-left:16px;position:relative}
+.cr-step:before{content:'—';position:absolute;left:0;color:var(--muted)}
 .cr-tool{font-size:var(--fs-13);margin:5px 0;padding-left:14px;position:relative}
 .cr-tool:before{content:'▸';position:absolute;left:0;color:var(--accent)}
 .cr-week{margin:10px 0}
@@ -1688,9 +1693,15 @@ function crHtml(rep){
   const finds=(sd.findings||[]).map(f=>`<div class="cr-find">
     <div class="cr-find-h">${crEsc(f.title)}</div>
     <p>${crEsc(f.text)}</p>
+    ${f.proof?`<p class="cr-proof">${crEsc(f.proof)}</p>`:''}
     ${f.calc?`<div class="cr-calc">${crEsc(f.calc)}</div>`:''}
     ${f.money?`<div class="cr-money">${crEsc(f.money)}</div>`:''}
+    ${(f.how&&f.how.length)?`<div class="cr-how"><div class="cr-how-h">Как это делается</div>${f.how.map(s=>`<div class="cr-step">${crEsc(s)}</div>`).join('')}</div>`:''}
+    ${f.season?`<p class="cr-quote">${crEsc(f.season)}</p>`:''}
+    ${f.objection?`<p class="cr-quote">${crEsc(f.objection)}</p>`:''}
     ${(f.tools||[]).map(t=>`<div class="cr-tool">${crEsc(t.name)}${t.what?' — '+crEsc(t.what):''}${t.url?` · <a href="${crEsc(t.url)}" target="_blank" rel="noopener">открыть</a>`:''}</div>`).join('')}
+    ${(f.courses||[]).map(c=>`<div class="cr-tool">${crEsc(c.name)}${c.meta?' ('+crEsc(c.meta)+')':''}${c.url?` · <a href="${crEsc(c.url)}" target="_blank" rel="noopener">пройти</a>`:''}</div>`).join('')}
+    ${(f.segment_materials||[]).map(m=>`<div class="cr-tool">${crEsc(m.name)}${m.what?' — '+crEsc(m.what):''}${m.url?` · <a href="${crEsc(m.url)}" target="_blank" rel="noopener">открыть</a>`:''}</div>`).join('')}
    </div>`).join('');
   o.push(`<div class="cr-sec"><h4>${crEsc(sd.title)}</h4>${tbl}${sd.table_note?`<p class="cr-quote">${crEsc(sd.table_note)}</p>`:''}${finds}</div>`);
  });
