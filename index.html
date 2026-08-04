@@ -272,7 +272,61 @@
  .weak{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-12);color:var(--bad)}
 
  /* ИИ */
- .ai-card{background:linear-gradient(135deg,#1e293b 0%,#2b3a52 100%);border-radius:var(--r-xl);padding:18px;margin-bottom:14px;color:#fff;box-shadow:var(--shadow)}
+ 
+/* ─── ИИ-разбор тренера (2026-08-04) ─── */
+.cr-wrap{margin-top:10px}
+.cr-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+.cr-sec{background:#fff;border-radius:var(--r-lg);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow)}
+.cr-sec h4{margin:0 0 6px;font-size:var(--fs-15);font-weight:var(--fw-b);color:var(--ink)}
+.cr-sec p{margin:0 0 8px;font-size:var(--fs-14);line-height:1.55;color:var(--ink)}
+.cr-quote{border-left:3px solid var(--accent);padding-left:10px;color:var(--muted);font-size:var(--fs-13)}
+.cr-tbl{width:100%;border-collapse:collapse;margin:8px 0;font-size:var(--fs-13)}
+.cr-tbl th{background:var(--surface2,#f1f5f9);text-align:left;padding:6px 8px;font-weight:var(--fw-sb);color:var(--muted)}
+.cr-tbl td{padding:6px 8px;border-top:1px solid var(--line)}
+.cr-tbl tr:last-child td{font-weight:var(--fw-b)}
+.cr-find{border:1px solid var(--line);border-radius:var(--r-md);padding:12px;margin:10px 0}
+.cr-find-h{font-weight:var(--fw-b);font-size:var(--fs-14);margin-bottom:4px}
+.cr-calc{background:var(--surface2,#f8fafc);border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fs-12);color:var(--muted);margin:6px 0}
+.cr-money{display:inline-block;background:#e6f4ea;color:#137333;border-radius:var(--r-pill);padding:2px 10px;font-size:var(--fs-12);font-weight:var(--fw-sb)}
+.cr-tool{font-size:var(--fs-13);margin:5px 0;padding-left:14px;position:relative}
+.cr-tool:before{content:'▸';position:absolute;left:0;color:var(--accent)}
+.cr-week{margin:10px 0}
+.cr-week-h{font-weight:var(--fw-sb);font-size:var(--fs-13);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.02em}
+.cr-task{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--r-md);padding:10px;margin:6px 0}
+.cr-task-day{min-width:104px;font-size:var(--fs-12);color:var(--muted);padding-top:2px}
+.cr-task-body{flex:1;min-width:0}
+.cr-task-t{font-size:var(--fs-14);font-weight:var(--fw-sb)}
+.cr-task-d{font-size:var(--fs-12);color:var(--muted);margin-top:2px}
+.cr-task-btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.cr-mini{font-size:var(--fs-11);padding:4px 10px;border-radius:var(--r-pill);border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink)}
+.cr-mini:hover{background:var(--surface2,#f1f5f9)}
+.cr-mini.done{background:#e6f4ea;border-color:#b7e1c4;color:#137333;cursor:default}
+.cr-sum{width:100%;border-collapse:collapse;font-size:var(--fs-14)}
+.cr-sum td{padding:6px 8px;border-top:1px solid var(--line)}
+.cr-sum td:last-child{text-align:right;font-weight:var(--fw-b)}
+.cr-meta{font-size:var(--fs-11);color:var(--muted);margin-top:10px}
+
+/* ─── Печать: только разбор, А4, без интерфейса ─── */
+@media print{
+ @page{size:A4;margin:14mm 12mm}
+ body{background:#fff!important}
+ .topbar,.rtabs,.bottom-nav,nav,header,.cr-actions,.radar-segs,.btn-primary,.btn-secondary,.btn-icon{display:none!important}
+ .screen:not(#screen-coach){display:none!important}
+ #screen-coach{display:block!important}
+ .card,.cr-sec,.cr-find,.cr-task{box-shadow:none!important;border:1px solid #ddd!important;break-inside:avoid;page-break-inside:avoid}
+ .ai-card{background:#fff!important;color:#111!important;border:1px solid #ddd!important}
+ .ai-card *{color:#111!important}
+ .cr-task-btns{display:none!important}
+ .cr-money{background:#fff!important;border:1px solid #137333}
+ .cr-sec h4,.cr-week-h{break-after:avoid;page-break-after:avoid}
+ .cr-print-only{display:block!important}
+ a{color:#111!important;text-decoration:none}
+ a[href^="http"]:after{content:' (' attr(href) ')';font-size:9px;color:#666;word-break:break-all}
+ svg{max-width:100%!important}
+}
+.cr-print-only{display:none}
+
+.ai-card{background:linear-gradient(135deg,#1e293b 0%,#2b3a52 100%);border-radius:var(--r-xl);padding:18px;margin-bottom:14px;color:#fff;box-shadow:var(--shadow)}
  .ai-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
  .ai-orb{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ffd66b,#f59e0b);box-shadow:0 0 24px rgba(245,158,11,.5);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:var(--fs-22)}
  .ai-h{font-size:var(--fs-14);font-weight:var(--fw-eb)} .ai-h span{color:#ffd66b}
@@ -1548,6 +1602,171 @@ function radarCard(R){
   <div class="radar-note" id="radarNote"></div></div>`;
 }
 
+
+/* ─── ИИ-разбор тренера: рендер, задачи, печать (2026-08-04) ─── */
+let __crTasks=[];   // плоский реестр задач плана для кнопок
+let __crRep=null;
+
+function crEsc(x){ return esc(x==null?'':String(x)); }
+
+/** Дата задачи: неделя плана + день недели, от сегодня. */
+function crDueDate(weekIdx,dayName){
+ const DAYS={'понедельник':1,'вторник':2,'среда':3,'четверг':4,'пятница':5,'суббота':6,'воскресенье':0};
+ const target=DAYS[String(dayName||'').toLowerCase().trim()];
+ const d=new Date(); d.setHours(10,0,0,0);
+ d.setDate(d.getDate()+weekIdx*7);
+ if(typeof target==='number'){ const cur=d.getDay(); let diff=target-cur; if(diff<0)diff+=7; d.setDate(d.getDate()+diff); }
+ return d;
+}
+function crYmd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+async function crAddTask(i,withCal){
+ const t=__crTasks[i]; if(!t) return;
+ const btn=document.getElementById('crb'+i+(withCal?'c':'t'));
+ if(btn){ btn.disabled=true; btn.textContent='…'; }
+ try{
+  const due=crDueDate(t.weekIdx,t.day);
+  const desc=[t.description,t.url?('Материал: '+t.url):null].filter(Boolean).join('\n');
+  await window.__call('createTask',{assignee_code:CTX.target,title:t.title,description:desc||null,
+    priority:t.priority||'normal',type:'free',due_at:due.getTime()});
+  let calNote='';
+  if(withCal){
+   const end=new Date(due.getTime()+(t.duration_min||60)*60000);
+   try{
+    const r=await window.__call('createEventForPartner',{target_code:CTX.target,title:t.title,
+      description:desc||'',startISO:due.toISOString(),endISO:end.toISOString()});
+    calNote=(r&&r.data&&r.data.ok===false)?' (календарь не привязан)':'';
+   }catch(e){ calNote=' (календарь недоступен)'; }
+  }
+  if(btn){ btn.textContent=(withCal?'✓ в задачах и календаре':'✓ в задачах')+calNote; btn.classList.add('done'); }
+ }catch(e){
+  const msg=(e&&e.message)||'ошибка';
+  if(btn){ btn.disabled=false; btn.textContent=/duplicate|уже создана/i.test(msg)?'уже есть':'не вышло'; }
+ }
+}
+window.crAddTask=crAddTask;
+
+function crTaskHtml(t,i){
+ const dur=t.duration_min?(t.duration_min>=60?(Math.round(t.duration_min/6)/10+' ч').replace('.',','):t.duration_min+' мин'):'';
+ return `<div class="cr-task">
+  <div class="cr-task-day">${crEsc(t.day||'')}${dur?'<br><span style="font-size:var(--fs-11)">'+dur+'</span>':''}</div>
+  <div class="cr-task-body">
+   <div class="cr-task-t">${crEsc(t.title)}</div>
+   ${t.description?`<div class="cr-task-d">${crEsc(t.description)}</div>`:''}
+   ${t.url?`<div class="cr-task-d"><a href="${crEsc(t.url)}" target="_blank" rel="noopener">открыть материал</a></div>`:''}
+   <div class="cr-task-btns">
+    <button class="cr-mini" id="crb${i}t" onclick="crAddTask(${i},false)">＋ в задачи</button>
+    <button class="cr-mini" id="crb${i}c" onclick="crAddTask(${i},true)">📅 в задачи и календарь</button>
+   </div>
+  </div></div>`;
+}
+
+function crTableHtml(t){
+ if(!t||!t.rows||!t.rows.length) return '';
+ return `<table class="cr-tbl"><thead><tr>${t.columns.map(c=>`<th>${crEsc(c)}</th>`).join('')}</tr></thead>
+  <tbody>${t.rows.map(r=>`<tr>${r.map(c=>`<td>${crEsc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function crHtml(rep){
+ __crTasks=[];
+ const o=[];
+ if(rep.greeting) o.push(`<div class="cr-sec"><p>${crEsc(rep.greeting)}</p>${rep.money_note?`<p class="cr-quote">${crEsc(rep.money_note)}</p>`:''}</div>`);
+ if(rep.praise) o.push(`<div class="cr-sec"><h4>${crEsc(rep.praise.title||'Что получается')}</h4><p>${crEsc(rep.praise.text)}</p></div>`);
+ if(rep.goal) o.push(`<div class="cr-sec"><h4>${crEsc(rep.goal.title||'Куда идёшь')}</h4><p>${crEsc(rep.goal.text)}</p></div>`);
+
+ (rep.sides||[]).forEach(sd=>{
+  const tbl=rep.tables&&rep.tables[sd.key]?crTableHtml(rep.tables[sd.key]):'';
+  const finds=(sd.findings||[]).map(f=>`<div class="cr-find">
+    <div class="cr-find-h">${crEsc(f.title)}</div>
+    <p>${crEsc(f.text)}</p>
+    ${f.calc?`<div class="cr-calc">${crEsc(f.calc)}</div>`:''}
+    ${f.money?`<div class="cr-money">${crEsc(f.money)}</div>`:''}
+    ${(f.tools||[]).map(t=>`<div class="cr-tool">${crEsc(t.name)}${t.what?' — '+crEsc(t.what):''}${t.url?` · <a href="${crEsc(t.url)}" target="_blank" rel="noopener">открыть</a>`:''}</div>`).join('')}
+   </div>`).join('');
+  o.push(`<div class="cr-sec"><h4>${crEsc(sd.title)}</h4>${tbl}${sd.table_note?`<p class="cr-quote">${crEsc(sd.table_note)}</p>`:''}${finds}</div>`);
+ });
+
+ if(rep.link_between_sides) o.push(`<div class="cr-sec"><h4>Что связывает обе стороны</h4><p>${crEsc(rep.link_between_sides)}</p></div>`);
+
+ if(rep.plan&&rep.plan.months){
+  const months=rep.plan.months.map(m=>{
+   let wi=0;
+   const weeks=(m.weeks||[]).map(w=>{
+    const tasks=(w.tasks||[]).map(t=>{
+     __crTasks.push({...t,weekIdx:wi});
+     return crTaskHtml(t,__crTasks.length-1);
+    }).join('');
+    wi++;
+    return `<div class="cr-week"><div class="cr-week-h">${crEsc(w.label)}</div>${tasks}</div>`;
+   }).join('');
+   return `<div class="cr-sec"><h4>${crEsc(m.label)}</h4>${m.goal?`<p class="cr-quote">${crEsc(m.goal)}</p>`:''}${weeks}</div>`;
+  }).join('');
+  o.push(`${rep.plan.intro?`<div class="cr-sec"><h4>План</h4><p>${crEsc(rep.plan.intro)}</p></div>`:''}${months}`);
+ }
+
+ if(rep.focus_note) o.push(`<div class="cr-sec"><h4>${crEsc(rep.focus_note.title||'Где сейчас фокус')}</h4><p>${crEsc(rep.focus_note.text)}</p></div>`);
+
+ if(rep.summary){
+  const rows=(rep.summary.rows||[]).map(r=>`<tr><td>${crEsc(r[0])}</td><td>${crEsc(r[1])}</td></tr>`).join('');
+  o.push(`<div class="cr-sec"><h4>Итог</h4><table class="cr-sum">${rows}</table>${rep.summary.note?`<p style="margin-top:8px">${crEsc(rep.summary.note)}</p>`:''}</div>`);
+ }
+
+ const dt=rep.generated_at?new Date(rep.generated_at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+ o.push(`<div class="cr-meta">Разбор собран ${dt} по данным на ${crEsc(rep.data_date||'')} · YandexGPT · цифры посчитаны системой</div>`);
+ return o.join('');
+}
+
+async function crBuild(force){
+ const box=document.getElementById('crBox'); if(!box) return;
+ const btn=document.getElementById('crGo');
+ if(btn){ btn.disabled=true; btn.textContent='Собираю разбор…'; }
+ box.innerHTML='<div class="cr-sec"><p class="muted">Считаю показатели и собираю разбор. Это занимает до минуты.</p></div>';
+ try{
+  const r=await window.__call('generateCoachReport',{code:CTX.target,force:!!force});
+  const rep=r&&r.data&&r.data.report;
+  if(!rep) throw new Error('пустой ответ');
+  __crRep=rep;
+  box.innerHTML=crHtml(rep);
+  const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
+ }catch(e){
+  box.innerHTML=`<div class="cr-sec"><p>Не получилось собрать разбор: ${crEsc((e&&e.message)||'ошибка')}</p></div>`;
+ }finally{
+  if(btn){ btn.disabled=false; btn.textContent='Пересобрать разбор'; }
+ }
+}
+window.crBuild=crBuild;
+
+function crPrint(){ window.print(); }
+window.crPrint=crPrint;
+
+function crDownload(){
+ if(!__crRep) return;
+ const box=document.getElementById('crBox');
+ const txt=(box.innerText||'').replace(/\n{3,}/g,'\n\n');
+ const name=(CTX.data&&CTX.data.user&&CTX.data.user.name)||CTX.target;
+ const blob=new Blob(['﻿'+'РАЗБОР ИИ-ТРЕНЕРА\n'+name+'\n\n'+txt],{type:'text/plain;charset=utf-8'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob); a.download='Разбор — '+name+'.txt';
+ document.body.appendChild(a); a.click(); a.remove();
+}
+window.crDownload=crDownload;
+
+function crBlock(d){
+ const has=d.coach_report&&d.coach_report.generated_at;
+ if(has){ __crRep=d.coach_report; }
+ return `<div class="ai-card cr-wrap"><div class="ai-top"><div class="ai-orb">🎓</div><div class="ai-h">Персональный <span>ИИ-тренер</span></div></div>
+  <div class="ai-text">Разбор по твоим данным за 12 месяцев: где ты относительно нормы своей зоны, сколько это в деньгах и что делать по неделям.</div>
+  <div class="cr-actions">
+   <button class="btn-primary" id="crGo" onclick="crBuild(${has?'true':'false'})">${has?'Пересобрать разбор':'Собрать разбор'}</button>
+   <span id="crExtra" style="display:${has?'flex':'none'};gap:8px">
+    <button class="btn-secondary" onclick="crPrint()">Печать · PDF</button>
+    <button class="btn-secondary" onclick="crDownload()">Скачать</button>
+   </span>
+  </div>
+  <div id="crBox" style="background:#fff;border-radius:var(--r-lg);padding:2px 0;margin-top:6px">${has?crHtml(d.coach_report):''}</div>
+  <div class="ai-note">на YandexGPT · цифры считает система, модель только формулирует</div></div>`;
+}
+
 function renderCoach(d){
  const out=[];
  // Блок «Как ты работаешь» (12-мес воронка) удалён — его заменил радар воронки.
@@ -1559,15 +1778,13 @@ function renderCoach(d){
  // Блок «Что подтянуть для целевой зоны» (coach_target) удалён по просьбе Егора 2026-08-03:
  // всегда показывал «идеал» (сравнение с нормами следующей зоны часто тривиально) — не информативен.
  // Роль «что усилить» закрывает радар воронки ниже.
+ // Старый короткий совет (если он есть) — компактной строкой над разбором.
  if(d.ai_coach&&d.ai_coach.coach_text){
- out.unshift(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">🎓</div><div class="ai-h">Персональный <span>ИИ-тренер</span></div></div>
- <div class="ai-text" style="white-space:pre-line">${esc(d.ai_coach.coach_text)}</div>
- <div class="ai-note">на YandexGPT · по твоим реальным данным</div></div>`);
- } else {
- out.push(`<div class="ai-card"><div class="ai-top"><div class="ai-orb">✨</div><div class="ai-h">Мой виртуальный <span>тренер</span></div></div>
- <div class="ai-text">Скоро здесь появится <b>персональный совет от ИИ</b>. Сейчас работает базовая диагностика — смотри слабые места выше.</div>
- <div class="ai-note">на YandexGPT — после слёта</div></div>`);
+ out.push(`<div class="card"><div class="section-title">✨ Короткий совет</div>
+ <div style="white-space:pre-line;font-size:var(--fs-14);line-height:1.55">${esc(d.ai_coach.coach_text)}</div></div>`);
  }
+ // Развёрнутый разбор — самым нижним блоком (2026-08-04).
+ out.push(crBlock(d));
  // TZ-A40: радар воронки — самой верхней картой (над ИИ и текстом).
  const hasRadar=d.funnel_radar&&d.funnel_radar.zones&&d.funnel_radar.zones.length&&d.funnel_radar.facts;
  if(hasRadar){
