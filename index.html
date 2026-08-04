@@ -305,6 +305,13 @@
 .cr-sum td{padding:6px 8px;border-top:1px solid var(--line)}
 .cr-sum td:last-child{text-align:right;font-weight:var(--fw-b)}
 .cr-meta{font-size:var(--fs-11);color:var(--muted);margin-top:10px}
+/* Прогресс сборки разбора: реального процента нет, поэтому шкала идёт по этапам */
+.cr-prog{background:#fff;border-radius:var(--r-lg);padding:16px 18px;margin:10px 0;box-shadow:var(--shadow)}
+.cr-prog-h{font-weight:var(--fw-sb);margin-bottom:4px}
+.cr-prog-step{font-size:var(--fs-12);color:var(--muted);min-height:18px}
+.cr-prog-bar{height:8px;border-radius:var(--r-pill);background:var(--line);overflow:hidden;margin:10px 0 6px}
+.cr-prog-fill{height:100%;width:0;border-radius:var(--r-pill);background:linear-gradient(90deg,#2f6fed,#48a0ff);transition:width .5s ease}
+.cr-prog-hint{font-size:var(--fs-11);color:var(--muted)}
 
 /* ─── Печать: только разбор, А4, без интерфейса ─── */
 @media print{
@@ -1635,7 +1642,7 @@ async function crAddTask(i,withCal){
    try{
     const r=await window.__call('createEventForPartner',{target_code:CTX.target,title:t.title,
       description:desc||'',startISO:due.toISOString(),endISO:end.toISOString()});
-    calNote=(r&&r.data&&r.data.ok===false)?' (календарь не привязан)':'';
+    calNote=(r&&r.ok===false)?' (календарь не привязан)':'';
    }catch(e){ calNote=' (календарь недоступен)'; }
   }
   if(btn){ btn.textContent=(withCal?'✓ в задачах и календаре':'✓ в задачах')+calNote; btn.classList.add('done'); }
@@ -1716,20 +1723,58 @@ function crHtml(rep){
  return o.join('');
 }
 
+// Этапы сборки: сервер промежуточных статусов не шлёт, поэтому шкала идёт
+// по времени — доходит до 92% и ждёт ответа, чтобы не врать «готово».
+const CR_STEPS=[
+ [0,   'Поднимаю показатели за 12 месяцев'],
+ [12,  'Сравниваю с нормой твоей зоны по сегментам'],
+ [26,  'Считаю, сколько это в сделках и в деньгах'],
+ [40,  'Подбираю инструменты и материалы под каждую недоработку'],
+ [58,  'Формулирую разбор и план по неделям'],
+];
+let __crTimer=null;
+function crProgStart(box){
+ box.innerHTML=`<div class="cr-prog">
+  <div class="cr-prog-h">Собираю разбор</div>
+  <div class="cr-prog-step" id="crProgStep">${CR_STEPS[0][1]}…</div>
+  <div class="cr-prog-bar"><div class="cr-prog-fill" id="crProgFill"></div></div>
+  <div class="cr-prog-hint">Обычно занимает 30–60 секунд</div>
+ </div>`;
+ const t0=Date.now();
+ const fill=document.getElementById('crProgFill');
+ const step=document.getElementById('crProgStep');
+ __crTimer=setInterval(()=>{
+  const s=(Date.now()-t0)/1000;
+  // 92% за ~70 секунд, дальше стоим и ждём ответ
+  const pct=Math.min(92,Math.round(92*(1-Math.exp(-s/26))));
+  if(fill) fill.style.width=pct+'%';
+  let label=CR_STEPS[0][1];
+  for(const [at,txt] of CR_STEPS) if(s>=at) label=txt;
+  if(step) step.textContent=label+'…';
+ },400);
+}
+function crProgStop(done){
+ if(__crTimer){ clearInterval(__crTimer); __crTimer=null; }
+ if(done){ const f=document.getElementById('crProgFill'); if(f) f.style.width='100%'; }
+}
+
 async function crBuild(force){
  const box=document.getElementById('crBox'); if(!box) return;
  const btn=document.getElementById('crGo');
  if(btn){ btn.disabled=true; btn.textContent='Собираю разбор…'; }
- box.innerHTML='<div class="cr-sec"><p class="muted">Считаю показатели и собираю разбор. Это занимает до минуты.</p></div>';
+ crProgStart(box);
  try{
+  // __call уже разворачивает .data — здесь лежит сам ответ функции
   const r=await window.__call('generateCoachReport',{code:CTX.target,force:!!force});
-  const rep=r&&r.data&&r.data.report;
-  if(!rep) throw new Error('пустой ответ');
+  const rep=r&&r.report;
+  if(!rep) throw new Error(r&&r.error?String(r.error):'сервер не вернул разбор');
+  crProgStop(true);
   __crRep=rep;
   box.innerHTML=crHtml(rep);
   const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
  }catch(e){
-  box.innerHTML=`<div class="cr-sec"><p>Не получилось собрать разбор: ${crEsc((e&&e.message)||'ошибка')}</p></div>`;
+  crProgStop(false);
+  box.innerHTML=`<div class="cr-sec"><p>Не получилось собрать разбор: ${crEsc((e&&e.message)||'ошибка')}</p><p class="muted" style="margin-top:6px">Попробуй нажать ещё раз. Если повторится — скажи мне, посмотрю логи.</p></div>`;
  }finally{
   if(btn){ btn.disabled=false; btn.textContent='Пересобрать разбор'; }
  }
