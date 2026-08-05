@@ -1589,26 +1589,47 @@ function radarDraw(elId,mine,color,fill,labels,scale,thPct){
  }else{ p.push('<text x="'+RADAR.cx+'" y="'+RADAR.cy+'" text-anchor="middle" font-size="12" fill="var(--muted)">нет данных</text>'); }
  el.innerHTML=p.join('');
 }
+// Русское склонение числительных: 4 объекта, 5 объектов, 1 объект.
+function plural(n,forms){n=Math.abs(Math.round(n))%100;const n1=n%10;
+ if(n>10&&n<20)return forms[2]; if(n1>1&&n1<5)return forms[1]; if(n1===1)return forms[0]; return forms[2];}
+// Оси радара: [поток, горячие, задатки, сделки, конв.горячие→сделка, конв.поток→сделка].
+// У продавца первая ось — не «поток», а накопленная база объектов на сегодня.
+const RADAR_LABELS={
+ buyer:  [null,null,null,null,null,null],
+ seller: ['База ОН',null,null,null,null,null],
+};
+const RADAR_WORDS={
+ buyer:  [['обращение','обращения','обращений'],['заявка','заявки','заявок'],
+          ['задаток','задатка','задатков'],['сделка','сделки','сделок'],null,null],
+ seller: [['объект','объекта','объектов'],['горячий','горячих','горячих'],
+          ['задаток','задатка','задатков'],['сделка','сделки','сделок'],null,null],
+};
+// «в мес» не ставим у базы ОН — это остаток на сегодня, а не поток за месяц.
+const RADAR_PERIOD={buyer:[' в мес',' в мес',' в мес',' в мес','',''],
+                    seller:['',' в мес',' в мес',' в мес','','']};
 function radarFmt(v){v=Math.round(v*10)/10;return (Math.abs(v-Math.round(v))<0.05)?String(Math.round(v)):String(v);}
 // mine[] для радара из факта и нормы (в % от нормы грейда, кап 100)
 function radarMine(fact,norm){if(!fact||!norm)return null;return norm.map((n,i)=>n>0?Math.min(100,Math.round(fact[i]/n*100)):0);}
 // список: абсолютная разница «норма − факт» по каждой оси, ✓ если факт≥нормы
-function radarRenderGaps(elId,fact,norm,labels,units){
+function radarRenderGaps(elId,fact,norm,labels,units,side){
  const box=document.getElementById(elId); if(!box) return;
  if(!fact||!norm){box.innerHTML='<div class="radar-nodata">В этом сегменте нет данных.</div>';return;}
+ const OV=(RADAR_LABELS[side]||[]), WD=(RADAR_WORDS[side]||[]), PD=(RADAR_PERIOD[side]||[]);
  // сортируем: сначала невыполненные (по величине разницы), потом выполненные
- const rows=labels.map((lab,i)=>{
+ const rows=labels.map((lab0,i)=>{
+  const lab=OV[i]||lab0;
   const unit=units[i]==='%'?'%':'';
   const rawDiff=norm[i]-fact[i];
   // счётчики (штуки) — целые, стандартное округление; конверсии — в % как есть
   const diff=unit?rawDiff:Math.round(rawDiff);
   const done=unit?(fact[i]>=norm[i]-0.05):(diff<=0);
-  return {lab,diff,done,unit,fact:fact[i],norm:norm[i]};
+  return {lab,diff,done,unit,fact:fact[i],norm:norm[i],words:WD[i],period:PD[i]};
  }).sort((a,b)=>(a.done-b.done)||(b.diff-a.diff));
  box.innerHTML=rows.map(r=>{
   const fmt=(v)=>r.unit==='%'?radarFmt(v):String(Math.round(v));
   if(r.done) return '<div class="radar-gap done"><span class="k">✓ '+esc(r.lab)+'</span><span class="dd ok">есть</span></div>';
-  return '<div class="radar-gap"><span class="k">'+esc(r.lab)+' <small>'+fmt(r.fact)+'→'+fmt(r.norm)+r.unit+'</small></span><span class="dd">+'+fmt(r.diff)+r.unit+'</span></div>';
+  const w=r.unit?'':(r.words?' '+plural(r.diff,r.words)+(r.period||''):'');
+  return '<div class="radar-gap"><span class="k">'+esc(r.lab)+' <small>'+fmt(r.fact)+'→'+fmt(r.norm)+r.unit+'</small></span><span class="dd">+'+fmt(r.diff)+r.unit+esc(w)+'</span></div>';
  }).join('');
 }
 function radarBadge(valId,mine){const vb=document.getElementById(valId);if(vb)vb.textContent=mine?radarAvg(mine)+'%':'—';}
@@ -2011,19 +2032,17 @@ function crBlock(d){
 function renderCoach(d){
  const out=[];
  // Блок «Как ты работаешь» (12-мес воронка) удалён — его заменил радар воронки.
- if(d.coach&&(d.coach.buyer||d.coach.seller)){
- out.push(`<div class="card"><div class="section-title">🎓 Диагностика · твоя зона</div>
- ${coachSide('buyer',d.coach.buyer,'Покупатель')}${coachSide('seller',d.coach.seller,'Продавец')}
- <div class="muted" style="margin-top:8px">Относительно твоей зоны${d.coach.zone_label?': '+esc(d.coach.zone_label):''} — где ты сейчас</div></div>`);
- }
+ // Блок «Диагностика · твоя зона» убран 05.08.2026: он сравнивал с ТЕКУЩЕЙ
+ // зоной и прямо противоречил разбору ИИ-тренера, который считает по целевой.
+ // Плюс писал риелтору «не умеет квалифицировать» там, где тот доводит до
+ // сделки лучше своей зоны. Данные /coach остались — их используют задачи
+ // и карточки команды у руководителей.
  // Блок «Что подтянуть для целевой зоны» (coach_target) удалён по просьбе Егора 2026-08-03:
  // всегда показывал «идеал» (сравнение с нормами следующей зоны часто тривиально) — не информативен.
  // Роль «что усилить» закрывает радар воронки ниже.
  // Старый короткий совет (если он есть) — компактной строкой над разбором.
- if(d.ai_coach&&d.ai_coach.coach_text){
- out.push(`<div class="card"><div class="section-title">✨ Короткий совет</div>
- <div style="white-space:pre-line;font-size:var(--fs-14);line-height:1.55">${esc(d.ai_coach.coach_text)}</div></div>`);
- }
+ // «Короткий совет» из /ai_coach убран 05.08.2026 — его полностью заменил
+ // развёрнутый разбор ниже. Отдельная ИИ-генерация под него больше не нужна.
  // Развёрнутый разбор — самым нижним блоком (2026-08-04).
  out.push(crBlock(d));
  // TZ-A40: радар воронки — самой верхней картой (над ИИ и текстом).
