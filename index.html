@@ -1810,7 +1810,12 @@ function crHtml(rep){
    ${sd.table_note?`<p>${crEsc(sd.table_note)}</p>`:''}${chart}${finds}</div>`);
  });
 
- if(rep.link_between_sides) o.push(`<div class="cr-art"><div class="cr-kicker">Связка</div><h3>Что связывает обе стороны</h3><p>${crEsc(rep.link_between_sides)}</p></div>`);
+ if(rep.link_between_sides){
+  const rule=rep.cross_side_rule;
+  o.push(`<div class="cr-art"><div class="cr-kicker">Связка</div><h3>Что связывает обе стороны</h3>
+   <p>${crEsc(rep.link_between_sides)}</p>
+   ${rule&&rule.steps?`<div class="cr-how"><div class="cr-how-h">${crEsc(rule.title||'Как это закрыть быстрее всего')}</div>${rule.steps.map(x=>`<div class="cr-step">${crEsc(x)}</div>`).join('')}</div>`:''}</div>`);
+ }
 
  if(rep.plan&&rep.plan.months){
   let wi=0; // сквозной счётчик недель: второй месяц продолжает первый
