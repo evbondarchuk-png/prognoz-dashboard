@@ -1922,14 +1922,17 @@ async function crBuild(force){
    else if(pk&&pk.pending) rep=await crWaitForReport();   // кто-то уже запустил — дождёмся
   }catch(_){ }
 
-  // Разбора за сегодня нет — вот теперь собираем новый.
-  if(!rep){
+  // Разбора за сегодня нет — собираем новый. Две попытки: если соединение
+  // оборвалось и серверная работа умерла на полпути, первая попытка не даст
+  // ничего, и ждать вечно бессмысленно — надо просто запустить ещё раз.
+  for(let attempt=0; attempt<2 && !rep; attempt++){
    if(btn) btn.textContent='Собираю разбор…';
-   const res=await window.__callLong('generateCoachReport',{code:CTX.target,force:true});
-   rep=res&&res.report;
-   if(!rep&&res&&res.pending) rep=await crWaitForReport();
+   try{
+    const res=await window.__callLong('generateCoachReport',{code:CTX.target,force:true});
+    rep=res&&res.report;
+   }catch(_){ }
+   if(!rep) rep=await crWaitForReport();
   }
-  if(!rep) rep=await crWaitForReport();
   if(!rep) throw new Error('разбор не собрался');
 
   crProgStop(true);
