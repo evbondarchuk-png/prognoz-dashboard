@@ -1894,8 +1894,24 @@ async function crBuild(force){
   box.innerHTML=crHtml(rep);
   const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
  }catch(e){
-  crProgStop(false);
-  box.innerHTML=`<div class="cr-sec"><p>Не получилось собрать разбор: ${crEsc((e&&e.message)||'ошибка')}</p><p class="muted" style="margin-top:6px">Попробуй нажать ещё раз. Если повторится — скажи мне, посмотрю логи.</p></div>`;
+  // Разбор пишется в базу ДО отправки ответа. Значит если ответ потерялся по
+  // дороге (связь, прокси, долгий вызов), сам разбор уже готов — забираем его
+  // из кэша. Это бесплатно и повторной генерации не запускает.
+  let saved=null;
+  try{
+   const st=document.getElementById('crProgStep');
+   if(st) st.textContent='Ответ задержался, забираю готовый разбор…';
+   await new Promise(r=>setTimeout(r,2500));
+   const r2=await window.__callLong('generateCoachReport',{code:CTX.target,force:false});
+   saved=r2&&r2.report;
+  }catch(_){}
+  if(saved){
+   crProgStop(true); __crRep=saved; box.innerHTML=crHtml(saved);
+   const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
+  }else{
+   crProgStop(false);
+   box.innerHTML=`<div class="cr-sec"><p>Не получилось собрать разбор: ${crEsc((e&&e.message)||'ошибка')}</p><p class="muted" style="margin-top:6px">Нажми «Собрать заново» ещё раз — если разбор всё-таки успел записаться, он откроется сразу и повторно не оплатится.</p></div>`;
+  }
  }finally{
   if(btn){ btn.disabled=false; btn.textContent='Пересобрать разбор'; }
  }
