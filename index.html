@@ -1897,35 +1897,49 @@ async function crWaitForReport(){
  return null;
 }
 
+/** Разбор «за сегодня» — тот, что собран в текущих календарных сутках. */
+function crIsToday(ts){
+ if(!ts) return false;
+ const a=new Date(ts), b=new Date();
+ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+}
+
 async function crBuild(force){
  const box=document.getElementById('crBox'); if(!box) return;
  const btn=document.getElementById('crGo');
- if(btn){ btn.disabled=true; btn.textContent='Собираю разбор…'; }
+ if(btn){ btn.disabled=true; btn.textContent='Смотрю разбор…'; }
  crProgStart(box);
+ let rep=null;
  try{
-  // __call уже разворачивает .data — здесь лежит сам ответ функции
-  const r=await window.__callLong('generateCoachReport',{code:CTX.target,force:!!force});
-  const rep=r&&r.report;
-  if(!rep) throw new Error(r&&r.error?String(r.error):'сервер не вернул разбор');
+  // Сначала ищем готовый разбор за сегодня — он уже оплачен, показываем даром.
+  try{
+   const st=document.getElementById('crProgStep');
+   if(st) st.textContent='Проверяю, есть ли разбор за сегодня…';
+   const pk=await window.__callLong('generateCoachReport',{code:CTX.target,peek:true});
+   const r=pk&&pk.report;
+   if(r&&crIsToday(r.generated_at)) rep=r;
+   else if(pk&&pk.pending) rep=await crWaitForReport();   // кто-то уже запустил — дождёмся
+  }catch(_){ }
+
+  // Разбора за сегодня нет — вот теперь собираем новый.
+  if(!rep){
+   if(btn) btn.textContent='Собираю разбор…';
+   const res=await window.__callLong('generateCoachReport',{code:CTX.target,force:true});
+   rep=res&&res.report;
+   if(!rep&&res&&res.pending) rep=await crWaitForReport();
+  }
+  if(!rep) rep=await crWaitForReport();
+  if(!rep) throw new Error('разбор не собрался');
+
   crProgStop(true);
   __crRep=rep;
   box.innerHTML=crHtml(rep);
   const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
  }catch(e){
-  // Человеку нужен результат, а не разбор причин. Разбор пишется в базу ДО
-  // отправки ответа, поэтому если ответ потерялся по дороге — он либо уже
-  // готов, либо вот-вот допишется. Дожидаемся его режимом peek: тот только
-  // читает и НИКОГДА не запускает генерацию, так что ожидание бесплатно.
-  const saved=await crWaitForReport();
-  if(saved){
-   crProgStop(true); __crRep=saved; box.innerHTML=crHtml(saved);
-   const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
-  }else{
-   crProgStop(false);
-   box.innerHTML=`<div class="cr-sec"><p>Разбор пока не собрался.</p><p class="muted" style="margin-top:6px">Нажми «Собрать заново» через минуту. Если разбор всё-таки записался, он откроется сразу и второй раз не оплатится.</p></div>`;
-  }
-  }finally{
-  if(btn){ btn.disabled=false; btn.textContent='Пересобрать разбор'; }
+  crProgStop(false);
+  box.innerHTML=`<div class="cr-sec"><p>Разбор пока не собрался.</p><p class="muted" style="margin-top:6px">Нажми ещё раз через минуту. Если он всё-таки записался, откроется сразу и повторно не оплатится.</p></div>`;
+ }finally{
+  if(btn){ btn.disabled=false; btn.textContent='Обновить разбор'; }
  }
 }
 window.crBuild=crBuild;
@@ -1973,13 +1987,13 @@ function crBlock(d){
  return `<div class="ai-card cr-wrap"><div class="ai-top"><div class="ai-orb">🎓</div><div class="ai-h">Персональный <span>ИИ-тренер</span></div></div>
   <div class="ai-text">Личный разбор по твоим данным за 12 месяцев: что уже получается, где есть запас по норме твоей зоны, сколько это в деньгах и что делать по неделям.</div>
   <div class="cr-actions">
-   <button class="btn-primary" id="crGo" onclick="crBuild(${has?'true':'false'})">${has?'Собрать заново':'Собрать разбор'}</button>
+   <button class="btn-primary" id="crGo" onclick="crBuild(${has?'true':'false'})">${has?'Обновить разбор':'Собрать разбор'}</button>
    <span id="crExtra" style="display:${has?'flex':'none'};gap:8px">
     <button class="btn-secondary" onclick="crPrint()">Печать · PDF</button>
     <button class="btn-secondary" onclick="crDownload()">Скачать в Word</button>
    </span>
   </div>
-  ${has?`<div class="cr-saved">Последний разбор от <b>${crEsc(crDateFmt(d.coach_report.generated_at))}</b> — открыт ниже, платить заново не нужно</div>`:''}
+  ${has?`<div class="cr-saved">Последний разбор от <b>${crEsc(crDateFmt(d.coach_report.generated_at))}</b> — открыт ниже. Кнопка «Обновить разбор» сначала ищет разбор за сегодня и показывает его бесплатно, новый собирает только если сегодняшнего нет.</div>`:''}
   <div id="crBox" style="background:#fff;border-radius:var(--r-lg);padding:2px 0;margin-top:6px">${has?crHtml(d.coach_report):''}</div>
   <div class="ai-note">цифры считает система — модель их объясняет и ничего не выдумывает</div></div>`;
 }
