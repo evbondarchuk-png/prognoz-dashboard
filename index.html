@@ -276,7 +276,18 @@
 /* ─── ИИ-разбор тренера (2026-08-04) ─── */
 /* цвет задаём на обёртке: блок лежит внутри тёмной .ai-card (color:#fff),
    и всё, чему цвет не прописан явно, становилось белым на белом */
-.cr-wrap{margin-top:10px;color:var(--ink)}
+.cr-wrap{margin-top:10px}
+/* Цвет ставим на внутренний контейнер по id: .cr-wrap висит на том же
+   элементе, что и .ai-card с color:#fff, и та объявлена ниже — побеждала она,
+   текст выходил белым на белом. У id приоритет выше, спор исключён. */
+#crBox{color:var(--ink)}
+#crBox .cr-step,#crBox .cr-tool,#crBox .cr-how-h,#crBox .cr-clabel,
+#crBox p,#crBox h3,#crBox h4,#crBox td,#crBox th,#crBox li{color:var(--ink)}
+#crBox .cr-quote,#crBox .cr-calc,#crBox .cr-cnum,#crBox .cr-kicker,
+#crBox .cr-legend,#crBox .cr-meta,#crBox .cr-chart-h,#crBox .cr-task-d,
+#crBox .cr-prog-step,#crBox .cr-prog-hint{color:var(--muted)}
+#crBox .cr-money{color:#137333}
+#crBox a{color:var(--accent)}
 .cr-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
 .cr-sec{background:#fff;border-radius:var(--r-lg);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow)}
 .cr-sec h4{margin:0 0 6px;font-size:var(--fs-15);font-weight:var(--fw-b);color:var(--ink)}
