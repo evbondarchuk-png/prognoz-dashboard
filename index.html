@@ -1815,7 +1815,10 @@ function crHtml(rep){
 
  (rep.sides||[]).forEach(sd=>{
   const t=rep.tables&&rep.tables[sd.key];
-  const chart=crChart(t,'Как это выглядит по сегментам');
+  const zoneLbl=rep.target_zone_label;
+  const chart=crChart(t, zoneLbl
+    ? `Как это выглядит по сегментам — сравниваем тебя с риелторами зоны «${zoneLbl}»`
+    : 'Как это выглядит по сегментам');
   const finds=(sd.findings||[]).map(f=>`<h4>${crEsc(f.title)}</h4>
     <p>${crEsc(f.text)}</p>
     ${f.proof?`<div class="cr-pull">${crEsc(f.proof)}</div>`:''}
