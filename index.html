@@ -2711,7 +2711,19 @@ function calcStatus(fact,forecast,plan,isRev){
 }
 function calcBarPercents(fact,forecast,plan,isRev){
   const isInt=!isRev; fact=_normNum(fact,isInt); plan=_normNum(plan,isInt); forecast=_normNum(forecast,isInt);
-  if(!plan||plan===0){ if(fact>0) return {factPct:100,factPctVisual:100,forecastPctTotal:100,forecastDeltaPct:0,forecastDeltaPctVisual:0,noPlan:true}; return {factPct:0,factPctVisual:0,forecastPctTotal:0,forecastDeltaPct:0,forecastDeltaPctVisual:0}; }
+  // Плана нет — процент считать не от чего. Но показать всё равно есть что:
+  // факт и прогноз. Раньше при плане 0 и факте 0 полоса оставалась пустой,
+  // даже когда прогноз был 257 тысяч — человек видел «0% от плана» и всё.
+  if(!plan||plan===0){
+    const fcDelta=(forecast!=null&&forecast>fact)?(forecast-fact):0;
+    if(fact>0||fcDelta>0){
+      const total=fact+fcDelta;
+      const fw=total>0?Math.round(fact/total*100):0;
+      return {factPct:100,factPctVisual:fw,forecastPctTotal:100,forecastDeltaPct:0,
+              forecastDeltaPctVisual:100-fw,noPlan:true,noPlanFact:fact,noPlanFcDelta:fcDelta};
+    }
+    return {factPct:0,factPctVisual:0,forecastPctTotal:0,forecastDeltaPct:0,forecastDeltaPctVisual:0};
+  }
   const factPct=Math.round((fact/plan)*100);
   let forecastPctTotal=factPct, forecastDeltaPct=0;
   if(forecast!=null && forecast>fact){ forecastPctTotal=Math.round((forecast/plan)*100); forecastDeltaPct=forecastPctTotal-factPct; }
@@ -2742,7 +2754,14 @@ function renderFpBar(stage,opts){
     return `<div class="fp-bar-wrap"><div class="fp-bar" data-tooltip="нет данных по этому этапу"></div><div class="fp-bar-outside"><span class="o-nd">— нет данных</span></div></div>`;
   }
   const _p=calcBarPercents(fact,forecast,plan,is_revenue); const {factPct,factPctVisual,forecastPctTotal,forecastDeltaPct,forecastDeltaPctVisual}=_p;
-  if(_p.noPlan){ const tt=`факт ${fact_label} — плана нет`; return `<div class="fp-bar${opts.compact?' sm':''}" data-tooltip="${esc(tt)}"><div class="fp-bar-fact" style="width:100%">факт ${fact_label}</div></div>`; }
+  if(_p.noPlan){
+    const smC=opts.compact?' sm':'';
+    const fParts=[];
+    if(_p.factPctVisual>0) fParts.push(`<div data-tooltip="${esc('факт '+fact_label+' — плана нет')}" class="fp-bar-fact${_p.factPctVisual<20?' narrow':''}" style="width:${_p.factPctVisual}%">факт ${fact_label}</div>`);
+    if(_p.forecastDeltaPctVisual>0) fParts.push(`<div data-tooltip="${esc('прогноз '+(forecast_label||'')+' — плана нет')}" class="fp-bar-forecast${_p.forecastDeltaPctVisual<20?' narrow':''}" style="width:${_p.forecastDeltaPctVisual}%">прогноз ${forecast_label||''}</div>`);
+    const tt=_p.noPlanFcDelta>0?`прогноз ${forecast_label||''} — плана на этот месяц нет`:`факт ${fact_label} — плана нет`;
+    return `<div class="fp-bar${smC}" data-tooltip="${esc(tt)}">${fParts.join('')}</div>`;
+  }
   const smClass=opts.compact?' sm':'';
   if(factPct===0 && forecastDeltaPct===0){
     const tt=tooltipFact(fact_label,0,plan_label);
