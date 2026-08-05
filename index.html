@@ -1757,7 +1757,7 @@ function crChart(t,title){
   if(!rows.trim()) return '';
   return `<div class="cr-chart"><div class="cr-chart-h">${AX[k]||k}</div>${rows}</div>`;
  }).join('');
- return blocks?`<h4>${crEsc(title)}</h4>${blocks}<div class="cr-legend">Зелёным — где ты на уровне нормы своей зоны или выше. Серая метка — сама норма.</div>`:'';
+ return blocks?`<h4>${crEsc(title)}</h4>${blocks}<div class="cr-legend">Зелёным — где ты уже на уровне целевой зоны или выше. Серая метка — норма зоны, к которой идёшь.</div>`:'';
 }
 
 /** Дата сборки разбора. Показываем крупно: отчёт сохранённый и платный. */
@@ -1788,8 +1788,9 @@ function crHtml(rep){
    ${rep.money_note?`<p style="color:var(--muted);font-size:var(--fs-13)">${crEsc(rep.money_note)}</p>`:''}
   </div>`);
  }
+ // Сначала цель — человек должен увидеть, куда идёт и ради чего. Потом похвала.
+ if(rep.goal) o.push(`<div class="cr-art"><div class="cr-kicker">Куда идём</div><h3>${crEsc(rep.goal.title||'Твоя цель')}</h3><p>${crEsc(rep.goal.text)}</p></div>`);
  if(rep.praise) o.push(`<div class="cr-art"><div class="cr-kicker">Сильные стороны</div><h3>${crEsc(rep.praise.title||'Что у тебя получается')}</h3><p>${crEsc(rep.praise.text)}</p></div>`);
- if(rep.goal) o.push(`<div class="cr-art"><div class="cr-kicker">Ориентир</div><h3>${crEsc(rep.goal.title||'Куда идёшь')}</h3><p>${crEsc(rep.goal.text)}</p></div>`);
 
  (rep.sides||[]).forEach(sd=>{
   const t=rep.tables&&rep.tables[sd.key];
@@ -1989,7 +1990,7 @@ function crBlock(d){
  const has=d.coach_report&&d.coach_report.generated_at;
  if(has){ __crRep=d.coach_report; }
  return `<div class="ai-card cr-wrap"><div class="ai-top"><div class="ai-orb">🎓</div><div class="ai-h">Персональный <span>ИИ-тренер</span></div></div>
-  <div class="ai-text">Личный разбор по твоим данным за 12 месяцев: что уже получается, где есть запас по норме твоей зоны, сколько это в деньгах и что делать по неделям.</div>
+  <div class="ai-text">Личный разбор по твоим данным за 12 месяцев: куда ты идёшь по своей цели, что уже получается, что нужно добрать до целевой зоны и сколько это в деньгах.</div>
   <div class="cr-actions">
    <button class="btn-primary" id="crGo" onclick="crBuild(${has?'true':'false'})">${has?'Обновить разбор':'Собрать разбор'}</button>
    <span id="crExtra" style="display:${has?'flex':'none'};gap:8px">
