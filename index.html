@@ -369,9 +369,20 @@
 .cr-prog-hint{font-size:var(--fs-11);color:var(--muted)}
 
 /* ─── Печать: только разбор, А4, без интерфейса ─── */
+#crPrintRoot{display:none}
+.cr-ph{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:16px}
+.cr-ph h1{font-size:20px;margin:0 0 4px;font-weight:var(--fw-eb)}
+.cr-ph .who{font-size:14px;font-weight:var(--fw-b)}
+.cr-ph .when{font-size:12px;color:var(--muted);margin-top:2px}
 @media print{
  @page{size:A4;margin:14mm 12mm}
  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+ /* Печатаем ТОЛЬКО собранный документ. Прятать «всё лишнее» по одному
+    оказалось ненадёжно: шапка с доходом и виджет ассистента живут вне
+    экранов и всё равно попадали на бумагу — выходило 15 страниц кабинета. */
+ html.cr-printing body>*{display:none!important}
+ html.cr-printing #crPrintRoot{display:block!important;background:#fff}
+ html.cr-printing #crPrintRoot .cr-art{box-shadow:none!important;border:1px solid #ddd}
  body{background:#fff!important}
  .topbar,.rtabs,.bottom-nav,nav,header,.cr-actions,.radar-segs,.btn-primary,.btn-secondary,.btn-icon{display:none!important}
  .screen:not(#screen-coach){display:none!important}
@@ -1978,7 +1989,22 @@ async function crBuild(force){
 }
 window.crBuild=crBuild;
 
-function crPrint(){ window.print(); }
+function crPrint(){
+ if(!__crRep){ window.print(); return; }
+ const name=(CTX.data&&CTX.data.user&&CTX.data.user.name)||CTX.target;
+ let root=document.getElementById('crPrintRoot');
+ if(!root){ root=document.createElement('div'); root.id='crPrintRoot'; document.body.appendChild(root); }
+ const dt=crDateFmt(__crRep.generated_at);
+ root.innerHTML=`<div class="cr-ph"><h1>Разбор ИИ-тренера</h1>
+   <div class="who">${crEsc(name)}</div>
+   <div class="when">Собран ${crEsc(dt)}${__crRep.data_date?' · по данным на '+crEsc(__crRep.data_date):''}</div></div>`
+   +crHtml(__crRep);
+ document.documentElement.classList.add('cr-printing');
+ const off=()=>{ document.documentElement.classList.remove('cr-printing'); window.removeEventListener('afterprint',off); };
+ window.addEventListener('afterprint',off);
+ window.print();
+ setTimeout(off,1500);   // Safari не всегда шлёт afterprint
+}
 window.crPrint=crPrint;
 
 function crDocName(ext){
