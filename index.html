@@ -1879,6 +1879,24 @@ function crProgStop(done){
  if(done){ const f=document.getElementById('crProgFill'); if(f) f.style.width='100%'; }
 }
 
+/** Дожидается готового разбора, ничего не оплачивая: peek только читает. */
+async function crWaitForReport(){
+ const st=document.getElementById('crProgStep');
+ const fill=document.getElementById('crProgFill');
+ for(let i=0;i<40;i++){                     // до ~4 минут
+  try{
+   const r=await window.__callLong('generateCoachReport',{code:CTX.target,peek:true});
+   if(r&&r.report) return r.report;
+   if(st) st.textContent=r&&r.pending
+     ? 'Разбор ещё пишется, дожидаюсь…'
+     : 'Ответ задержался, проверяю результат…';
+   if(fill) fill.style.width=Math.min(97,90+Math.floor(i/6))+'%';
+  }catch(_){ }
+  await new Promise(r=>setTimeout(r,6000));
+ }
+ return null;
+}
+
 async function crBuild(force){
  const box=document.getElementById('crBox'); if(!box) return;
  const btn=document.getElementById('crGo');
@@ -1894,25 +1912,19 @@ async function crBuild(force){
   box.innerHTML=crHtml(rep);
   const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
  }catch(e){
-  // Разбор пишется в базу ДО отправки ответа. Значит если ответ потерялся по
-  // дороге (связь, прокси, долгий вызов), сам разбор уже готов — забираем его
-  // из кэша. Это бесплатно и повторной генерации не запускает.
-  let saved=null;
-  try{
-   const st=document.getElementById('crProgStep');
-   if(st) st.textContent='Ответ задержался, забираю готовый разбор…';
-   await new Promise(r=>setTimeout(r,2500));
-   const r2=await window.__callLong('generateCoachReport',{code:CTX.target,force:false});
-   saved=r2&&r2.report;
-  }catch(_){}
+  // Человеку нужен результат, а не разбор причин. Разбор пишется в базу ДО
+  // отправки ответа, поэтому если ответ потерялся по дороге — он либо уже
+  // готов, либо вот-вот допишется. Дожидаемся его режимом peek: тот только
+  // читает и НИКОГДА не запускает генерацию, так что ожидание бесплатно.
+  const saved=await crWaitForReport();
   if(saved){
    crProgStop(true); __crRep=saved; box.innerHTML=crHtml(saved);
    const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
   }else{
    crProgStop(false);
-   box.innerHTML=`<div class="cr-sec"><p>Не получилось собрать разбор: ${crEsc((e&&e.message)||'ошибка')}</p><p class="muted" style="margin-top:6px">Нажми «Собрать заново» ещё раз — если разбор всё-таки успел записаться, он откроется сразу и повторно не оплатится.</p></div>`;
+   box.innerHTML=`<div class="cr-sec"><p>Разбор пока не собрался.</p><p class="muted" style="margin-top:6px">Нажми «Собрать заново» через минуту. Если разбор всё-таки записался, он откроется сразу и второй раз не оплатится.</p></div>`;
   }
- }finally{
+  }finally{
   if(btn){ btn.disabled=false; btn.textContent='Пересобрать разбор'; }
  }
 }
