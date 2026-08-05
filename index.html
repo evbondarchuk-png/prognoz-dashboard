@@ -1733,7 +1733,8 @@ function crTableHtml(t){
 /** График «факт против нормы зоны» — вместо голой таблицы. */
 function crChart(t,title){
  if(!t||!t.segments||!t.segments.length) return '';
- const AX={objects:'Объектов в работе',hot:'Горячих в месяц',deals:'Сделок в месяц',
+ // «В работе» у продавца — остаток на сегодня, а не среднее за месяц.
+ const AX={objects:'Объектов в работе сейчас',hot:'Горячих в месяц',deals:'Сделок в месяц',
            flow:'Обращений в месяц'};
  const keys=[];
  (t.segments[0].vals||[]).forEach(v=>keys.push(v.key));
