@@ -1217,7 +1217,7 @@ function renderPrognoz(d){
   function _rSeg(sd){
     if(!sd||!Object.keys(sd).length)return'';
     const segs=[...new Set(Object.keys(sd).map(k=>k.replace(/^[bs]_/,'')))];
-    return segs.map(seg=>{const b=sd['b_'+seg]||0,s=sd['s_'+seg]||0;const lb=_segL['b_'+seg]||_segL['s_'+seg]||seg;const p=[];if(b>0)p.push(`🛒 ${_prgFmtFull(b)} ₽`);if(s>0)p.push(`🏠 ${_prgFmtFull(s)} ₽`);return`<div style="display:flex;gap:8px;padding:3px 0;font-size:11px"><span style="flex:1;color:var(--muted)">${esc(lb)}</span><span>${p.join(' | ')}</span></div>`;}).join('');
+    return segs.filter(seg=>(sd['b_'+seg]||0)+(sd['s_'+seg]||0)>0).map(seg=>{const b=sd['b_'+seg]||0,s=sd['s_'+seg]||0;const lb=_segL['b_'+seg]||_segL['s_'+seg]||seg;const p=[];if(b>0)p.push(`🛒 ${_prgFmtFull(b)} ₽`);if(s>0)p.push(`🏠 ${_prgFmtFull(s)} ₽`);return`<div style="display:flex;gap:8px;padding:3px 0;font-size:11px"><span style="flex:1;color:var(--muted)">${esc(lb)}</span><span>${p.join(' | ')}</span></div>`;}).join('');
   }
   const _hasBd=_monthBd.length>0;
   out.push(`<div class="card">
