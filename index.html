@@ -1949,23 +1949,27 @@ function crIsToday(ts){
 async function crBuild(force){
  const box=document.getElementById('crBox'); if(!box) return;
  const btn=document.getElementById('crGo');
+ // Пересборка платная — на явное «Обновить» просим подтверждение (защита от случайного клика).
+ if(force && !confirm('Собрать разбор заново? Это платная пересборка — сохранённый разбор заменится новым.')) return;
  if(btn){ btn.disabled=true; btn.textContent='Смотрю разбор…'; }
  crProgStart(box);
  let rep=null;
  try{
-  // Сначала ищем готовый разбор за сегодня — он уже оплачен, показываем даром.
-  try{
-   const st=document.getElementById('crProgStep');
-   if(st) st.textContent='Проверяю, есть ли разбор за сегодня…';
-   const pk=await window.__callLong('generateCoachReport',{code:CTX.target,peek:true});
-   const r=pk&&pk.report;
-   if(r&&crIsToday(r.generated_at)) rep=r;
-   else if(pk&&pk.pending) rep=await crWaitForReport();   // кто-то уже запустил — дождёмся
-  }catch(_){ }
+  // Без force показываем ЛЮБОЙ сохранённый разбор (без привязки к дате) — он уже
+  // оплачен, отдаём бесплатно. Пересобираем только по явному «Обновить» (force).
+  if(!force){
+   try{
+    const st=document.getElementById('crProgStep');
+    if(st) st.textContent='Открываю сохранённый разбор…';
+    const pk=await window.__callLong('generateCoachReport',{code:CTX.target,peek:true});
+    const r=pk&&pk.report;
+    if(r) rep=r;
+    else if(pk&&pk.pending) rep=await crWaitForReport();   // кто-то уже запустил — дождёмся
+   }catch(_){ }
+  }
 
-  // Разбора за сегодня нет — собираем новый. Две попытки: если соединение
-  // оборвалось и серверная работа умерла на полпути, первая попытка не даст
-  // ничего, и ждать вечно бессмысленно — надо просто запустить ещё раз.
+  // Нет сохранённого ИЛИ явный «Обновить» (force) — собираем новый (платно). Две попытки:
+  // если соединение оборвалось и серверная работа умерла на полпути — просто запустим ещё раз.
   for(let attempt=0; attempt<2 && !rep; attempt++){
    if(btn) btn.textContent='Собираю разбор…';
    try{
@@ -2053,7 +2057,7 @@ function crBlock(d){
     <button class="btn-secondary" onclick="crDownload()">Скачать в Word</button>
    </span>
   </div>
-  ${has?`<div class="cr-saved">Последний разбор от <b>${crEsc(crDateFmt(d.coach_report.generated_at))}</b> — открыт ниже. Кнопка «Обновить разбор» сначала ищет разбор за сегодня и показывает его бесплатно, новый собирает только если сегодняшнего нет.</div>`:''}
+  ${has?`<div class="cr-saved">Разбор от <b>${crEsc(crDateFmt(d.coach_report.generated_at))}</b> — открыт ниже и сохраняется. Показывается бесплатно всегда; «Обновить разбор» пересобирает его заново (платно) — только когда ты сам нажмёшь.</div>`:''}
   <div id="crBox" style="background:#fff;border-radius:var(--r-lg);padding:2px 0;margin-top:6px">${has?crHtml(d.coach_report):''}</div>
   <div class="ai-note">цифры считает система — модель их объясняет и ничего не выдумывает</div></div>`;
 }
