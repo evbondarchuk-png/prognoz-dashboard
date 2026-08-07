@@ -83,6 +83,19 @@ export function requireAuth(opts = {}) {
       const userRank = RANK[home] || 1;
       const pageRank = RANK[path] || 1;
       const hasDrill = params.has('agent') || params.has('mop') || params.has('rop');
+      // Риелтор не может открывать ничей кабинет, кроме своего. Раньше ссылка
+      // вида index.html?agent=<чужой>, скопированная руководителем из адресной
+      // строки и присланная в чат, приводила его на собственную страницу с
+      // чужим кодом — и getDashboard отвечал отказом. Чистим параметры и
+      // открываем его собственный кабинет.
+      if (userRank === 1 && hasDrill) {
+        const own = params.get('agent');
+        if (own !== userInfo.code) {
+          settled = true; unsub();
+          location.replace('index.html');
+          return;
+        }
+      }
       // Кабинет выше своей роли → всегда домой. index.html без дрилла → домой.
       const tooHigh = pageRank > userRank;
       const idxRedirect = path === 'index.html' && userRank > 1 && !hasDrill;

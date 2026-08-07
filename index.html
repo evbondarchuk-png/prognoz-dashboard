@@ -2692,8 +2692,23 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  const d=res.data; CTX.data=d;
  document.getElementById('dateBadge').textContent=new Date(d.meta?.generated_at||Date.now()).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
  render(d);
- }catch(e){ document.getElementById('hero').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e); }
+ }catch(e){
+  // Ссылку с чужим ?agent= часто пересылают в чате. Если доступа к этому
+  // кабинету нет — не показываем ошибку, а молча открываем собственный.
+  const denied=/permission|not-found|no access/i.test(String(e&&(e.code||e.message)));
+  if(denied && String(targetCode)!==String(me.code)){
+   sessionStorage.setItem('crBackNote','1');
+   location.replace('index.html');
+   return;
+  }
+  document.getElementById('hero').innerHTML=`<div class="banner">Не удалось загрузить кабинет: ${esc(e.message||e)}</div>`; console.error(e);
+ }
  document.getElementById('overlay').classList.add('hidden');
+ if(sessionStorage.getItem('crBackNote')){
+  sessionStorage.removeItem('crBackNote');
+  const h=document.getElementById('hero');
+  if(h) h.insertAdjacentHTML('afterbegin','<div class="banner">Ссылка вела в чужой кабинет — открыт твой.</div>');
+ }
  // Прогноша — отдельно от render(), чтобы ошибка в рендере не убирала ассистента.
  // Только в СВОЁМ кабинете (данные ИИ строятся по auth.uid, не по ?agent=).
  try{ if(CTX.data && String(CTX.target)===String(CTX.me)) initAssistant(CTX.data); }
