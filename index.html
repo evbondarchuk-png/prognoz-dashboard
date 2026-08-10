@@ -2462,7 +2462,11 @@ window.initSvetoforCalc=function(){
     if(val>0&&cZ){
       var P=Math.min(stz||12,12), N=Math.min((stz||12)+1,12);
       doch=Math.round(val*0.48);
-      var base=cZ[2]||inc;
+      // Отправная точка — ЕГО собственный средний доход, а не среднее по зоне.
+      // Раньше стояло cZ[2]||inc: среднее зоны всегда заполнено, поэтому личный
+      // доход не использовался никогда, и два риелтора из одной зоны с разным
+      // доходом получали одинаковый прогноз.
+      var base=inc||cZ[2];
       newAvg=(base*P+doch)/N;
       for(var j=0;j<Z.length;j++)if(Z[j][2]&&newAvg>=Z[j][2]){resIdx=j;break;}
       var resIdx=resIdx||0;
