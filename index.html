@@ -2392,7 +2392,7 @@ function svetoforCalculatorCard(d){
  }
  return `<div class="card">
   <div class="section-title">🧮 Куда попадёшь в светофоре</div>
-  <div class="muted" style="font-size:12px;margin-bottom:10px">Введи средний вал в месяц — покажу, в какую зону светофора попадёшь.</div>
+  <div class="muted" style="font-size:12px;margin-bottom:10px">Введи вал на следующий месяц — покажу, как это сдвинет твоё место.</div>
   <div class="sv-calc">
    <label class="sv-calc-label">нужно сделать вала, ₽
     <input id="svV" type="text" inputmode="numeric" autocomplete="off" placeholder="введи вал">
@@ -2445,6 +2445,16 @@ window.initSvetoforCalc=function(){
     }
     pyr.innerHTML=html;
   }
+  // Место по среднему доходу: внутри зоны интерполируем между её границами.
+  function posFor(avg){
+    var idx=0;
+    for(var j=0;j<Z.length;j++) if(Z[j][2]&&avg>=Z[j][2]){ idx=j; break; }
+    if(idx<=0) return {idx:0,pos:Z[0][0]};
+    var hi=Z[idx-1][2];
+    if(!hi||avg>=hi) return {idx:idx,pos:Z[idx][0]};
+    var t=(avg-Z[idx][2])/(hi-Z[idx][2]);
+    return {idx:idx,pos:Math.max(Z[idx][0],Math.round(Z[idx][1]-t*(Z[idx][1]-Z[idx][0])))};
+  }
   function paint(){
     console.log('[svCalc] paint called, v.value=', v.value, 'currentPos=', v.dataset.currentPos);
     var raw=(v.value||'').replace(/\D/g,'');
@@ -2457,27 +2467,28 @@ window.initSvetoforCalc=function(){
     // "СЕЙЧАС" — всегда видна
     if(curP)curP.textContent=(ap>0&&cZ)?('#'+ap):'#'+ap;
     if(curC)curC.textContent=cZ?cZ[3]:'—';
-    var youIdx=null, resPos=null, rZ=null;
+    var youIdx=null, resPos=null, rZ=null, steady=null;
     var newAvg=0, doch=0;
     if(val>0&&cZ){
-      var P=Math.min(stz||12,12), N=Math.min((stz||12)+1,12);
       doch=Math.round(val*0.48);
-      // Отправная точка — ЕГО собственный средний доход, а не среднее по зоне.
-      // Раньше стояло cZ[2]||inc: среднее зоны всегда заполнено, поэтому личный
-      // доход не использовался никогда, и два риелтора из одной зоны с разным
-      // доходом получали одинаковый прогноз.
       var base=inc||cZ[2];
-      newAvg=(base*P+doch)/N;
-      for(var j=0;j<Z.length;j++)if(Z[j][2]&&newAvg>=Z[j][2]){resIdx=j;break;}
-      var resIdx=resIdx||0;
-      if(resIdx<=0){resPos=rZ?rZ[0]:Z[0][0];}
-      else{
-        var hi=Z[resIdx-1][2];
-        if(!hi||newAvg>=hi)resPos=Z[resIdx][0];
-        else{var t=(newAvg-Z[resIdx][2])/(hi-Z[resIdx][2]);resPos=Math.max(Z[resIdx][0],Math.round(Z[resIdx][1]-t*(Z[resIdx][1]-Z[resIdx][0])));}
-      }
-      rZ=Z[resIdx];
-      youIdx=resIdx;
+      // Светофор ранжирует по среднему за 12 месяцев. Новый месяц ВЫТЕСНЯЕТ
+      // самый старый, а не добавляется сверху: было (base*12+doch)/12, то есть
+      // base + doch/12 — рост завышался в разы.
+      var hist=Math.min(stz||12,12);
+      newAvg = hist>=12 ? (base+(doch-base)/12) : ((base*hist+doch)/(hist+1));
+      // Таблица зон здесь зашита в код, а настоящее место приходит из светофора,
+      // и они не совпадают: у человека с доходом 80 324 ₽ реальное место #660,
+      // а по таблице выходит #795. Поэтому считаем не абсолютное место, а
+      // СДВИГ от его настоящего — линейка становится одна, и «сейчас» с
+      // «будет» перестают противоречить друг другу.
+      var pNow=posFor(base).pos;
+      var shift=pNow-posFor(newAvg).pos;                 // на сколько мест вверх
+      resPos=Math.max(1, (ap||pNow)-shift);
+      youIdx=findIdx(resPos); if(youIdx<0)youIdx=0; rZ=Z[youIdx];
+      // если держать такой вал каждый месяц
+      var sPos=Math.max(1,(ap||pNow)-(pNow-posFor(doch).pos));
+      var sIdx=findIdx(sPos); steady={pos:sPos, idx:sIdx<0?0:sIdx};
     }
     renderPyr(ci>=0?ci:null, youIdx);
     // "Введено + ты будешь здесь" — одна строка сверху, обоснование — внутри
@@ -2491,9 +2502,15 @@ window.initSvetoforCalc=function(){
         var up=(ap||0)-resPos;
         var fromZ=cZ?cZ[3]:'?';
         var toZ=rZ?rZ[3]:'?';
-        if(fromZ===toZ&&up===0) note.innerHTML='Вал '+fmt(val)+' ₽ → доход '+fmt(doch)+' ₽. Без изменений.';
-        else if(up>0) note.innerHTML='Вал '+fmt(val)+' → доход '+fmt(doch)+' ₽. Новый средний: '+fmt(newAvg)+' ₽ → место ↑ на '+up+'.';
-        else note.innerHTML='Новый средний: '+fmt(newAvg)+' ₽.';
+        var head='Вал '+fmt(val)+' ₽ за месяц → доход '+fmt(doch)+' ₽. Средний за 12 мес станет '+fmt(newAvg)+' ₽';
+        if(up>0) head+=' → место ↑ на '+up+'.';
+        else if(fromZ===toZ&&up===0) head+=' — место пока не изменится.';
+        else head+='.';
+        // Один месяц двигает годовое среднее слабо — честно показываем и то,
+        // что будет, если держать такой вал постоянно.
+        var tail='';
+        if(steady&&ap&&steady.pos<ap) tail='<br>А если держать такой вал каждый месяц — выйдешь примерно на #'+steady.pos+', «'+Z[steady.idx][3]+'».';
+        note.innerHTML=head+tail;
       }
     }else{
       if(progBlock)progBlock.style.display='none';
