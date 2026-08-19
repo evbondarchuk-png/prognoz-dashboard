@@ -496,7 +496,8 @@
 .pl-success{margin-top:14px;background:var(--ok-bg,#e9f6ec);color:var(--ok,#16a34a);border-radius:8px;padding:10px 13px;font-size:13px}
 .pl-error{margin-top:14px;background:var(--bad-bg,#fdeaea);color:var(--bad,#dc2626);border-radius:8px;padding:10px 13px;font-size:13px}
 .mp-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
-.mp-list-card{padding:8px}
+.mp-list-card{padding:8px;max-height:calc(100vh - 160px);overflow-y:auto}
+.mp-r-sub2.no-plan{color:var(--danger,#e5484d);font-weight:700}
 .mp-list-title{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;padding:10px 12px 6px}
 .mp-r-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer}
 .mp-r-row.sel{background:var(--brand-soft)}
@@ -1632,10 +1633,11 @@ window.loadPlanning=async function(){
 function renderMpLayout(){
  const listHtml=MP.realtors.map(r=>{
   const sub=r.is_newbie ? `стаж ${r.stazh_months??'—'} мес` : `стаж ${r.stazh_months??'—'} мес · <span class="mp-r-pos">#${r.position_in_company??'—'}</span>`;
-  const goalD=r.goal_date ? new Date(r.goal_date).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'}) : '—';
+  const planD=r.plan_started_at ? new Date(r.plan_started_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'}) : null;
+  const planHtml=planD ? `план от ${planD}` : 'без плана';
   return `<div class="mp-r-row ${r.code===MP.selCode?'sel':''}" onclick="mpSelectRealtor('${esc(r.code)}')">
    <div class="mp-r-ava">${esc(initials(r.name))}</div>
-   <div class="mp-r-text"><div class="mp-r-name">${esc(r.name)}</div><div class="mp-r-sub">${sub}</div><div class="mp-r-sub2">цель от ${goalD}</div></div>
+   <div class="mp-r-text"><div class="mp-r-name">${esc(r.name)}</div><div class="mp-r-sub">${sub}</div><div class="mp-r-sub2 ${planD?'':'no-plan'}">${planHtml}</div></div>
   </div>`;
  }).join('');
  document.getElementById('screen-planning').innerHTML=`
