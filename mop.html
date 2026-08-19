@@ -1771,7 +1771,7 @@ function renderMpPanel(){
  function readonlySumRow(label, mtc){
   const cells=months.map(m=>{
    let sum=0; segs.forEach(s=>{ const src=m[side]&&m[side][s.key]; sum+=Number(src&&src[mtc])||0; });
-   return `<td><span class="mp-cell-ro">${Math.round(sum*10)/10}</span></td>`;
+   return `<td><span class="mp-cell-ro">${Math.round(sum)}</span></td>`;
   }).join('');
   return `<tr><td>${esc(label)}</td>${cells}</tr>`;
  }
