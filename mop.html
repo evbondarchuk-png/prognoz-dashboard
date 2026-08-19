@@ -1662,18 +1662,44 @@ window.mpSelectRealtor=async function(code){
  MP.loadingPlan=false;
 };
 function mpDirtyKey(ym,side,seg,metric){ return ym+'|'+side+'|'+seg+'|'+metric; }
+// Поток/горячие/остаток — всегда целые числа (решение Егора 19.08.2026:
+// «нужно округление») — округляем и при чтении, и при записи, чтобы МОП
+// нигде не видел и не мог ввести дробное «3.4 заявки».
 function mpCellVal(monthRow,side,seg,metric){
  const dk=mpDirtyKey(monthRow.ym,side,seg,metric);
  if(MP.dirty.hasOwnProperty(dk)) return MP.dirty[dk];
  const src=monthRow[side]&&monthRow[side][seg];
  const v=src&&src[metric];
- return v!=null?v:0;
+ return v!=null?Math.round(v):0;
 }
 window.mpPickSide=function(side){ MP.side=side; MP.segKey='all'; renderMpPanel(); };
 window.mpPickSeg=function(seg){ MP.segKey=seg; renderMpPanel(); };
 window.mpOnInput=function(ym,side,seg,metric,el){
- const v=el.value===''?0:Number(el.value);
+ const v=el.value===''?0:Math.round(Number(el.value));
  MP.dirty[mpDirtyKey(ym,side,seg,metric)]=isFinite(v)?v:0;
+};
+// Правка «Итого по всем сегментам» (Поток/Остаток или Горячих) — раскидываем
+// новую сумму по сегментам ПРОПОРЦИОНАЛЬНО их текущему весу (решение Егора
+// 19.08.2026): вес берём из текущих (уже применённых правок, если есть)
+// значений сегментов, не из формулы заново. Если сейчас везде 0 — делим
+// поровну. Остаток от округления — по методу наибольшего остатка, чтобы
+// сумма сегментов ровно сошлась с введённым числом.
+window.mpRedistribute=function(ym,side,metric,rawValue){
+ const newTotal=Math.max(0,Math.round(Number(rawValue)||0));
+ const segs=mpSegsFor(side);
+ const monthRow=(MP.plan&&MP.plan.months||[]).find(m=>m.ym===ym);
+ if(!monthRow) return;
+ const current=segs.map(s=>mpCellVal(monthRow,side,s.key,metric));
+ const currentTotal=current.reduce((s,v)=>s+v,0);
+ const weights=currentTotal>0?current.map(v=>v/currentTotal):segs.map(()=>1/segs.length);
+ const raw=weights.map(w=>newTotal*w);
+ const floors=raw.map(Math.floor);
+ let remainder=newTotal-floors.reduce((s,v)=>s+v,0);
+ const order=raw.map((v,i)=>({i,frac:v-Math.floor(v)})).sort((a,b)=>b.frac-a.frac);
+ const result=floors.slice();
+ for(let k=0;k<remainder && k<order.length;k++) result[order[k].i]++;
+ segs.forEach((s,i)=>{ MP.dirty[mpDirtyKey(ym,side,s.key,metric)]=result[i]; });
+ renderMpPanel();
 };
 window.mpCancel=function(){ MP.dirty={}; renderMpPanel(); };
 window.mpSave=async function(){
@@ -1713,15 +1739,15 @@ function renderMpPanel(){
 
  // подсказка по минимуму отдела (информационно, сервер — источник истины)
  let minHint='';
- if(MP.deptMin){
-  if(segKey!=='all'){
-   if(side==='buyer'){
-    const mv=MP.deptMin.buyer&&MP.deptMin.buyer.flow&&MP.deptMin.buyer.flow.segments&&MP.deptMin.buyer.flow.segments[segKey];
-    if(mv!=null) minHint=`Минимум отдела по потоку: ${mv}/мес.`;
-   } else {
-    const mv=MP.deptMin.seller&&MP.deptMin.seller.flow&&MP.deptMin.seller.flow.segments&&MP.deptMin.seller.flow.segments[segKey];
-    if(mv!=null) minHint=`Минимум отдела по набору: +${mv}/мес к остатку прошлого месяца.`;
-   }
+ if(segKey==='all'){
+  minHint='Правишь общую цифру — она раскладывается по сегментам пропорционально их текущему весу. Чтобы задать конкретный сегмент точно — выбери его выше.';
+ } else if(MP.deptMin){
+  if(side==='buyer'){
+   const mv=MP.deptMin.buyer&&MP.deptMin.buyer.flow&&MP.deptMin.buyer.flow.segments&&MP.deptMin.buyer.flow.segments[segKey];
+   if(mv!=null) minHint=`Минимум отдела по потоку: ${mv}/мес.`;
+  } else {
+   const mv=MP.deptMin.seller&&MP.deptMin.seller.flow&&MP.deptMin.seller.flow.segments&&MP.deptMin.seller.flow.segments[segKey];
+   if(mv!=null) minHint=`Минимум отдела по набору: +${mv}/мес к остатку прошлого месяца.`;
   }
  }
 
@@ -1749,6 +1775,17 @@ function renderMpPanel(){
   }).join('');
   return `<tr><td>${esc(label)}</td>${cells}</tr>`;
  }
+ // «Итого по всем сегментам» — редактируемая сумма (Поток/Остаток и Горячих):
+ // правишь общее число → mpRedistribute раскидывает по сегментам пропорционально
+ // их текущему весу. Задним числом (закрытые месяцы) — только просмотр.
+ function totalEditableRow(label, mtc){
+  const cells=months.map(m=>{
+   const sum=segs.reduce((s,sg)=>s+mpCellVal(m,side,sg.key,mtc),0);
+   if(m.closed) return `<td><span class="mp-cell-ro">${sum}</span></td>`;
+   return `<td><input class="mp-cell-input" type="number" min="0" value="${sum}" onchange="mpRedistribute('${m.ym}','${side}','${mtc}',this.value)"></td>`;
+  }).join('');
+  return `<tr><td>${esc(label)}</td>${cells}</tr>`;
+ }
  function revenueRow(){
   const cells=months.map(m=>`<td><span class="mp-cell-ro">${mpFmtMoney(side==='buyer'?m.target_revenue_buyer:m.target_revenue_seller)}</span></td>`).join('');
   return `<tr><td>Вал план (расчёт)</td>${cells}</tr>`;
@@ -1756,7 +1793,7 @@ function renderMpPanel(){
 
  let editRowsHtml;
  if(segKey==='all'){
-  editRowsHtml=readonlySumRow(side==='buyer'?'Поток (заявки), сумма':'Остаток ОН, сумма', metric)+readonlySumRow('Горячих, сумма','hot');
+  editRowsHtml=totalEditableRow(side==='buyer'?'Поток (заявки), сумма':'Остаток ОН, сумма', metric)+totalEditableRow('Горячих, сумма','hot');
  } else {
   editRowsHtml=metricRow(side==='buyer'?'Поток (заявки)':'Остаток ОН (на конец мес.)', metric, segKey, true)+metricRow('Горячих','hot', segKey, true);
  }
