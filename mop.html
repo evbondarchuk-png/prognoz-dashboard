@@ -498,6 +498,11 @@
 .mp-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
 .mp-list-card{padding:8px;max-height:calc(100vh - 160px);overflow-y:auto}
 .mp-r-sub2.no-plan{color:var(--danger,#e5484d);font-weight:700}
+.mp-income-bar{display:flex;align-items:center;gap:20px;padding:12px 16px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:12px;flex-wrap:wrap}
+.mp-income-item{display:flex;flex-direction:column;gap:2px}
+.mp-income-cap{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.mp-income-item b{font-size:16px;font-weight:800}
+.mp-income-input{width:130px;font-size:16px;font-weight:800;padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;background:var(--surface)}
 .mp-list-title{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;padding:10px 12px 6px}
 .mp-r-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer}
 .mp-r-row.sel{background:var(--brand-soft)}
@@ -1613,7 +1618,7 @@ function maybeAwardToast(d){ const rw=d&&d.rewards; if(!rw||!rw.newly||!rw.newly
 // дублирует логику дельты по остатку продавца (риск разойтись с бэком).
 const MP_BUYER_SEGS=[{key:'novostroyki',label:'Новостройки'},{key:'vtorichnaya',label:'Вторичка'},{key:'zagorodnaya',label:'Загородная'},{key:'kommercheskaya',label:'Коммерция'},{key:'garazhi',label:'Гаражи'}];
 const MP_SELLER_SEGS=[{key:'vtorichnaya',label:'Вторичка'},{key:'zagorodnaya',label:'Загородная'},{key:'kommercheskaya',label:'Коммерция'},{key:'garazhi',label:'Гаражи'}];
-let MP={mopCode:null,realtors:[],selCode:null,plan:null,deptMin:null,side:'buyer',segKey:'all',dirty:{},saving:false,loadingPlan:false};
+let MP={mopCode:null,realtors:[],selCode:null,plan:null,deptMin:null,side:'buyer',segKey:'all',dirty:{},saving:false,loadingPlan:false,income:null,goalEditing:false,goalSaving:false};
 function mpSegsFor(side){ return side==='buyer'?MP_BUYER_SEGS:MP_SELLER_SEGS; }
 function mpMetricFor(side){ return side==='buyer'?'flow':'objects'; }
 function mpFmtMoney(n){ n=Math.round(Number(n)||0); const a=Math.abs(n); if(a>=1000000) return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=1000) return Math.round(n/1000)+'к'; return String(n); }
@@ -1650,7 +1655,7 @@ function renderMpLayout(){
  </div>`;
 }
 window.mpSelectRealtor=async function(code){
- MP.selCode=code; MP.plan=null; MP.dirty={}; MP.side='buyer'; MP.segKey='all';
+ MP.selCode=code; MP.plan=null; MP.dirty={}; MP.side='buyer'; MP.segKey='all'; MP.income=null; MP.goalEditing=false;
  document.querySelectorAll('.mp-r-row').forEach(el=>el.classList.remove('sel'));
  renderMpLayout(); // перерисует список с выделением + сброшенную панель
  const panel=document.getElementById('mpPanelRoot');
@@ -1659,9 +1664,69 @@ window.mpSelectRealtor=async function(code){
  try{
   const res=await window.__call('getRealtorPlan',{user_code:code});
   MP.plan=res.plan; MP.deptMin=res.department_minimums||MP.deptMin;
+  MP.income={current_income:res.current_income,goal_target:res.goal_target,goal_started_at:res.goal_started_at};
   renderMpPanel();
  }catch(e){ panel.innerHTML='<div class="banner">Не удалось загрузить план: '+esc(e.message||e)+'</div>'; }
  MP.loadingPlan=false;
+};
+// ── Доход прямо из «Планирования» (правка Егора 19.08.2026): раньше за
+// сменой цели МОП уходил в кабинет риэлтора — теперь можно тут же. Дергает
+// тот же setGoal, что и кабинет риэлтора; лимит «раз в месяц» на МОПа не
+// действует (bypassMonthlyLock на бэке — callerRole !== 'realtor').
+function mpIncomeBarHtml(){
+ const inc=MP.income||{};
+ const fmtFull=(n)=>n==null?'—':Number(n).toLocaleString('ru-RU')+' ₽';
+ let cycleTxt='—';
+ if(inc.goal_started_at){
+  const days=Math.max(0,Math.floor((Date.now()-inc.goal_started_at)/86400000));
+  cycleTxt=days+' дн.';
+ }
+ if(MP.goalEditing){
+  const prefill=inc.goal_target!=null?inc.goal_target:(inc.current_income||150000);
+  return `<div class="mp-income-bar">
+   <div class="mp-income-item"><span class="mp-income-cap">Текущий доход</span><b>${fmtFull(inc.current_income)}</b></div>
+   <input class="mp-income-input" id="mpGoalInput" type="number" min="30000" max="5000000" value="${prefill}">
+   <button class="btn-primary" id="mpGoalSaveBtn" onclick="mpSaveGoalIncome()">Сохранить и пересчитать план</button>
+   <button class="btn-secondary" onclick="MP.goalEditing=false;renderMpPanel();">Отмена</button>
+  </div>
+  <div id="mpGoalMsg"></div>`;
+ }
+ return `<div class="mp-income-bar">
+  <div class="mp-income-item"><span class="mp-income-cap">Текущий доход</span><b>${fmtFull(inc.current_income)}</b></div>
+  <div class="mp-income-item"><span class="mp-income-cap">Целевой доход</span><b>${fmtFull(inc.goal_target)}</b></div>
+  <div class="mp-income-item"><span class="mp-income-cap">Цикл идёт</span><b>${cycleTxt}</b></div>
+  <button class="btn-secondary" onclick="MP.goalEditing=true;renderMpPanel();">✏️ Изменить доход</button>
+ </div>
+ <div id="mpGoalMsg"></div>`;
+}
+window.mpSaveGoalIncome=async function(){
+ if(MP.goalSaving) return;
+ const el=document.getElementById('mpGoalInput');
+ const v=Math.round(Number(el&&el.value)||0);
+ const msg=document.getElementById('mpGoalMsg');
+ if(v<30000||v>5000000){ if(msg) msg.innerHTML='<div class="pl-error">Цель должна быть от 30 000 до 5 000 000 ₽</div>'; return; }
+ MP.goalSaving=true;
+ const btn=document.getElementById('mpGoalSaveBtn'); if(btn){btn.disabled=true;btn.textContent='Сохраняю…';}
+ try{
+  await window.__call('setGoal',{user_code:MP.selCode,new_target_revenue:v});
+  MP.goalEditing=false;
+  // обновляем и панель риэлтора (новый план/цель), и список слева (новая дата плана)
+  const [planRes,groupRes]=await Promise.all([
+   window.__call('getRealtorPlan',{user_code:MP.selCode}),
+   window.__call('getGroupRealtors',{mop_code:MP.mopCode}),
+  ]);
+  MP.plan=planRes.plan; MP.deptMin=planRes.department_minimums||MP.deptMin;
+  MP.income={current_income:planRes.current_income,goal_target:planRes.goal_target,goal_started_at:planRes.goal_started_at};
+  MP.realtors=groupRes.realtors||MP.realtors;
+  MP.dirty={};
+  renderMpLayout();
+  renderMpPanel();
+  const m2=document.getElementById('mpGoalMsg'); if(m2) m2.innerHTML='<div class="pl-success">✅ Доход изменён, план пересчитан.</div>';
+ }catch(e){
+  if(msg) msg.innerHTML='<div class="pl-error">'+esc(e.message||String(e))+'</div>';
+ }finally{
+  MP.goalSaving=false;
+ }
 };
 function mpDirtyKey(ym,side,seg,metric){ return ym+'|'+side+'|'+seg+'|'+metric; }
 // Поток/горячие/остаток — всегда целые числа (решение Егора 19.08.2026:
@@ -1732,7 +1797,13 @@ function renderMpPanel(){
  const panel=document.getElementById('mpPanelRoot');
  if(!panel) return;
  const r=MP.realtors.find(x=>x.code===MP.selCode);
- if(!MP.plan){ panel.innerHTML='<div class="banner">У риэлтора нет активного плана — сначала «Изменить доход» в его кабинете.</div>'; return; }
+ if(!MP.plan){
+  panel.innerHTML=`
+   <div class="mp-panel-head"><div class="mp-panel-name">${esc(r?r.name:MP.selCode)}</div></div>
+   <div class="banner">У риэлтора нет активного плана.</div>
+   ${mpIncomeBarHtml()}`;
+  return;
+ }
  const side=MP.side, segKey=MP.segKey;
  const segs=mpSegsFor(side);
  const metric=mpMetricFor(side);
@@ -1808,6 +1879,7 @@ function renderMpPanel(){
    ${MP.plan.manual_adjustment?`<div class="mp-edit-badge">✏️ план скорректирован ${new Date(MP.plan.manual_adjustment.at).toLocaleDateString('ru-RU')} — ${esc(MP.plan.manual_adjustment.by)}</div>`:''}
   </div>
   <div class="mp-source-note">План на 6 мес рассчитан системой из цели по доходу. Правишь только поток/горячие (покупатель) или остаток/горячие (продавец) — задатки, сделки и вал не меняются.</div>
+  ${mpIncomeBarHtml()}
   <div class="pl-side-switch">
    <button class="pl-side-btn ${side==='buyer'?'on-buyer':''}" onclick="mpPickSide('buyer')"><span class="pl-side-dot" style="background:var(--buyer)"></span>🛒 Покупатель</button>
    <button class="pl-side-btn ${side==='seller'?'on-seller':''}" onclick="mpPickSide('seller')"><span class="pl-side-dot" style="background:var(--seller)"></span>🏠 Продавец</button>
