@@ -471,11 +471,13 @@
  <div class="rtab" data-tab="prognoz" onclick="showTab('prognoz',this)">📈 Прогноз</div>
  <div class="rtab" data-tab="team" onclick="showTab('team',this)">👥 Команда</div>
  <div class="rtab" data-tab="tasks" onclick="showTab('tasks',this)">📋 Задачи и календарь<span id="taskDot"></span></div>
+ <div class="rtab" data-tab="planning" onclick="showTab('planning',this)">🎯 Планирование</div>
  </div>
  <div class="screen on" id="screen-main"></div>
  <div class="screen" id="screen-prognoz"></div>
  <div class="screen" id="screen-team"></div>
  <div class="screen" id="screen-tasks"></div>
+ <div class="screen" id="screen-planning"></div>
 </div>
 
 <div class="modal-overlay" id="modalMgr"><div class="modal" id="modalMgrBody"></div></div>
@@ -483,6 +485,47 @@
 <div class="modal-overlay" id="modalHof"><div class="modal" id="modalHofBody"></div></div>
 <div class="modal-overlay" id="modalBadge"><div class="modal" id="modalBadgeBody"></div></div>
 <style>
+/* Планирование (TZ-A42) */
+.pl-side-switch{display:inline-flex;padding:4px;background:var(--surface-2);border-radius:var(--r-pill);gap:4px;margin:16px 0}
+.pl-side-btn{border:none;background:transparent;padding:9px 18px;border-radius:var(--r-pill);font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px}
+.pl-side-btn.on-buyer{background:#eff6ff;color:var(--buyer)}
+.pl-side-btn.on-seller{background:#ecfdf5;color:var(--seller)}
+.pl-side-dot{width:8px;height:8px;border-radius:50%}
+.pl-total-hint{font-size:11px;color:var(--muted);margin-top:12px}
+.pl-btn-row{display:flex;gap:10px;margin-top:18px}
+.pl-success{margin-top:14px;background:var(--ok-bg,#e9f6ec);color:var(--ok,#16a34a);border-radius:8px;padding:10px 13px;font-size:13px}
+.pl-error{margin-top:14px;background:var(--bad-bg,#fdeaea);color:var(--bad,#dc2626);border-radius:8px;padding:10px 13px;font-size:13px}
+.mp-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
+.mp-list-card{padding:8px}
+.mp-list-title{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;padding:10px 12px 6px}
+.mp-r-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer}
+.mp-r-row.sel{background:var(--brand-soft)}
+.mp-r-ava{width:34px;height:34px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.mp-r-row.sel .mp-r-ava{background:var(--brand);color:#fff}
+.mp-r-text{flex:1;min-width:0}
+.mp-r-name{font-size:13px;font-weight:600}
+.mp-r-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.mp-r-sub2{font-size:11px;color:var(--muted-2,#a8aebd);margin-top:1px}
+.mp-r-pos{font-weight:600;color:var(--brand)}
+.mp-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.mp-panel-name{font-size:20px;font-weight:800}
+.mp-edit-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#5b21b6;background:#f5f3ff;border:1px solid #ddd6fe;padding:5px 12px;border-radius:999px;margin-top:8px}
+.mp-source-note{font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:9px 12px;margin:16px 0 14px}
+.mp-seg-pills{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 10px}
+.mp-seg-pill{border:1px solid var(--line);background:var(--surface);padding:7px 13px;border-radius:999px;font-family:inherit;font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer}
+.mp-seg-pill.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.mp-min-hint{font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:8px 11px;margin-bottom:10px}
+.mp-plan-table{width:100%;border-collapse:collapse;margin-top:4px}
+.mp-plan-table th{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.2px;text-align:center;padding:6px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+.mp-plan-table th:first-child{text-align:left}
+.mp-plan-table td{padding:8px 4px;text-align:center;border-bottom:1px solid var(--line);vertical-align:middle}
+.mp-plan-table td:first-child{text-align:left;font-size:13px;font-weight:600;color:var(--ink-soft);white-space:nowrap}
+.mp-plan-table tr:last-child td{border-bottom:none}
+.mp-cell-input{width:56px;font-size:13px;padding:7px 4px;border:1px solid var(--line);border-radius:8px;font-family:inherit;background:var(--surface);text-align:center;font-weight:600}
+.mp-cell-input.edited{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.mp-cell-ro{font-size:13px;color:var(--muted);font-weight:600}
+.mp-cell-cap{font-size:9px;color:var(--muted-2,#a8aebd);margin-top:3px}
+.mp-row-divider td{background:var(--surface-2);font-size:11px;color:var(--muted);font-weight:600;padding:10px 8px;text-align:left}
 .rw-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
 .rw-hall{font-size:13px;font-weight:700;color:var(--brand);cursor:pointer;white-space:nowrap}
 .hero-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;cursor:pointer}
@@ -580,6 +623,7 @@ window.showTab=(id,btn)=>{
  window.scrollTo(0,0);
  if(window.__markT){clearTimeout(window.__markT);window.__markT=null;}
  if(id==='tasks'){ window.__markT=setTimeout(()=>{ const u=CTX.data&&CTX.data.notifications&&CTX.data.notifications.unread_count; if(u>0) window.markAllRead(true); },2000); }
+ if(id==='planning' && !window.__planningLoaded){ window.__planningLoaded=true; window.loadPlanning&&window.loadPlanning(); }
 };
 window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
 window.openMember=(code)=>{ location.href='index.html?agent='+encodeURIComponent(code); };
@@ -1562,6 +1606,193 @@ function maybeAwardToast(d){ const rw=d&&d.rewards; if(!rw||!rw.newly||!rw.newly
  el.querySelector('button').onclick=(ev)=>{ev.stopPropagation();dismiss();}; el.onclick=()=>{ dismiss(); window.openHof(); };
  document.body.appendChild(el); setTimeout(dismiss,12000);
 }
+// ══════════ Планирование (TZ-A42): правка плана риэлтора по сегментам ══════════
+// Загружается лениво при первом клике на вкладку. Валидацию минимума отдела
+// делает сервер (adjustRealtorPlan) — клиент только показывает ошибку, не
+// дублирует логику дельты по остатку продавца (риск разойтись с бэком).
+const MP_BUYER_SEGS=[{key:'novostroyki',label:'Новостройки'},{key:'vtorichnaya',label:'Вторичка'},{key:'zagorodnaya',label:'Загородная'},{key:'kommercheskaya',label:'Коммерция'},{key:'garazhi',label:'Гаражи'}];
+const MP_SELLER_SEGS=[{key:'vtorichnaya',label:'Вторичка'},{key:'zagorodnaya',label:'Загородная'},{key:'kommercheskaya',label:'Коммерция'},{key:'garazhi',label:'Гаражи'}];
+let MP={mopCode:null,realtors:[],selCode:null,plan:null,deptMin:null,side:'buyer',segKey:'all',dirty:{},saving:false,loadingPlan:false};
+function mpSegsFor(side){ return side==='buyer'?MP_BUYER_SEGS:MP_SELLER_SEGS; }
+function mpMetricFor(side){ return side==='buyer'?'flow':'objects'; }
+function mpFmtMoney(n){ n=Math.round(Number(n)||0); const a=Math.abs(n); if(a>=1000000) return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=1000) return Math.round(n/1000)+'к'; return String(n); }
+window.loadPlanning=async function(){
+ const root=document.getElementById('screen-planning');
+ root.innerHTML='<div class="banner">Загрузка…</div>';
+ try{
+  MP.mopCode=CTX.data.user.code;
+  const res=await window.__call('getGroupRealtors',{mop_code:MP.mopCode});
+  MP.realtors=res.realtors||[];
+  MP.ropCode=res.rop_code||null;
+  if(MP.ropCode){ try{ const dm=await window.__call('getDepartmentMinimums',{rop_code:MP.ropCode}); MP.deptMin=dm.minimums||null; }catch(e){ MP.deptMin=null; } }
+  renderMpLayout();
+  if(MP.realtors.length) mpSelectRealtor(MP.realtors[0].code);
+ }catch(e){ root.innerHTML='<div class="banner">Не удалось загрузить: '+esc(e.message||e)+'</div>'; }
+};
+function renderMpLayout(){
+ const listHtml=MP.realtors.map(r=>{
+  const sub=r.is_newbie ? `стаж ${r.stazh_months??'—'} мес` : `стаж ${r.stazh_months??'—'} мес · <span class="mp-r-pos">#${r.position_in_company??'—'}</span>`;
+  const goalD=r.goal_date ? new Date(r.goal_date).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'}) : '—';
+  return `<div class="mp-r-row ${r.code===MP.selCode?'sel':''}" onclick="mpSelectRealtor('${esc(r.code)}')">
+   <div class="mp-r-ava">${esc(initials(r.name))}</div>
+   <div class="mp-r-text"><div class="mp-r-name">${esc(r.name)}</div><div class="mp-r-sub">${sub}</div><div class="mp-r-sub2">цель от ${goalD}</div></div>
+  </div>`;
+ }).join('');
+ document.getElementById('screen-planning').innerHTML=`
+ <div class="mp-layout">
+  <div class="card mp-list-card">
+   <div class="mp-list-title">Риэлторы группы</div>
+   ${MP.realtors.length?listHtml:'<div class="muted" style="padding:12px">В группе нет активных партнёров.</div>'}
+  </div>
+  <div class="card mp-panel" id="mpPanelRoot"><div class="muted">Выбери риэлтора слева.</div></div>
+ </div>`;
+}
+window.mpSelectRealtor=async function(code){
+ MP.selCode=code; MP.plan=null; MP.dirty={}; MP.side='buyer'; MP.segKey='all';
+ document.querySelectorAll('.mp-r-row').forEach(el=>el.classList.remove('sel'));
+ renderMpLayout(); // перерисует список с выделением + сброшенную панель
+ const panel=document.getElementById('mpPanelRoot');
+ panel.innerHTML='<div class="muted">Загрузка плана…</div>';
+ MP.loadingPlan=true;
+ try{
+  const res=await window.__call('getRealtorPlan',{user_code:code});
+  MP.plan=res.plan; MP.deptMin=res.department_minimums||MP.deptMin;
+  renderMpPanel();
+ }catch(e){ panel.innerHTML='<div class="banner">Не удалось загрузить план: '+esc(e.message||e)+'</div>'; }
+ MP.loadingPlan=false;
+};
+function mpDirtyKey(ym,side,seg,metric){ return ym+'|'+side+'|'+seg+'|'+metric; }
+function mpCellVal(monthRow,side,seg,metric){
+ const dk=mpDirtyKey(monthRow.ym,side,seg,metric);
+ if(MP.dirty.hasOwnProperty(dk)) return MP.dirty[dk];
+ const src=monthRow[side]&&monthRow[side][seg];
+ const v=src&&src[metric];
+ return v!=null?v:0;
+}
+window.mpPickSide=function(side){ MP.side=side; MP.segKey='all'; renderMpPanel(); };
+window.mpPickSeg=function(seg){ MP.segKey=seg; renderMpPanel(); };
+window.mpOnInput=function(ym,side,seg,metric,el){
+ const v=el.value===''?0:Number(el.value);
+ MP.dirty[mpDirtyKey(ym,side,seg,metric)]=isFinite(v)?v:0;
+};
+window.mpCancel=function(){ MP.dirty={}; renderMpPanel(); };
+window.mpSave=async function(){
+ if(MP.saving) return;
+ const updates=Object.keys(MP.dirty).map(k=>{
+  const [ym,side,segment,metric]=k.split('|');
+  return {ym,side,segment,metric,value:MP.dirty[k]};
+ });
+ if(!updates.length) return;
+ MP.saving=true;
+ const btn=document.getElementById('mpSaveBtn'); if(btn){btn.disabled=true;btn.textContent='Сохраняю…';}
+ const msg=document.getElementById('mpMsg'); if(msg) msg.innerHTML='';
+ try{
+  await window.__call('adjustRealtorPlan',{user_code:MP.selCode,updates});
+  MP.dirty={};
+  const res=await window.__call('getRealtorPlan',{user_code:MP.selCode});
+  MP.plan=res.plan;
+  renderMpPanel();
+  const m2=document.getElementById('mpMsg'); if(m2) m2.innerHTML='<div class="pl-success">✅ План сохранён и отражён в кабинете риэлтора на Главной.</div>';
+ }catch(e){
+  if(msg) msg.innerHTML='<div class="pl-error">'+esc(e.message||String(e))+'</div>';
+ }finally{
+  MP.saving=false;
+  if(btn){btn.disabled=false;btn.textContent='Сохранить план';}
+ }
+};
+function renderMpPanel(){
+ const panel=document.getElementById('mpPanelRoot');
+ if(!panel) return;
+ const r=MP.realtors.find(x=>x.code===MP.selCode);
+ if(!MP.plan){ panel.innerHTML='<div class="banner">У риэлтора нет активного плана — сначала «Изменить доход» в его кабинете.</div>'; return; }
+ const side=MP.side, segKey=MP.segKey;
+ const segs=mpSegsFor(side);
+ const metric=mpMetricFor(side);
+ const months=MP.plan.months||[];
+ const hasEdits=Object.keys(MP.dirty).length>0;
+
+ // подсказка по минимуму отдела (информационно, сервер — источник истины)
+ let minHint='';
+ if(MP.deptMin){
+  if(segKey!=='all'){
+   if(side==='buyer'){
+    const mv=MP.deptMin.buyer&&MP.deptMin.buyer.flow&&MP.deptMin.buyer.flow.segments&&MP.deptMin.buyer.flow.segments[segKey];
+    if(mv!=null) minHint=`Минимум отдела по потоку: ${mv}/мес.`;
+   } else {
+    const mv=MP.deptMin.seller&&MP.deptMin.seller.flow&&MP.deptMin.seller.flow.segments&&MP.deptMin.seller.flow.segments[segKey];
+    if(mv!=null) minHint=`Минимум отдела по набору: +${mv}/мес к остатку прошлого месяца.`;
+   }
+  }
+ }
+
+ const monthHdrs=months.map(m=>`<th>${esc(m.ym)}</th>`).join('');
+
+ function metricRow(label, mtc, seg, editable){
+  const cells=months.map(m=>{
+   const v=mpCellVal(m,side,seg,mtc);
+   if(m.closed){
+    return `<td><span class="mp-cell-ro">${v}</span><div class="mp-cell-cap">план, месяц закрыт</div></td>`;
+   }
+   if(!editable){
+    return `<td><span class="mp-cell-ro">${v}</span></td>`;
+   }
+   const dk=mpDirtyKey(m.ym,side,seg,mtc);
+   const isDirty=MP.dirty.hasOwnProperty(dk);
+   return `<td><input class="mp-cell-input ${isDirty?'edited':''}" type="number" min="0" value="${v}" onchange="mpOnInput('${m.ym}','${side}','${seg}','${mtc}',this)"></td>`;
+  }).join('');
+  return `<tr><td>${esc(label)}</td>${cells}</tr>`;
+ }
+ function readonlySumRow(label, mtc){
+  const cells=months.map(m=>{
+   let sum=0; segs.forEach(s=>{ const src=m[side]&&m[side][s.key]; sum+=Number(src&&src[mtc])||0; });
+   return `<td><span class="mp-cell-ro">${Math.round(sum*10)/10}</span></td>`;
+  }).join('');
+  return `<tr><td>${esc(label)}</td>${cells}</tr>`;
+ }
+ function revenueRow(){
+  const cells=months.map(m=>`<td><span class="mp-cell-ro">${mpFmtMoney(side==='buyer'?m.target_revenue_buyer:m.target_revenue_seller)}</span></td>`).join('');
+  return `<tr><td>Вал план (расчёт)</td>${cells}</tr>`;
+ }
+
+ let editRowsHtml;
+ if(segKey==='all'){
+  editRowsHtml=readonlySumRow(side==='buyer'?'Поток (заявки), сумма':'Остаток ОН, сумма', metric)+readonlySumRow('Горячих, сумма','hot');
+ } else {
+  editRowsHtml=metricRow(side==='buyer'?'Поток (заявки)':'Остаток ОН (на конец мес.)', metric, segKey, true)+metricRow('Горячих','hot', segKey, true);
+ }
+
+ const segPills=[{key:'all',label:'Все сегменты'}].concat(segs).map(s=>`<button class="mp-seg-pill ${s.key===segKey?'on':''}" onclick="mpPickSeg('${s.key}')">${esc(s.label)}</button>`).join('');
+
+ panel.innerHTML=`
+  <div class="mp-panel-head">
+   <div class="mp-panel-name">${esc(r?r.name:MP.selCode)}</div>
+   ${MP.plan.manual_adjustment?`<div class="mp-edit-badge">✏️ план скорректирован ${new Date(MP.plan.manual_adjustment.at).toLocaleDateString('ru-RU')} — ${esc(MP.plan.manual_adjustment.by)}</div>`:''}
+  </div>
+  <div class="mp-source-note">План на 6 мес рассчитан системой из цели по доходу. Правишь только поток/горячие (покупатель) или остаток/горячие (продавец) — задатки, сделки и вал не меняются.</div>
+  <div class="pl-side-switch">
+   <button class="pl-side-btn ${side==='buyer'?'on-buyer':''}" onclick="mpPickSide('buyer')"><span class="pl-side-dot" style="background:var(--buyer)"></span>🛒 Покупатель</button>
+   <button class="pl-side-btn ${side==='seller'?'on-seller':''}" onclick="mpPickSide('seller')"><span class="pl-side-dot" style="background:var(--seller)"></span>🏠 Продавец</button>
+  </div>
+  <div class="mp-seg-pills">${segPills}</div>
+  ${minHint?`<div class="mp-min-hint">${esc(minHint)}</div>`:''}
+  <div class="scroll-wrap"><table class="mp-plan-table">
+   <thead><tr><th>Показатель</th>${monthHdrs}</tr></thead>
+   <tbody>
+    ${editRowsHtml}
+    <tr class="mp-row-divider"><td colspan="${months.length+1}">План дохода — не меняется правкой потока/горячих, задан кнопкой «Изменить доход»</td></tr>
+    ${readonlySumRow('Задатки (расчёт)','deposits')}
+    ${readonlySumRow('Сделок план (расчёт)','deals')}
+    ${revenueRow()}
+   </tbody>
+  </table></div>
+  <div class="pl-btn-row">
+   <button class="btn-primary" id="mpSaveBtn" onclick="mpSave()" ${hasEdits?'':'disabled'}>Сохранить план</button>
+   <button class="btn-secondary" onclick="mpCancel()">Отмена</button>
+  </div>
+  <div class="pl-total-hint">После сохранения план сразу виден риэлтору на «Главной» его кабинета.</div>
+  <div id="mpMsg"></div>`;
+}
+
 function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderTeam(d); renderTasks(d); window.initIrCards&&window.initIrCards(); maybeAwardToast(d); }
 
 (async ()=>{

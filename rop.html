@@ -430,11 +430,13 @@
  <div class="rtab" data-tab="prognoz" onclick="showTab('prognoz',this)">📈 Прогноз</div>
  <div class="rtab" data-tab="groups" onclick="showTab('groups',this)">👥 Старшие партнёры</div>
  <div class="rtab" data-tab="tasks" onclick="showTab('tasks',this)">📋 Задачи и календарь<span id="taskDot"></span></div>
+ <div class="rtab" data-tab="planning" onclick="showTab('planning',this)">🎯 Планирование</div>
  </div>
  <div class="screen on" id="screen-main"></div>
  <div class="screen" id="screen-prognoz"></div>
  <div class="screen" id="screen-groups"></div>
  <div class="screen" id="screen-tasks"></div>
+ <div class="screen" id="screen-planning"></div>
 </div>
 
 <div class="modal-overlay" id="modalMgr"><div class="modal" id="modalMgrBody"></div></div>
@@ -442,6 +444,31 @@
 <div class="modal-overlay" id="modalHof"><div class="modal" id="modalHofBody"></div></div>
 <div class="modal-overlay" id="modalBadge"><div class="modal" id="modalBadgeBody"></div></div>
 <style>
+/* Планирование (TZ-A42) */
+.pl-side-switch{display:inline-flex;padding:4px;background:var(--surface-2);border-radius:var(--r-pill);gap:4px;margin:16px 0}
+.pl-side-btn{border:none;background:transparent;padding:9px 18px;border-radius:var(--r-pill);font-family:inherit;font-size:var(--fs-13);font-weight:var(--fw-sb);color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px}
+.pl-side-btn.on-buyer{background:#eff6ff;color:var(--buyer)}
+.pl-side-btn.on-seller{background:#ecfdf5;color:var(--seller)}
+.pl-side-dot{width:8px;height:8px;border-radius:50%}
+.pl-total-row{display:flex;align-items:flex-end;gap:28px;padding:14px 16px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:6px;flex-wrap:wrap}
+.pl-total-item{display:flex;flex-direction:column;gap:6px}
+.pl-total-cap{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb);text-transform:uppercase;letter-spacing:.3px}
+.pl-total-input{width:80px;font-size:var(--fs-22);font-weight:var(--fw-eb);padding:4px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;background:var(--surface);text-align:center}
+.pl-total-unit{font-size:var(--fs-13);color:var(--muted)}
+.pl-total-hint{font-size:var(--fs-11);color:var(--muted);margin:0 0 16px 2px}
+.pl-seg-table{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.pl-seg-row{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.pl-seg-row:last-child{border-bottom:none}
+.pl-seg-row.head{background:var(--surface-2)}
+.pl-seg-name{font-weight:var(--fw-sb);font-size:var(--fs-13)}
+.pl-seg-cap{font-size:var(--fs-11);color:var(--muted);font-weight:var(--fw-sb);text-transform:uppercase;letter-spacing:.2px}
+.pl-seg-input-wrap{display:flex;align-items:center;gap:8px}
+.pl-seg-input{width:64px;font-size:var(--fs-14);padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;background:var(--surface);text-align:center;font-weight:var(--fw-sb)}
+.pl-seg-unit{font-size:var(--fs-12);color:var(--muted)}
+.pl-btn-row{display:flex;gap:10px;margin-top:18px}
+.pl-notify{display:flex;align-items:flex-start;gap:10px;background:var(--warn-bg);border:1px solid #f7d9a8;border-radius:var(--r-md);padding:10px 13px;margin-top:10px;font-size:var(--fs-12);color:#7c4a03}
+.pl-success{margin-top:14px;background:var(--ok-bg);color:var(--ok);border-radius:8px;padding:10px 13px;font-size:var(--fs-13)}
+.pl-error{margin-top:14px;background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:10px 13px;font-size:var(--fs-13)}
 .rw-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
 .rw-hall{font-size:13px;font-weight:700;color:var(--brand);cursor:pointer;white-space:nowrap}
 .hero-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;cursor:pointer}
@@ -539,6 +566,7 @@ window.showTab=(id,btn)=>{
  window.scrollTo(0,0);
  if(window.__markT){clearTimeout(window.__markT);window.__markT=null;}
  if(id==='tasks'){ window.__markT=setTimeout(()=>{ const u=CTX.data&&CTX.data.notifications&&CTX.data.notifications.unread_count; if(u>0) window.markAllRead(true); },2000); }
+ if(id==='planning' && !window.__planningLoaded){ window.__planningLoaded=true; window.loadPlanning&&window.loadPlanning(); }
 };
 window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
 window.openGroup=(code)=>{ location.href='mop.html?mop='+encodeURIComponent(code); };
@@ -1382,6 +1410,124 @@ function maybeAwardToast(d){ const rw=d&&d.rewards; if(!rw||!rw.newly||!rw.newly
  el.querySelector('button').onclick=(ev)=>{ev.stopPropagation();dismiss();}; el.onclick=()=>{ dismiss(); window.openHof(); };
  document.body.appendChild(el); setTimeout(dismiss,12000);
 }
+// ══════════ Планирование (TZ-A42): минимумы отдела ══════════
+// Загружается лениво при первом клике на вкладку (showTab), не на общей загрузке.
+const PLANNING_BUYER_SEGS=[{key:'novostroyki',label:'Новостройки'},{key:'vtorichnaya',label:'Вторичка'},{key:'zagorodnaya',label:'Загородная'},{key:'kommercheskaya',label:'Коммерция'},{key:'garazhi',label:'Гаражи'}];
+const PLANNING_SELLER_SEGS=[{key:'vtorichnaya',label:'Вторичка'},{key:'zagorodnaya',label:'Загородная'},{key:'kommercheskaya',label:'Коммерция'},{key:'garazhi',label:'Гаражи'}];
+let PLAN_STATE={side:'buyer',minimums:null,ropCode:null,saving:false};
+function planningSegsFor(side){ return side==='buyer'?PLANNING_BUYER_SEGS:PLANNING_SELLER_SEGS; }
+function planningEmptyMinimums(){ return {buyer:{flow:{total:0,segments:{}},hot:{total:0,segments:{}}},seller:{flow:{total:0,segments:{}},hot:{total:0,segments:{}}}}; }
+window.loadPlanning=async function(){
+ const root=document.getElementById('screen-planning');
+ root.innerHTML='<div class="banner">Загрузка…</div>';
+ try{
+  const ropCode=CTX.data.user.code;
+  PLAN_STATE.ropCode=ropCode;
+  const res=await window.__call('getDepartmentMinimums',{rop_code:ropCode});
+  PLAN_STATE.minimums=res.minimums||planningEmptyMinimums();
+  renderPlanningScreen();
+ }catch(e){ root.innerHTML='<div class="banner">Не удалось загрузить: '+esc(e.message||e)+'</div>'; }
+};
+function planningGetSeg(side,metric,seg){
+ const m=PLAN_STATE.minimums; const v=m&&m[side]&&m[side][metric]&&m[side][metric].segments&&m[side][metric].segments[seg];
+ return v!=null?v:'';
+}
+function planningGetTotal(side,metric){
+ const m=PLAN_STATE.minimums; const v=m&&m[side]&&m[side][metric]&&m[side][metric].total;
+ return v!=null?v:'';
+}
+// Забрать значения полей текущей стороны из DOM в PLAN_STATE — вызывается перед
+// переключением стороны и перед сохранением, иначе правки на другой стороне теряются.
+function planningCapture(){
+ if(!PLAN_STATE.minimums) PLAN_STATE.minimums=planningEmptyMinimums();
+ const side=PLAN_STATE.side; const m=PLAN_STATE.minimums;
+ ['flow','hot'].forEach(metric=>{
+  if(!m[side][metric]) m[side][metric]={total:0,segments:{}};
+  if(!m[side][metric].segments) m[side][metric].segments={};
+  planningSegsFor(side).forEach(s=>{
+   const el=document.querySelector(`.pl-seg-input[data-side="${side}"][data-metric="${metric}"][data-seg="${s.key}"]`);
+   if(el) m[side][metric].segments[s.key]=el.value===''?0:(Number(el.value)||0);
+  });
+  const totalEl=document.getElementById(metric==='flow'?'plTotalFlow':'plTotalHot');
+  if(totalEl) m[side][metric].total=totalEl.value===''?0:(Number(totalEl.value)||0);
+ });
+}
+window.planningPickSide=function(side){ planningCapture(); PLAN_STATE.side=side; renderPlanningScreen(); };
+window.planningReset=async function(){ await window.loadPlanning(); };
+function planningUpdateNotify(){
+ const side=PLAN_STATE.side;
+ const box=document.getElementById('plNotify'); if(!box) return;
+ const totalEl=document.getElementById('plTotalFlow');
+ const total=Number((totalEl&&totalEl.value)||0);
+ let sum=0;
+ planningSegsFor(side).forEach(s=>{
+  const el=document.querySelector(`.pl-seg-input[data-side="${side}"][data-metric="flow"][data-seg="${s.key}"]`);
+  sum+=Number((el&&el.value)||0);
+ });
+ if(total>0 && sum!==total){
+  box.innerHTML=`<div class="pl-notify">⚠️ Сумма по сегментам (${sum}) не совпадает с общим минимумом (${total}). Это уведомление — сохранить всё равно можно.</div>`;
+ } else box.innerHTML='';
+}
+function renderPlanningScreen(){
+ const side=PLAN_STATE.side;
+ const segs=planningSegsFor(side);
+ const flowLabel=side==='buyer'?'поток':'набор ОН';
+ const flowUnit=side==='buyer'?'заявок':'объектов';
+ const segRows=segs.map(s=>`
+  <div class="pl-seg-row">
+   <div class="pl-seg-name">${esc(s.label)}</div>
+   <div class="pl-seg-input-wrap"><input class="pl-seg-input" type="number" min="0" data-side="${side}" data-metric="flow" data-seg="${s.key}" value="${planningGetSeg(side,'flow',s.key)}" oninput="planningUpdateNotify()"><span class="pl-seg-unit">/мес</span></div>
+   <div class="pl-seg-input-wrap"><input class="pl-seg-input" type="number" min="0" data-side="${side}" data-metric="hot" data-seg="${s.key}" value="${planningGetSeg(side,'hot',s.key)}"><span class="pl-seg-unit">/мес</span></div>
+  </div>`).join('');
+ const html=`
+ <div class="card">
+  <div class="card-head"><div>
+   <div class="card-title">Минимальные показатели отдела</div>
+   <div class="card-hint">Задаёшь общую цифру в месяц — система пропорционально раскладывает по сегментам. Ниже итогового плана риэлтора система не поставит, даже если у него уже больше по факту. Изменения учитываются при следующем расчёте дохода риэлтора — задним числом уже посчитанные планы не трогаем.</div>
+  </div></div>
+  <div class="pl-side-switch">
+   <button class="pl-side-btn ${side==='buyer'?'on-buyer':''}" onclick="planningPickSide('buyer')"><span class="pl-side-dot" style="background:var(--buyer)"></span>🛒 Покупатель</button>
+   <button class="pl-side-btn ${side==='seller'?'on-seller':''}" onclick="planningPickSide('seller')"><span class="pl-side-dot" style="background:var(--seller)"></span>🏠 Продавец</button>
+  </div>
+  <div class="pl-total-row">
+   <div class="pl-total-item"><span class="pl-total-cap">Общий мин. ${esc(flowLabel)} / мес</span>
+    <div><input class="pl-total-input" type="number" min="0" id="plTotalFlow" value="${planningGetTotal(side,'flow')}" oninput="planningUpdateNotify()"> <span class="pl-total-unit">${esc(flowUnit)}</span></div></div>
+   <div class="pl-total-item"><span class="pl-total-cap">Общий мин. горячих / мес</span>
+    <div><input class="pl-total-input" type="number" min="0" id="plTotalHot" value="${planningGetTotal(side,'hot')}"></div></div>
+  </div>
+  <div class="pl-total-hint">Ниже — как это распределилось по сегментам. Можно поправить любой сегмент вручную.</div>
+  <div class="pl-seg-table">
+   <div class="pl-seg-row head"><div class="pl-seg-cap">Сегмент</div><div class="pl-seg-cap">Мин. ${esc(flowLabel)} / мес</div><div class="pl-seg-cap">Мин. горячих / мес</div></div>
+   ${segRows}
+  </div>
+  <div id="plNotify"></div>
+  <div class="pl-btn-row">
+   <button class="btn-primary" id="plSaveBtn" onclick="planningSave()">Сохранить минимумы</button>
+   <button class="btn-secondary" onclick="planningReset()">Сбросить</button>
+  </div>
+  <div id="plMsg"></div>
+ </div>`;
+ document.getElementById('screen-planning').innerHTML=html;
+ planningUpdateNotify();
+}
+window.planningSave=async function(){
+ if(PLAN_STATE.saving) return;
+ planningCapture();
+ PLAN_STATE.saving=true;
+ const btn=document.getElementById('plSaveBtn'); if(btn){btn.disabled=true;btn.textContent='Сохраняю…';}
+ const msg=document.getElementById('plMsg');
+ try{
+  const m=PLAN_STATE.minimums;
+  const res=await window.__call('setDepartmentMinimums',{rop_code:PLAN_STATE.ropCode,buyer:m.buyer,seller:m.seller});
+  if(msg) msg.innerHTML=`<div class="pl-success">✅ ${esc(res.message||'Сохранено.')}</div>`;
+ }catch(e){
+  if(msg) msg.innerHTML=`<div class="pl-error">Не удалось сохранить: ${esc(e.message||e)}</div>`;
+ }finally{
+  PLAN_STATE.saving=false;
+  if(btn){btn.disabled=false;btn.textContent='Сохранить минимумы';}
+ }
+};
+
 function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups(d); renderTasks(d); window.initIrCards&&window.initIrCards(); maybeAwardToast(d); }
 
 (async ()=>{
