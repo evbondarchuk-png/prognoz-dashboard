@@ -1421,7 +1421,7 @@ window.loadPlanning=async function(){
  const root=document.getElementById('screen-planning');
  root.innerHTML='<div class="banner">Загрузка…</div>';
  try{
-  const ropCode=CTX.data.user.code;
+  const ropCode=CTX.target||CTX.me;
   PLAN_STATE.ropCode=ropCode;
   const res=await window.__call('getDepartmentMinimums',{rop_code:ropCode});
   PLAN_STATE.minimums=res.minimums||planningEmptyMinimums();

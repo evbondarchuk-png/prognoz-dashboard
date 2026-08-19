@@ -1620,7 +1620,7 @@ window.loadPlanning=async function(){
  const root=document.getElementById('screen-planning');
  root.innerHTML='<div class="banner">Загрузка…</div>';
  try{
-  MP.mopCode=CTX.data.user.code;
+  MP.mopCode=CTX.target||CTX.me;
   const res=await window.__call('getGroupRealtors',{mop_code:MP.mopCode});
   MP.realtors=res.realtors||[];
   MP.ropCode=res.rop_code||null;
