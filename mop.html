@@ -1686,8 +1686,8 @@ function mpIncomeBarHtml(){
   return `<div class="mp-income-bar">
    <div class="mp-income-item"><span class="mp-income-cap">Текущий доход</span><b>${fmtFull(inc.current_income)}</b></div>
    <input class="mp-income-input" id="mpGoalInput" type="number" min="30000" max="5000000" value="${prefill}">
-   <button class="btn-primary" id="mpGoalSaveBtn" onclick="mpSaveGoalIncome()">Сохранить и пересчитать план</button>
-   <button class="btn-secondary" onclick="MP.goalEditing=false;renderMpPanel();">Отмена</button>
+   <button class="btn-primary" id="mpGoalSaveBtn" onclick="window.mpSaveGoalIncome()">Сохранить и пересчитать план</button>
+   <button class="btn-secondary" onclick="window.mpToggleGoalEdit(false)">Отмена</button>
   </div>
   <div id="mpGoalMsg"></div>`;
  }
@@ -1695,10 +1695,11 @@ function mpIncomeBarHtml(){
   <div class="mp-income-item"><span class="mp-income-cap">Текущий доход</span><b>${fmtFull(inc.current_income)}</b></div>
   <div class="mp-income-item"><span class="mp-income-cap">Целевой доход</span><b>${fmtFull(inc.goal_target)}</b></div>
   <div class="mp-income-item"><span class="mp-income-cap">Цикл идёт</span><b>${cycleTxt}</b></div>
-  <button class="btn-secondary" onclick="MP.goalEditing=true;renderMpPanel();">✏️ Изменить доход</button>
+  <button class="btn-secondary" onclick="window.mpToggleGoalEdit(true)">✏️ Изменить доход</button>
  </div>
  <div id="mpGoalMsg"></div>`;
 }
+window.mpToggleGoalEdit=function(edit){ MP.goalEditing=edit; renderMpPanel(); };
 window.mpSaveGoalIncome=async function(){
  if(MP.goalSaving) return;
  const el=document.getElementById('mpGoalInput');
