@@ -457,7 +457,7 @@
 .pl-total-unit{font-size:var(--fs-13);color:var(--muted)}
 .pl-total-hint{font-size:var(--fs-11);color:var(--muted);margin:0 0 16px 2px}
 .pl-seg-table{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
-.pl-seg-row{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.pl-seg-row{display:grid;grid-template-columns:1.4fr 1fr;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
 .pl-seg-row:last-child{border-bottom:none}
 .pl-seg-row.head{background:var(--surface-2)}
 .pl-seg-name{font-weight:var(--fw-sb);font-size:var(--fs-13)}
@@ -1477,7 +1477,6 @@ function renderPlanningScreen(){
   <div class="pl-seg-row">
    <div class="pl-seg-name">${esc(s.label)}</div>
    <div class="pl-seg-input-wrap"><input class="pl-seg-input" type="number" min="0" data-side="${side}" data-metric="flow" data-seg="${s.key}" value="${planningGetSeg(side,'flow',s.key)}" oninput="planningUpdateNotify()"><span class="pl-seg-unit">/мес</span></div>
-   <div class="pl-seg-input-wrap"><input class="pl-seg-input" type="number" min="0" data-side="${side}" data-metric="hot" data-seg="${s.key}" value="${planningGetSeg(side,'hot',s.key)}"><span class="pl-seg-unit">/мес</span></div>
   </div>`).join('');
  const html=`
  <div class="card">
@@ -1492,12 +1491,10 @@ function renderPlanningScreen(){
   <div class="pl-total-row">
    <div class="pl-total-item"><span class="pl-total-cap">Общий мин. ${esc(flowLabel)} / мес</span>
     <div><input class="pl-total-input" type="number" min="0" id="plTotalFlow" value="${planningGetTotal(side,'flow')}" oninput="planningUpdateNotify()"> <span class="pl-total-unit">${esc(flowUnit)}</span></div></div>
-   <div class="pl-total-item"><span class="pl-total-cap">Общий мин. горячих / мес</span>
-    <div><input class="pl-total-input" type="number" min="0" id="plTotalHot" value="${planningGetTotal(side,'hot')}"></div></div>
   </div>
   <div class="pl-total-hint">Ниже — как это распределилось по сегментам. Можно поправить любой сегмент вручную.</div>
   <div class="pl-seg-table">
-   <div class="pl-seg-row head"><div class="pl-seg-cap">Сегмент</div><div class="pl-seg-cap">Мин. ${esc(flowLabel)} / мес</div><div class="pl-seg-cap">Мин. горячих / мес</div></div>
+   <div class="pl-seg-row head"><div class="pl-seg-cap">Сегмент</div><div class="pl-seg-cap">Мин. ${esc(flowLabel)} / мес</div></div>
    ${segRows}
   </div>
   <div id="plNotify"></div>
