@@ -472,6 +472,7 @@
  <div class="rtab" data-tab="team" onclick="showTab('team',this)">👥 Команда</div>
  <div class="rtab" data-tab="tasks" onclick="showTab('tasks',this)">📋 Задачи и календарь<span id="taskDot"></span></div>
  <div class="rtab" data-tab="planning" onclick="showTab('planning',this)">🎯 Планирование</div>
+ <div class="rtab" data-tab="report" onclick="openGroupReport()">📄 Отчёт</div>
  </div>
  <div class="screen on" id="screen-main"></div>
  <div class="screen" id="screen-prognoz"></div>
@@ -632,6 +633,10 @@ window.showTab=(id,btn)=>{
  if(id==='planning' && !window.__planningLoaded){ window.__planningLoaded=true; window.loadPlanning&&window.loadPlanning(); }
 };
 window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
+// Отчёт по группе — тот же отчёт, что видит РОП по своим менеджерам (session-report.html?level=mop),
+// открываем в новой вкладке своим текущим кодом группы (CTX.target — свой код, либо код
+// менеджера, если РОП зашёл сюда через mop.html?mop=). Печать/PDF уже есть внутри отчёта.
+window.openGroupReport=()=>{ window.open('session-report.html?level=mop&code='+encodeURIComponent(CTX.target),'_blank'); };
 window.openMember=(code)=>{ location.href='index.html?agent='+encodeURIComponent(code); };
 window.closeModal=(id)=>document.getElementById(id).classList.remove('on');
 window.completeTask=async(id,ev)=>{
