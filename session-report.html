@@ -1137,7 +1137,21 @@ function activityHTML(a) {
   }
   const nDays = a.stall_days || 0;
   const word = nDays === 1 ? 'день' : (nDays >= 2 && nDays <= 4 ? 'дня' : 'дней');
-  return `<div class="yday stall"><div class="yi">⏸️</div><div class="yt"><div><b>Вчера без движения по воронке</b></div><div class="muted" style="font-size:13px;margin-top:4px">Последняя активность — <b>${nDays} ${word} назад</b>. Стоит разобрать, что тормозит.</div></div></div>`;
+  const reason = a.reason ? ` — ${esc(a.reason)}` : '';
+  return `<div class="yday stall"><div class="yi">⏸️</div><div class="yt"><div><b>Вчера без движения по воронке</b></div><div class="muted" style="font-size:13px;margin-top:4px">Последняя активность — <b>${nDays} ${word} назад</b>${reason}.</div></div></div>`;
+}
+// 📆 активность по дням (7 дней) — та же таблица, что у команды МОПа, но по своим дням
+function weekDaysHTML(days) {
+  if (!days || !days.length) return '';
+  const cell = (bv, sv) => {
+    const b = bv > 0 ? `<b style="color:var(--buyer)">+${bv}</b>` : '<span style="color:var(--muted-2)">0</span>';
+    const s = sv > 0 ? `<b style="color:var(--seller)">+${sv}</b>` : '<span style="color:var(--muted-2)">0</span>';
+    return `${b} <span style="color:var(--muted-2)">\\</span> ${s}`;
+  };
+  const dLabel = (d) => { const p = String(d).split('-'); return p.length === 3 ? `${p[2]}.${p[1]}` : d; };
+  const body = days.map((r) => `<tr><td>${dLabel(r.date)}</td><td>${cell(r.b.flow, r.s.obj)}</td><td>${cell(r.b.hot, r.s.hot)}</td><td>${cell(r.b.dep, r.s.dep)}</td><td>${cell(r.b.closed, r.s.closed)}</td></tr>`).join('');
+  return `<div class="wk-legend" style="margin-top:14px"><span style="color:var(--buyer)">🛒 покупатель</span> <span style="color:var(--muted-2)">\\</span> <span style="color:var(--seller)">🏠 продавец</span></div>
+    <div style="overflow-x:auto"><table class="wk-tbl"><thead><tr><th>День</th><th>Заявки \\ Объекты</th><th>Горячие</th><th>Задатки</th><th>Сделки</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 // воронка месяца с полосками прогресса (факт / план)
 function funnelProgressHTML(funnel) {
@@ -1175,8 +1189,19 @@ function peersHTML(p) {
     const diff = p.ir_month - p.dept_ir_month;
     cards.push(`<div class="fon-card${good ? ' good' : ''}"><div class="fk">Твой ИР месяца vs отдел</div><div class="fbig">${p.ir_month}% vs ${p.dept_ir_month}%</div><div class="fnote">${good ? `выше отдела на ${diff} п.п. 👍` : `ниже отдела на ${-diff} п.п.`}</div></div>`);
   }
-  if (!cards.length) return '<div class="muted">Недостаточно данных для сравнения.</div>';
-  return `<div class="fon">${cards.join('')}</div>`;
+  if (!cards.length && !(p.leaderboard && p.leaderboard.length)) return '<div class="muted">Недостаточно данных для сравнения.</div>';
+  const fonHTML = cards.length ? `<div class="fon">${cards.join('')}</div>` : '';
+  return fonHTML + groupLeaderboardHTML(p.leaderboard);
+}
+// 🏆 полный рейтинг группы по ИР недели, своя строка выделена (по образцу groupCompareHTML у МОПа)
+function groupLeaderboardHTML(lb) {
+  if (!lb || !lb.length) return '';
+  const rows = lb.map((g, i) => {
+    const w = Math.max(2, Math.min(100, Math.round(g.ir_week)));
+    const clr = g.self ? '#16a34a' : (g.ir_week >= 70 ? '#16a34a' : g.ir_week >= 30 ? '#d97706' : '#dc2626');
+    return `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${i + 1}. ${esc(g.name)}${g.self ? ' (ты)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%;background:${clr}"></span><span class="gnorm" title="норма 70%"></span></span><span class="gv">${Math.round(g.ir_week)}%</span></div>`;
+  }).join('');
+  return `<div class="block-title" style="margin-top:14px">Рейтинг группы по ИР недели</div>${rows}`;
 }
 function awardChipsHTML(chips) {
   if (!chips || !chips.length) return '';
@@ -1227,6 +1252,7 @@ function render(r, fromCache) {
       <div class="sec-h"><span class="n">4</span> Активность</div>
       <div class="sec-sub">Что двигалось вчера и сколько дней назад была последняя активность по воронке.</div>
       ${activityHTML(r.activity)}
+      ${weekDaysHTML(r.week_days)}
     </div>` : ''}
 
     <div class="sec">
