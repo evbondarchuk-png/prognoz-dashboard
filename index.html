@@ -2400,18 +2400,30 @@ function svetoforValIncomeCard(d){
 function svetoforCalculatorCard(d){
  var u=(d&&d.user)||{};
  var inc=u.income_month||0, stz=u.stazh_months||0;
+ var isNewbie=u.svetofor_pool==='newbie';
  if(!(inc>0 && stz>0)){
   return `<div class="card"><div class="section-title">🧮 Куда попадёшь в светофоре</div>
   <div class="soon">Калькулятор станет доступен, когда появятся данные о доходе.</div></div>`;
  }
+ // Новичок: место в рейтинге новичков несравнимо с пирамидой опытных зон —
+ // раньше «127 из новичков» рисовалось как опытное место. Теперь для новичка
+ // «сейчас» = виртуальное место в светофоре опытных ПО СРЕДНЕМУ ДОХОДУ,
+ // и калькулятор считает от него (решение Егора 24.08).
+ var rankNote='';
+ if(isNewbie){
+  var PT=poolTotals(d);
+  var rank=(typeof u.position_in_pool==='number'&&u.position_in_pool>0)?u.position_in_pool:null;
+  rankNote=`<div class="muted" style="font-size:11.5px;line-height:1.45;margin:-4px 0 10px">Ты пока в светофоре новичков${rank?` — там ты <b>#${rank}</b> из ${PT.newbie}`:''}. Ниже показано, где ты был бы среди опытных по своему среднему доходу: от этого места и считаем.</div>`;
+ }
  return `<div class="card">
   <div class="section-title">🧮 Куда попадёшь в светофоре</div>
   <div class="muted" style="font-size:12px;margin-bottom:10px">Введи вал на следующий месяц — покажу, как это сдвинет твоё место.</div>
+  ${rankNote}
   <div class="sv-calc">
    <label class="sv-calc-label">нужно сделать вала, ₽
     <input id="svV" type="text" inputmode="numeric" autocomplete="off" placeholder="введи вал">
    </label>
-   <div class="sv-curr-line">📍 сейчас моё место: <b id="svCurrPos">—</b>, <b id="svCurrCat">—</b></div>
+   <div class="sv-curr-line">📍 ${isNewbie?'по твоему среднему доходу место в светофоре опытных':'сейчас моё место'}: <b id="svCurrPos">—</b>, <b id="svCurrCat">—</b></div>
    <div class="sv-prog-block" id="svProgBlock" style="display:none">
     <div class="sv-prog-head">Введено: <b id="svTypedVal">—</b> → <b>ты будешь здесь: <span id="svProgPos">—</span>, <span id="svProgCat">—</span></b> <span class="muted" id="svProgAvg"></span></div>
     <div class="sv-note" id="svNote">—</div>
@@ -2482,6 +2494,12 @@ window.initSvetoforCalc=function(){
     var raw=(v.value||'').replace(/\D/g,'');
     var val=raw?parseInt(raw,10):0;
     var ap=parseInt(v.dataset.currentPos,10)||0;
+    // Новичок: текущее место — виртуальное, по среднему доходу в пирамиде
+    // опытных (рейтинг новичков с ней несравним). Считаем от него.
+    if(v.dataset.newbie==='1'){
+      var nInc=Number(v.dataset.income)||0;
+      if(nInc>0){ ap=posFor(nInc).pos; }
+    }
     var inc=Number(v.dataset.income)||0;
     var stz=Number(v.dataset.stazh)||0;
     var ci=findIdx(ap), cZ=null;
@@ -2550,6 +2568,7 @@ function initSvetoforCalcWithData(d){
     inp.dataset.income=String(u.income_month||0);
     inp.dataset.stazh=String(u.stazh_months||0);
     inp.dataset.currentPos=String(u.position_in_pool||'');
+    inp.dataset.newbie=(u.svetofor_pool==='newbie')?'1':'';
   }
   if(window.initSvetoforCalc)window.initSvetoforCalc();
 }
