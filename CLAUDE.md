@@ -138,7 +138,9 @@ activity, autocele, labels, dates) — гоняется локально, све
 - **Агрегаты:** recomputeIRGroups, recomputeIRDepartments, recomputeAggregatesAdmin.
 - **Диагностика:** runCoach(+Admin), auditCoachCodes.
 - **Задачи:** createTask, updateTaskStatus, updateTaskProgress, expireTasks,
-  markNotificationsRead, backfillTaskAuthors.
+  markNotificationsRead, backfillTaskAuthors, **editTask, reopenTask, deleteTask**
+  (добавлены 2026-08-24 — единый путь записи: calendar.js больше НЕ пишет в /tasks
+  напрямую, всё через callable; иначе терялись уведомления/антидубль/права).
 - **Сценарии:** runScenariosDaily(+Admin), cleanupScenarioTasksAdmin.
 - **ИИ-тренер (YandexGPT / OpenRouter):** `generateAiCoachBatch` (onCall admin/aup,
   ручной запуск), `aiCoachStatus` (диагностика). Авто-прогон `generateAiCoachNightly`

@@ -9,18 +9,35 @@
  * - mode — 'partner' | 'mop' | 'rop' | 'aup' (для будущих ограничений).
  *
  * Подписка на /tasks через orderByChild('assignee_code').equalTo(ownerCode).
- * Изменения (drag, resize, edit, complete, delete) пишутся в /tasks/{id}.
+ * Изменения (drag, resize, edit, complete, delete) — ТОЛЬКО через callable
+ * (createTask/updateTaskStatus/editTask/reopenTask/deleteTask): прямой записи
+ * в /tasks/{id} из клиента нет — иначе теряются уведомления/антидубль/права.
  *
  * Поведение полностью соответствует calendar-mockup.html: 4 вида,
  * drag-drop, resize, многодневные полосы, allday, модалки.
  */
 
-import { ref, query, orderByChild, equalTo, onValue, update, set, push, remove, get } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+import { ref, query, orderByChild, equalTo, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
 import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
 const TZ_OFFSET_HOURS = 5; // YekaterinburgUTC+5
+
+/* ─── вызов серверных функций задач (единый путь записи) ─── */
+// Возвращает true при успехе; при ошибке показывает сообщение и false —
+// вызывающий может не закрывать модалку/не обновлять строку.
+async function callTask(name, data) {
+  try {
+    const fn = httpsCallable(getFunctions(getApp(), 'europe-west1'), name, { timeout: 20000 });
+    await fn(data);
+    return true;
+  } catch (e) {
+    console.error('[calendar]', name, e && e.message);
+    alert('Не удалось сохранить: ' + ((e && e.message) || 'ошибка сети'));
+    return false;
+  }
+}
 
 /* ─── CSS ─── */
 const CSS = `
@@ -882,8 +899,8 @@ function renderList(state, calEl, inbox, scheduled) {
       e.stopPropagation();
       const id = b.dataset.id;
       const act = b.dataset.act;
-      if (act === 'done') await update(ref(state.db, `/tasks/${id}`), { status: 'done', done_at: Date.now() });
-      else if (act === 'reopen') await update(ref(state.db, `/tasks/${id}`), { status: 'active', done_at: null, done_comment: null });
+      if (act === 'done') await callTask('updateTaskStatus', { task_id: id, status: 'done' });
+      else if (act === 'reopen') await callTask('reopenTask', { task_id: id });
     };
   });
 }
@@ -955,20 +972,20 @@ async function placeAt(state, mount, dayYMD, startMin, allday) {
 // startMin — минуты от полуночи (например 12:15 = 735). null → без времени/allday.
 async function moveTaskToDay(state, id, dayYMD, startMin, allday) {
   const t = state.tasks[id]; if (!t) return;
-  const upd = { due_date: dayYMD };
+  const patch = { due_date: dayYMD };
   if (allday) {
-    upd.due_at = new Date(`${dayYMD}T23:59:59+0${TZ_OFFSET_HOURS}:00`).getTime();
+    patch.due_at = new Date(`${dayYMD}T23:59:59+0${TZ_OFFSET_HOURS}:00`).getTime();
   } else if (startMin != null) {
     const hh = String(Math.floor(startMin / 60)).padStart(2, '0');
     const mm = String(startMin % 60).padStart(2, '0');
-    upd.due_at = new Date(`${dayYMD}T${hh}:${mm}:00+0${TZ_OFFSET_HOURS}:00`).getTime();
-    upd.duration_min = t.dur || 30;
+    patch.due_at = new Date(`${dayYMD}T${hh}:${mm}:00+0${TZ_OFFSET_HOURS}:00`).getTime();
+    patch.duration_min = t.dur || 30;
   }
-  await update(ref(state.db, `/tasks/${id}`), upd);
+  await callTask('editTask', { task_id: id, ...patch });
 }
 async function unschedule(state, id) {
   const t = state.tasks[id]; if (!t || isLocked(t)) return;
-  await update(ref(state.db, `/tasks/${id}`), { due_date: null, due_at: null });
+  await callTask('editTask', { task_id: id, due_date: null, due_at: null });
 }
 
 /* ─── resize длительности ─── */
@@ -984,7 +1001,7 @@ function startResize(state, e, id, evEl) {
   };
   const up = async () => {
     document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
-    if (curDur !== startDur) await update(ref(state.db, `/tasks/${id}`), { duration_min: curDur });
+    if (curDur !== startDur) await callTask('editTask', { task_id: id, duration_min: curDur });
   };
   document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
 }
@@ -1046,27 +1063,21 @@ async function saveNewTask(state, mount) {
     upd.duration_min = e - s;
   }
   if (editingId) {
-    await update(ref(state.db, `/tasks/${editingId}`), upd);
+    const ok = await callTask('editTask', { task_id: editingId, title, due_date: upd.due_date, due_at: upd.due_at, duration_min: upd.duration_min });
+    if (!ok) return;
   } else {
-    const taskId = 'task_' + push(ref(state.db, '/tasks')).key;
-    const fullTask = {
-      ...upd,
+    const ok = await callTask('createTask', {
+      title,
       assignee_code: state.ownerCode,
-      assignee_role: 'realtor',
-      author_code: state.ownerCode,
-      author_kind: 'self',
-      author_label: 'Вы',
       priority: 'normal',
       type: 'free',
-      status: 'active',
-      progress_done: 0,
-      progress_total: 1,
-      created_at: Date.now(),
+      due_date: upd.due_date,
+      due_at: upd.due_at,
+      duration_min: upd.duration_min,
       source: 'моя задача',
       horizon: 'week',
-      ui_group: 'week',
-    };
-    await set(ref(state.db, `/tasks/${taskId}`), fullTask);
+    });
+    if (!ok) return; // ошибка (напр. дубликат за 24ч) — модалку не закрываем
   }
   closeCreateModal(mount);
 }
@@ -1139,9 +1150,13 @@ function openDetail(state, mount, id) {
     rows += `<div class="cal-dm-row" style="color:#16a34a"><div class="cal-dm-ricon">✅</div><div><b>${verb}</b>${t.doneComment ? `<br><span class="cal-muted">«${escHtml(t.doneComment)}»</span>` : ''}</div></div>`;
     actions = `<button class="cal-dbtn" data-act="reopen">Вернуть в работу</button><button class="cal-dbtn" data-act="close">Закрыть</button>`;
   } else {
-    comment = `<textarea class="cal-m-input" data-comment rows="2" placeholder="Комментарий к выполнению (необязательно)…" style="margin:14px 0 0;resize:vertical"></textarea>`;
-    if (!t.day) actions += `<button class="cal-dbtn primary" data-act="place">📅 На календарь</button>`;
-    actions += `<button class="cal-dbtn done" data-act="done">✓ ${verb}</button>`;
+    // События Google Calendar — не задачи в /tasks, их нельзя «выполнить»
+    // (старый код писал мусорную запись /tasks/{id события}).
+    if (!t.event) {
+      comment = `<textarea class="cal-m-input" data-comment rows="2" placeholder="Комментарий к выполнению (необязательно)…" style="margin:14px 0 0;resize:vertical"></textarea>`;
+      if (!t.day) actions += `<button class="cal-dbtn primary" data-act="place">📅 На календарь</button>`;
+      actions += `<button class="cal-dbtn done" data-act="done">✓ ${verb}</button>`;
+    }
     actions += `<button class="cal-dbtn" data-act="close">Закрыть</button>`;
   }
 
@@ -1177,7 +1192,7 @@ function openDetail(state, mount, id) {
       upd.due_at = new Date(`${day}T${hh}:${mm}:00+0${TZ_OFFSET_HOURS}:00`).getTime();
       upd.duration_min = +editDur.value;
     }
-    await update(ref(state.db, `/tasks/${id}`), upd);
+    await callTask('editTask', { task_id: id, due_date: upd.due_date, due_at: upd.due_at, duration_min: upd.duration_min });
   };
   if (editDay) editDay.onchange = saveEdits;
   if (editAllday) editAllday.onchange = () => {
@@ -1193,18 +1208,21 @@ function openDetail(state, mount, id) {
       if (act === 'close') m.classList.remove('on');
       else if (act === 'done') {
         const c = card.querySelector('[data-comment]');
-        await update(ref(state.db, `/tasks/${id}`), { status: 'done', done_at: Date.now(), done_comment: c ? c.value.trim() : '' });
+        const ok = await callTask('updateTaskStatus', { task_id: id, status: 'done', done_comment: c ? c.value.trim() : '' });
+        if (!ok) return;
         m.classList.remove('on');
         // На главной блок задач — снапшот из getDashboard, а не listener.
         // Без .cal-body (портал модалки на Главной) — просим вызывающего убрать строку локально.
         if (!document.querySelector('.cal-body') && state.onChanged) state.onChanged(id, act);
       } else if (act === 'reopen') {
-        await update(ref(state.db, `/tasks/${id}`), { status: 'active', done_at: null, done_comment: null });
+        const ok = await callTask('reopenTask', { task_id: id });
+        if (!ok) return;
         m.classList.remove('on');
         if (!document.querySelector('.cal-body') && state.onChanged) state.onChanged(id, act);
       } else if (act === 'unschedule') { await unschedule(state, id); m.classList.remove('on'); }
       else if (act === 'del') {
-        await remove(ref(state.db, `/tasks/${id}`));
+        const ok = await callTask('deleteTask', { task_id: id });
+        if (!ok) return;
         m.classList.remove('on');
         if (!document.querySelector('.cal-body') && state.onChanged) state.onChanged(id, act);
       }
@@ -1228,15 +1246,16 @@ async function spreadWeek(state, mount, inbox) {
   const weekly = inbox.filter((t) => t.horizon === 'week');
   let cursor = parseYMD(state.today);
   const perDay = {};
-  const updates = {};
   for (const t of weekly) {
     while ((perDay[ymd(cursor)] || 0) >= 2) cursor = addDays(cursor, 1);
     const day = ymd(cursor);
     perDay[day] = (perDay[day] || 0) + 1;
     const hour = 10 + (perDay[day] - 1) * 4;  // 10:00 и 14:00
-    updates[`/tasks/${t.id}/due_date`] = day;
-    updates[`/tasks/${t.id}/due_at`] = new Date(`${day}T${String(hour).padStart(2, '0')}:00:00+0${TZ_OFFSET_HOURS}:00`).getTime();
-    updates[`/tasks/${t.id}/duration_min`] = t.dur || 30;
+    const ok = await callTask('editTask', {
+      task_id: t.id, due_date: day,
+      due_at: new Date(`${day}T${String(hour).padStart(2, '0')}:00:00+0${TZ_OFFSET_HOURS}:00`).getTime(),
+      duration_min: t.dur || 30,
+    });
+    if (!ok) break; // ошибка — дальше не раскладываем, чтобы не плодить алерты
   }
-  if (Object.keys(updates).length) await update(ref(state.db), updates);
 }
