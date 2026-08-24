@@ -1921,15 +1921,22 @@ function crProgStop(done){
  if(done){ const f=document.getElementById('crProgFill'); if(f) f.style.width='100%'; }
 }
 
-/** Дожидается готового разбора, ничего не оплачивая: peek только читает. */
-async function crWaitForReport(){
+/** Дожидается готового разбора, ничего не оплачивая: peek только читает.
+ *  sinceTs — метка прежнего разбора: после «Обновить» результатом считаем
+ *  ТОЛЬКО разбор с более поздней датой сборки. Старый здесь не ответ. */
+async function crWaitForReport(sinceTs){
  const st=document.getElementById('crProgStep');
  const fill=document.getElementById('crProgFill');
- for(let i=0;i<40;i++){                     // до ~4 минут
+ for(let i=0;i<50;i++){                     // до ~5 минут
   try{
    const r=await window.__callLong('generateCoachReport',{code:CTX.target,peek:true});
-   if(r&&r.report) return r.report;
-   if(st) st.textContent=r&&r.pending
+   const rep=r&&r.report;
+   if(rep&&(!sinceTs||(rep.generated_at||0)>sinceTs)) return rep;
+   const running=r&&(r.running||r.pending);
+   // Замок кончился, а разбора новее sinceTs так и нет — генерация умерла,
+   // ждать дальше бессмысленно, честнее сказать об ошибке.
+   if(!running&&i>2) break;
+   if(st) st.textContent=running
      ? 'Разбор ещё пишется, дожидаюсь…'
      : 'Ответ задержался, проверяю результат…';
    if(fill) fill.style.width=Math.min(97,90+Math.floor(i/6))+'%';
@@ -1964,21 +1971,28 @@ async function crBuild(force){
     const pk=await window.__callLong('generateCoachReport',{code:CTX.target,peek:true});
     const r=pk&&pk.report;
     if(r) rep=r;
-    else if(pk&&pk.pending) rep=await crWaitForReport();   // кто-то уже запустил — дождёмся
+    else if(pk&&pk.pending) rep=await crWaitForReport(0);   // кто-то уже запустил — дождёмся
    }catch(_){ }
   }
 
-  // Нет сохранённого ИЛИ явный «Обновить» (force) — собираем новый (платно). Две попытки:
-  // если соединение оборвалось и серверная работа умерла на полпути — просто запустим ещё раз.
-  for(let attempt=0; attempt<2 && !rep; attempt++){
-   if(btn) btn.textContent='Собираю разбор…';
-   try{
-    const res=await window.__callLong('generateCoachReport',{code:CTX.target,force:true});
-    rep=res&&res.report;
-   }catch(_){ }
-   if(!rep) rep=await crWaitForReport();
+  if(!rep&&force){
+   // Метка прежнего разбора: после «Обновить» результат — ТОЛЬКО разбор новее неё.
+   // Без этой проверки обрыв связи или чужая параллельная генерация возвращали
+   // старый сохранённый разбор, и кнопка «обновить» не обновляла ничего.
+   const oldTs=(__crRep&&__crRep.generated_at)||0;
+   let lastErr=null;
+   for(let attempt=0; attempt<2 && !rep; attempt++){
+    if(btn) btn.textContent='Собираю разбор…';
+    try{
+     const res=await window.__callLong('generateCoachReport',{code:CTX.target,force:true});
+     const r=res&&res.report;
+     if(r&&r.generated_at&&r.generated_at>oldTs) rep=r;          // свежесобранный
+     else if(res&&res.pending) rep=await crWaitForReport(oldTs); // уже пишется — дождёмся нового
+    }catch(e){ lastErr=e&&e.message||String(e); }
+    if(!rep) rep=await crWaitForReport(oldTs);
+   }
+   if(!rep) throw new Error(lastErr?'разбор не собрался: '+lastErr:'разбор не собрался');
   }
-  if(!rep) throw new Error('разбор не собрался');
 
   crProgStop(true);
   __crRep=rep;
@@ -1986,7 +2000,7 @@ async function crBuild(force){
   const act=document.getElementById('crExtra'); if(act) act.style.display='flex';
  }catch(e){
   crProgStop(false);
-  box.innerHTML=`<div class="cr-sec"><p>Разбор пока не собрался.</p><p class="muted" style="margin-top:6px">Нажми ещё раз через минуту. Если он всё-таки записался, откроется сразу и повторно не оплатится.</p></div>`;
+  box.innerHTML=`<div class="cr-sec"><p>Разбор не пересобрался${e&&e.message?' — '+crEsc(String(e.message)).slice(0,220):''}.</p><p class="muted" style="margin-top:6px">Прежний разбор остался на месте. Попробуй ещё раз через минуту — если он всё-таки записался, новый откроется сразу и повторно не оплатится.</p></div>`;
  }finally{
   if(btn){ btn.disabled=false; btn.textContent='Обновить разбор'; }
  }

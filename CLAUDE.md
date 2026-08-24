@@ -178,6 +178,10 @@ activity, autocele, labels, dates) — гоняется локально, све
   месячные точки `{YYYY-MM-01}` = история светофора (seeded:false=реальная).
 - `/aggregates/{group|department}/{код}/{дата}` — ir_*, breakdown, forecast.
 - `/coach/{код}/current` — buyer/seller {code, bits, variant_data из справочника}.
+- `/coach_report/{код}` — разбор ИИ-тренера по кнопке (generateCoachReport; force
+  = платная пересборка). **История прежних разборов — `/coach_report_history/{код}/
+  {generated_at}`** (с 2026-08-24, до этого перезаписывались). peek-ответ содержит
+  `running` (идёт ли генерация) отдельно от `pending`.
 - `/ai_coach/{код}/current` — {coach_text, motivator_text,
   coach_brief_for_manager, mode, generated_at, model}; `/prev` — предыдущая
   версия. Пишет generateAiCoachBatch.
