@@ -118,6 +118,12 @@ Firebase Cloud Functions Gen2 (Node 22) + Realtime Database + Auth.
 
 ## 2. Ресурсы
 
+> ⚠️ **Реестр фич и деплоев — `~/prognoz-functions/DEPLOYS.md`.** Перед любой
+> работой с бэкендом/деплоем открыть его: что живо на проде, кто что делал
+> последним. Деплой бэка — только через GitHub Actions из origin/main;
+> локальный `firebase deploy` запрещён (25.08.2026 им откатили прод).
+
+
 - **Репозиторий фронта (этот):** `/Users/egor/prognoz-dashboard` →
   GitHub `evbondarchuk-png/prognoz-dashboard`, сайт **https://prognoz.info**
   (резерв `evbondarchuk-png.github.io/prognoz-dashboard`).
