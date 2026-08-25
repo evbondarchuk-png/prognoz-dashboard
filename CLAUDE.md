@@ -976,11 +976,28 @@ email проставлен всем, планы выданы (`assignAutoGoalsAd
 
 ---
 
-## 22. Инциденты и решения
+## 23. Система аналитики активности (TZ-ANALYTICS, 2026-08-25)
 
-| Дата | Симптом | Причина | Фикс |
-|------|---------|---------|------|
-| 2026-08-25 | «Объекты в работе» = 0 у МОП/РОП/АУП на главной, у партнёров — норм | Перезапись архива (ручной реран archiver) → `/funnels` и `/aggregates` устарели | `cd prognoz-functions/functions && node fix-objects.js` (пересчёт funnels + aggregates) + `node recalc-snapshots.js` (ИР). См. память `task-aggregates-objects-fix-2026-08-25` |
-| 2026-08-25 | ИР в snapshots устарел (не совпадал со свежим computeIR из funnels) | nightlySnapshot считает ИР в 02:00 UTC; после перезаписи архива ИР не обновлялся | `node recalc-snapshots.js` — пересчёт IR для 3286 пользователей, 3103 с ИР, 0 ошибок |
+Сбор UI/UX-метрик для понимания поведения пользователей. Доступ — только АУП/админ.
+
+**Состав:**
+- `analytics.js` — фронт-трекер: буфер 30с / 30 событий, sendBeacon на beforeunload, data-track handler. Автоматически: page_view, session_start, session_heartbeat (5 мин), error, tab_switch. Подключён во всех 5 HTML-файлах (index/mop/rop/aup/prognosha-stats).
+- `analytics-stats.html` — страница для АУП/админ (дизайн как у prognosha-stats.html). Табы: «Статистика Прогноши» (ссылка на `/prognosha-stats.html`) и «Статистика активности» (onCall `analyticsStatsAdmin`). Внутри 4 секции: Пользователи, События, Страницы, Действия. KPI, sparkline, таблицы с поиском.
+- Кнопка «📊 Аналитика» в шапке `aup.html` → `analytics-stats.html`. В `prognosha-stats.html` ссылка «К аналитике» в шапке.
+
+**Интеграция в кабинеты (трекинг действий):**
+| Функция | Событие |
+|---|---|
+| `toggleStage` (все 4 кабинета) | `funnel_expand` / `funnel_collapse` |
+| `saveGoal` (index.html) | `set_goal` |
+| `openEditGoal` (index.html) | `update_goal_click` |
+| `openMember` (mop.html) | `drilldown` |
+| `openGroup` (rop.html) | `drilldown` |
+| `openDept` (aup.html) | `drilldown` |
+| `openHof` (index.html) | `award_open` |
+| data-track атрибуты | любые события |
+| data-tab клики | `tab_switch` (авто) |
+
+**Бэкенд:** см. `prognoz-functions/CLAUDE.md` §5.1 (logEvent, analyticsAdmin, computeDailyAnalytics).
 
 **Важно:** Для понимания полной картины всегда читать оба CLAUDE.md — этот (фронт) и `prognoz-functions/CLAUDE.md` (общий бэкенд).
