@@ -178,7 +178,9 @@
     <!-- ШАГ 2: ввод OTP -->
     <div id="step-otp" class="step">
       <div class="info">
-        Код отправлен на <b id="email-mask">***</b>
+        <span id="via-email">Код отправлен на <b id="email-mask">***</b></span>
+        <span id="via-max" style="display:none">🔑 Код отправлен в чат-бот <b>MAX</b> (Прогноша)</span>
+        <button id="btn-email" type="button" style="display:none;margin-top:8px;font-size:13px;background:none;border:none;color:#2b6cb0;text-decoration:underline;cursor:pointer;padding:0" onclick="resendEmail()">Не вижу бот — отправить код на почту</button>
       </div>
       <label for="otp">Код из письма (6 цифр)</label>
       <input type="text" id="otp" inputmode="numeric" autocomplete="one-time-code"
@@ -231,14 +233,40 @@
       setLoading('btn-request', true, 'Отправляем...');
       try {
         const res = await requestOtpFn({ code });
-        $('email-mask').textContent = res.data.emailMask;
-        $('step-code').classList.remove('active');
-        $('step-otp').classList.add('active');
-        $('otp').focus();
+        showOtpStep(res.data.emailMask, res.data.via);
       } catch (e) {
         showError(e.message || 'Ошибка отправки кода.');
       } finally {
         setLoading('btn-request', false, 'Получить код');
+      }
+    };
+
+    // Каким каналом ушёл код: привязан к MAX — туда, иначе почта.
+    // Почту можно запросить кнопкой (force_email) — например, бот под рукой нет.
+    const showOtpStep = (emailMask, via) => {
+      const isMax = via === 'max';
+      $('email-mask').textContent = emailMask || '***';
+      $('via-email').style.display = isMax ? 'none' : 'inline';
+      $('via-max').style.display = isMax ? 'inline' : 'none';
+      $('btn-email').style.display = isMax ? 'inline-block' : 'none';
+      $('step-code').classList.remove('active');
+      $('step-otp').classList.add('active');
+      $('otp').focus();
+    };
+    window.showOtpStep = showOtpStep;
+
+    window.resendEmail = async () => {
+      hideError();
+      const code = $('code').value.trim();
+      if (!/^\d+$/.test(code)) { showError('Введите числовой код сотрудника.'); return; }
+      const btn = $('btn-email');
+      btn.disabled = true; btn.textContent = 'Отправляем на почту…';
+      try {
+        const res = await requestOtpFn({ code, force_email: true });
+        showOtpStep(res.data.emailMask, res.data.via);
+      } catch (e) {
+        showError(e.message || 'Ошибка отправки письма.');
+        btn.disabled = false; btn.textContent = 'Не вижу бот — отправить код на почту';
       }
     };
 
