@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Прогноз — Кабинет АУП</title>
 <script src="/metrika.js"></script>
+<script src="/analytics.js"></script>
 <script type="importmap">
 { "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
 </script>
@@ -492,7 +493,7 @@ window.showTab=(id,btn)=>{
  if(window.__markT){clearTimeout(window.__markT);window.__markT=null;}
  if(id==='tasks'){ window.__markT=setTimeout(()=>{ const u=CTX.data&&CTX.data.notifications&&CTX.data.notifications.unread_count; if(u>0) window.markAllRead(true); },2000); }
 };
-window.openDept=(code)=>{ location.href='rop.html?rop='+encodeURIComponent(code); };
+window.openDept=(code)=>{ if(window.__analytics) window.__analytics.track('drilldown',{target:'rop?rop='+code}); location.href='rop.html?rop='+encodeURIComponent(code); };
 window.closeModal=(id)=>document.getElementById(id).classList.remove('on');
 window.completeTask=async(id,ev)=>{
  if(ev)ev.stopPropagation();
@@ -774,7 +775,7 @@ function aggStageCard(side,st){
  }
  return html;
 }
-window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); };
+window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; const isOpen=!s.classList.contains('hidden'); s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); if(window.__analytics){const lb=c.querySelector('.funnel-label,.stage-label');window.__analytics.track(isOpen?'funnel_collapse':'funnel_expand',{target:lb?lb.textContent.trim():'funnel'});} };
 function aggSide(side,fs,icon){ if(!fs)return'';
  return `<div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
  <div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>

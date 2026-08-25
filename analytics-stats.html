@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Статистика активности · Прогноз</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="importmap">
+{ "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
+</script>
+<script src="/metrika.js"></script>
+<script src="/analytics.js"></script>
+<style>
+:root{
+  --bg:#f4f5f7; --surface:#fff; --surface-2:#f1f3f7; --line:#e6e8ee;
+  --shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);
+  --ink:#1a1f2e; --muted:#7a8194; --muted-2:#a8aebd;
+  --brand:#2b6cb0; --brand-soft:#eaf2fb; --buyer:#3b82f6; --seller:#10b981; --gold:#f59e0b;
+  --ok:#16a34a; --ok-bg:#e9f6ec; --warn:#d97706; --warn-bg:#fdf3e3; --bad:#dc2626;
+  --fox:#ea7a3b; --fox-bg:#fdefe4;
+  --r:12px; --r-sm:8px; --pill:999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;padding-bottom:40px}
+.app-header{background:var(--surface);border-bottom:1px solid var(--line);padding:0 18px;display:flex;align-items:center;gap:12px;height:54px;position:sticky;top:0;z-index:50}
+.app-header .logo{font-weight:800;color:var(--brand)}.app-header .logo span{color:var(--muted);font-weight:500}
+.app-header .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.app-header select,.app-header button{font-size:12px;font-weight:700;color:var(--brand);background:var(--brand-soft);border:none;border-radius:var(--pill);padding:8px 14px;cursor:pointer;font-family:inherit}
+.app-header .tab-link{font-size:13px;font-weight:700;color:var(--muted);background:none;padding:8px 14px;cursor:pointer;font-family:inherit;border-radius:var(--pill);text-decoration:none}
+.app-header .tab-link.active{color:var(--brand);background:var(--brand-soft)}
+.wrap{max-width:1200px;margin:18px auto;padding:0 16px}
+.loading{text-align:center;padding:60px 20px;color:var(--muted)}
+.loading .sp{display:inline-block;width:32px;height:32px;border:3px solid var(--surface-2);border-top-color:var(--brand);border-radius:50%;animation:sp 1s linear infinite;margin-bottom:12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+h1{font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+
+/* Внутренние табы */
+.sec-tabs{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
+.sec-tabs button{padding:7px 14px;border:none;border-radius:var(--pill);cursor:pointer;background:var(--surface-2);font-size:13px;font-weight:600;color:var(--muted);font-family:inherit}
+.sec-tabs button.act{background:var(--brand);color:#fff}
+.sec-tabs button:hover:not(.act){background:var(--line)}
+.sec-pane{display:none}.sec-pane.act{display:block}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.kpi .n{font-size:26px;font-weight:800;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .n.fox{color:var(--fox)}
+.kpi .n.ok{color:var(--ok)}
+.kpi .n.warn{color:var(--warn)}
+.kpi .n.bad{color:var(--bad)}
+
+/* Сетка */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* Карточки */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card h2{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* Бары */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.bar-row .lbl{flex:0 0 140px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row .track{flex:1;height:16px;background:var(--surface-2);border-radius:var(--pill);overflow:hidden}
+.bar-row .fill{height:100%;border-radius:var(--pill)}
+.bar-row .fill.blue{background:var(--brand)}
+.bar-row .fill.green{background:var(--ok)}
+.bar-row .fill.gold{background:var(--gold)}
+.bar-row .fill.fox{background:var(--fox)}
+.bar-row .val{flex:0 0 auto;font-weight:700;color:var(--muted);min-width:32px;text-align:right}
+
+/* Sparkline */
+.spark{display:flex;align-items:flex-end;gap:3px;height:60px;margin-top:4px}
+.spark .b{flex:1;background:var(--brand-soft);border-radius:3px 3px 0 0;min-height:2px}
+.spark .b:hover{background:var(--brand)}
+.spark-x{display:flex;gap:3px;margin-top:4px}
+.spark-x span{flex:1;text-align:center;font-size:9px;color:var(--muted-2);overflow:hidden}
+
+/* Таблицы */
+.wr{overflow-x:auto;overflow-y:auto;max-height:450px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;position:sticky;top:0;background:var(--surface);z-index:1}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr:hover td{background:#f8f9fc}
+
+/* Чипы */
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--pill)}
+.chip.r{background:#dbeafe;color:#1e40af}
+.chip.m{background:#e0f2fe;color:#0369a1}
+.chip.o{background:#fef3c7;color:#92400e}
+.chip.a{background:#f3e8ff;color:#6b21a8}
+.chip.ad{background:#fce7f3;color:#9d174d}
+.chip.u{background:var(--surface-2);color:var(--muted)}
+
+/* Прочее */
+.muted{color:var(--muted)}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+input.s{padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px;margin-bottom:8px;width:100%;outline:none;font-family:inherit}
+input.s:focus{border-color:var(--brand);box-shadow:0 0 0 2px rgba(43,108,176,.15)}
+.nt{font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:6px;padding:8px 10px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="logo">Прогноз <span>· статистика</span></div>
+  <div class="actions">
+    <a href="/prognosha-stats.html" class="tab-link">🦊 Статистика Прогноши</a>
+    <a href="/analytics-stats.html" class="tab-link active">📊 Статистика активности</a>
+    <select id="period" onchange="loadData()">
+      <option value="7">7 дней</option>
+      <option value="30" selected>30 дней</option>
+      <option value="90">90 дней</option>
+      <option value="365">Год</option>
+    </select>
+    <button onclick="location.href='aup.html'">← Кабинет</button>
+  </div>
+</div>
+
+<div class="wrap" id="root">
+  <div class="loading"><div class="sp"></div><div>Загружаю статистику…</div></div>
+</div>
+
+<script type="module">
+import { requireAuth } from './auth-guard.js';
+import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+
+const root = document.getElementById('root');
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmtDate(ts){if(!ts)return'—';const d=new Date(ts);return d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function shortDay(d){const p=(d||'').split('-');return p.length===3?p[2]+'.'+p[1]:d;}
+const roleChip = {realtor:'r',mop:'m',rop:'o',aup:'a',admin:'ad'};
+const roleName = {realtor:'Партнёр',mop:'Старший',rop:'Управляющий',aup:'АУП',admin:'Админ',unknown:'—'};
+
+// Только АУП/админ
+await requireAuth({ allowedRoles: ['aup', 'admin'] });
+
+window.swPane = (id) => {
+  document.querySelectorAll('.sec-pane').forEach(p => p.classList.remove('act'));
+  document.querySelectorAll('.sec-tabs button').forEach(b => b.classList.remove('act'));
+  document.getElementById('pane-' + id).classList.add('act');
+  document.querySelector('.sec-tabs [data-pane="' + id + '"]').classList.add('act');
+};
+
+loadData();
+window.loadData = loadData;
+
+async function loadData(){
+  root.innerHTML = '<div class="loading"><div class="sp"></div><div>Загружаю статистику…</div></div>';
+  const days = Number(document.getElementById('period').value) || 30;
+  try {
+    const fns = getFunctions(getApp(), 'europe-west1');
+    const fn = httpsCallable(fns, 'analyticsStatsAdmin', { timeout: 60000 });
+    const { data } = await fn({ days });
+    render(data);
+  } catch (e) {
+    const msg = (e && e.message) || String(e);
+    const denied = /permission|denied|admin/i.test(msg);
+    root.innerHTML = '<div class="empty">' + (denied
+      ? '🔒 Статистика доступна только руководству (АУП/админ).'
+      : 'Не удалось загрузить: ' + esc(msg)) + '</div>';
+  }
+}
+
+function render(d) {
+  if (!d || !d.ok) { root.innerHTML = '<div class="empty">Нет данных.</div>'; return; }
+  const t = d.totals || {};
+  const totalsCount = t.total_events || 0;
+
+  root.innerHTML = head(d)
+
+    // ─── KPI ───
+    + `<div class="kpis">
+      <div class="kpi"><div class="n fox">${t.unique_analytics_users || 0}</div><div class="l">активных сотрудников</div></div>
+      <div class="kpi"><div class="n">${t.page_views || 0}</div><div class="l">просмотров страниц</div></div>
+      <div class="kpi"><div class="n">${t.unique_sessions || 0}</div><div class="l">сессий</div></div>
+      <div class="kpi"><div class="n">${totalsCount}</div><div class="l">событий всего</div></div>
+      <div class="kpi"><div class="n ${t.errors > 0 ? 'bad' : 'ok'}">${t.errors || 0}</div><div class="l">ошибок на фронте</div></div>
+      <div class="kpi"><div class="n">${t.max_connected || 0}</div><div class="l">в MAX</div></div>
+      <div class="kpi"><div class="n">${t.max_briefs || 0}</div><div class="l">получают брифы</div></div>
+      <div class="kpi"><div class="n">${t.prognosha_users || 0}</div><div class="l">пользуются Прогношей</div></div>
+    </div>`
+
+    // ─── Табы ───
+    + `<div class="sec-tabs">
+      <button class="act" data-pane="users" onclick="swPane('users')">👥 Пользователи</button>
+      <button data-pane="events" onclick="swPane('events')">📡 События</button>
+      <button data-pane="pages" onclick="swPane('pages')">📄 Страницы</button>
+      <button data-pane="actions" onclick="swPane('actions')">🎯 Действия</button>
+    </div>`
+
+    // ─── Таб: Пользователи ───
+    + pane('users', true, `
+      <div class="grid2">
+        <div class="card">
+          <h2>👤 По ролям (всего в системе)</h2>
+          ${renderBars((d.by_role_distribution || []).map(r => ({ label: roleName[r.role] || r.role, count: r.count })))}
+        </div>
+        <div class="card">
+          <h2>📅 Активность по дням</h2>
+          <div class="spark">${renderSpark(d.by_day || [])}</div>
+          <div class="spark-x">${(d.by_day || []).slice(-30).map(x => `<span>${shortDay(x.date)}</span>`).join('')}</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>👥 Кто заходил (с lastLoginAt) · поиск</h2>
+        <input class="s" id="userSearch" placeholder="Поиск по ФИО, email, коду..." oninput="filterUsers()">
+        <div class="wr"><table><thead><tr>
+          <th>Код</th><th>ФИО</th><th>Роль</th><th>Email</th><th>Последний вход</th><th class="num">Сессий</th><th class="num">Событий</th>
+        </tr></thead><tbody id="usersBody">${(d.users_with_login || []).map(u => `
+          <tr class="ur" data-search="${esc((u.name+u.email+u.code).toLowerCase())}">
+            <td>${esc(u.code)}</td>
+            <td><strong>${esc(u.name)}</strong></td>
+            <td><span class="chip ${roleChip[u.role]||'u'}">${roleName[u.role]||esc(u.role)}</span></td>
+            <td class="muted">${esc(u.email)}</td>
+            <td>${fmtDate(u.lastLoginAt)}</td>
+            <td class="num">${u.sessions || 0}</td>
+            <td class="num">${u.events || 0}</td>
+          </tr>`).join('')}</tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>🏆 Кто активнее всех</h2>
+        <div class="wr"><table><thead><tr><th>#</th><th>Сотрудник</th><th>Роль</th><th class="num">Событий</th></tr></thead><tbody>
+        ${(d.top_users || []).map((u, i) => `<tr><td>${i + 1}</td><td>${esc(u.name)}</td><td>${roleName[u.role] || esc(u.role)}</td><td class="num">${u.count}</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+    `)
+
+    // ─── Таб: События ───
+    + pane('events', false, `
+      <div class="grid2">
+        <div class="card">
+          <h2>📡 Типы событий</h2>
+          ${renderBars((d.by_event || []).map(e => ({ label: eventLabel(e.event), count: e.count })))}
+        </div>
+        <div class="card">
+          <h2>🗂 По ролям (события)</h2>
+          ${renderBars(Object.entries(d.by_role || {}).map(([r, c]) => ({ label: roleName[r] || r, count: c })))}
+        </div>
+      </div>
+    `)
+
+    // ─── Таб: Страницы ───
+    + pane('pages', false, `
+      <div class="card">
+        <h2>📄 Какие кабинеты смотрят</h2>
+        ${renderBars((d.by_page || []).map(p => ({ label: pageLabel(p.page), count: p.count })))}
+      </div>
+      <div class="card">
+        <h2>📅 Спарклайн активности по дням</h2>
+        <div class="spark" style="height:80px">${renderSpark(d.by_day || [])}</div>
+        <div class="spark-x">${(d.by_day || []).slice(-30).map(x => `<span>${shortDay(x.date)}</span>`).join('')}</div>
+        <table style="margin-top:8px"><thead><tr><th>Дата</th><th class="num">Событий</th></tr></thead><tbody>
+        ${(d.by_day || []).slice(-60).reverse().map(x => `<tr><td>${esc(x.date)}</td><td class="num">${x.count}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    `)
+
+    // ─── Таб: Действия ───
+    + pane('actions', false, `
+      <div class="card">
+        <h2>🎯 Какие действия совершают</h2>
+        ${renderBars((d.by_action || []).map(a => ({ label: actionLabel(a.action), count: a.count })))}
+      </div>
+    `);
+}
+
+// ─── Helpers ───
+function head(d) {
+  return `<h1>📊 Статистика активности</h1>
+    <div class="sub">За последние ${d.days || 30} дн. · система «Прогноз». Аналитика собирается с ${d.period?.since ? fmtDate(d.period.since) : '-'}.</div>`;
+}
+function pane(id, active, content) {
+  return `<div id="pane-${id}" class="sec-pane ${active ? 'act' : ''}">${content}</div>`;
+}
+function renderBars(items) {
+  if (!items || !items.length) return '<div class="muted">Нет данных.</div>';
+  const max = Math.max(1, ...items.map(x => x.count));
+  return items.map(x => {
+    const pct = Math.round(x.count / max * 100);
+    return `<div class="bar-row"><div class="lbl">${esc(x.label)}</div><div class="track"><div class="fill blue" style="width:${pct}%"></div></div><div class="val">${x.count}</div></div>`;
+  }).join('');
+}
+function renderSpark(days) {
+  const maxDay = Math.max(1, ...(days || []).map(x => x.count));
+  return (days || []).slice(-30).map(x =>
+    `<div class="b" style="height:${Math.round(x.count / maxDay * 100)}%" title="${esc(x.date)}: ${x.count}"></div>`
+  ).join('');
+}
+function eventLabel(e) {
+  const labels = {
+    page_view: '📄 Просмотр страницы', tab_switch: '📑 Переключение таба',
+    login: '🔐 Вход в систему', set_goal: '🎯 Изменение цели',
+    goal_view: '👁 Просмотр цели', goal_change_fail: '🚫 Блокировка цели',
+    task_create: '➕ Создание задачи', task_complete: '✅ Завершение задачи',
+    task_skip: '⏭ Пропуск задачи', funnel_expand: '🔽 Раскрытие воронки',
+    funnel_collapse: '🔼 Скрытие воронки', open_coach: '🧠 Открытие тренера',
+    open_calendar: '📅 Открытие календаря', open_tasks: '📋 Открытие задач',
+    open_prognoz_tab: '📊 Таб Прогноз', open_trener_tab: '🏋️ Таб Тренер',
+    search_user: '🔍 Поиск сотрудника', drilldown: '👤 Просмотр чужого кабинета',
+    radar_grade_click: '🎯 Выбор грейда радара', radar_segment_switch: '📊 Смена сегмента радара',
+    funnel_12mo_open: '📈 12-мес воронка', prognosha_ask: '🦊 Вопрос Прогноше',
+    prognosha_meeting_create: '📅 Встреча через Прогношу',
+    forecast_tab_open: '🔮 Открытие прогноза', notif_click: '🔔 Клик уведомления',
+    notif_mark_read: '✅ Прочитано уведомление', award_open: '🏆 Открытие наград',
+    update_goal_click: '✏️ Клик «Изменить цель»',
+    session_start: '🚀 Начало сессии', session_heartbeat: '💓 Heartbeat',
+    error: '❌ Ошибка',
+  };
+  return labels[e] || e;
+}
+function pageLabel(p) {
+  const labels = { '': 'Главная', '/': 'Главная', '/index': 'Кабинет партнёра',
+    '/mop': 'Кабинет МОП', '/rop': 'Кабинет РОП', '/aup': 'Кабинет АУП',
+    '/login': 'Вход', '/prognosha-stats': 'Статистика Прогноши',
+    '/analytics-stats': 'Статистика активности' };
+  return labels[p] || esc(p) || '—';
+}
+function actionLabel(a) {
+  const labels = { click: 'Клик', change: 'Изменение', view: 'Просмотр', submit: 'Отправка' };
+  return labels[a] || esc(a) || '—';
+}
+window.filterUsers = () => {
+  const q = (document.getElementById('userSearch').value || '').toLowerCase();
+  document.querySelectorAll('.ur').forEach(r => {
+    r.style.display = r.dataset.search.includes(q) ? '' : 'none';
+  });
+};
+</script>
+</body>
+</html>

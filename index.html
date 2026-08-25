@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Прогноз — Кабинет партнёра</title>
 <script src="/metrika.js"></script>
+<script src="/analytics.js"></script>
 <script type="importmap">
 { "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
 </script>
@@ -769,7 +770,7 @@ window.markAllRead=async(silent)=>{
  }catch(e){ if(!silent) alert('Не удалось: '+(e.message||e)); }
 };
 window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
-window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); };
+window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; const isOpen=!s.classList.contains('hidden'); s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); if(window.__analytics){const lb=c.querySelector('.funnel-label,.stage-label');window.__analytics.track(isOpen?'funnel_collapse':'funnel_expand',{target:lb?lb.textContent.trim():'funnel'});} };
 window.completeTask=async(id,ev)=>{
  if(ev)ev.stopPropagation();
  const btn = ev && ev.target && ev.target.closest && ev.target.closest('button');
@@ -2577,7 +2578,7 @@ function initSvetoforCalcWithData(d){
 }
 
 /* ─── МОДАЛКА «Изменить цель» ─── */
-window.openEditGoal=()=>{
+window.openEditGoal=()=>{ if(window.__analytics) window.__analytics.track('update_goal_click');
  const d=CTX.data; const g=d.goal; const inc=d.user.income_month;
  const cur=g?g.target_revenue_month:143415;
  const presets=[
@@ -2600,12 +2601,12 @@ window.saveGoal=async()=>{
  const v=Math.round(Number(document.getElementById('goalInput').value)||0);
  if(v<30000||v>5000000){ alert('Цель должна быть от 30 000 до 5 000 000 ₽'); return; }
  const b=document.getElementById('goalSaveBtn'); b.disabled=true; b.textContent='Сохраняю…';
- try{ await window.__call('setGoal',{user_code:CTX.target,new_target_revenue:v}); location.reload(); }
+ try{ await window.__call('setGoal',{user_code:CTX.target,new_target_revenue:v}); if(window.__analytics) window.__analytics.track('set_goal',{metadata:{value:v}}); location.reload(); }
  catch(e){ alert('Не удалось: '+(e.message||e)); b.disabled=false; b.textContent='Сохранить и пересчитать план'; }
 };
 
 /* ─── МОДАЛКА «Зал славы» (заглушка) ─── */
-window.openHof=()=>{
+window.openHof=()=>{ if(window.__analytics) window.__analytics.track('award_open');
  const rw=CTX.data.rewards;
  const cyc=CTX.data.cycle_awards||[];
  const cycHtml=cyc.length?`<div class="hof-cyc">${cyc.map(a=>`<div class="hof-item" style="cursor:pointer" onclick="window.openCycleReport('${a.started_month}')"><span>${esc(a.emoji)} Цикл ${a.cycle_no} — ${a.achieved?('выполнен на '+a.pct+'%'):(a.pct+'% цели')}</span><span class="muted" style="margin-left:auto;font-size:11px">${esc(a.ended_month||a.started_month||'')} ›</span></div>`).join('')}</div>`:'';

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Прогноз — Кабинет старшего партнёра</title>
 <script src="/metrika.js"></script>
+<script src="/analytics.js"></script>
 <script type="importmap">
 { "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
 </script>
@@ -637,7 +638,7 @@ window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); 
 // открываем в новой вкладке своим текущим кодом группы (CTX.target — свой код, либо код
 // менеджера, если РОП зашёл сюда через mop.html?mop=). Печать/PDF уже есть внутри отчёта.
 window.openGroupReport=()=>{ window.open('session-report.html?level=mop&code='+encodeURIComponent(CTX.target),'_blank'); };
-window.openMember=(code)=>{ location.href='index.html?agent='+encodeURIComponent(code); };
+window.openMember=(code)=>{ if(window.__analytics) window.__analytics.track('drilldown',{target:'index?agent='+code}); location.href='index.html?agent='+encodeURIComponent(code); };
 window.closeModal=(id)=>document.getElementById(id).classList.remove('on');
 window.completeTask=async(id,ev)=>{
  if(ev)ev.stopPropagation();
@@ -973,7 +974,7 @@ function aggStageCard(side,st,members){
  }
  return html;
 }
-window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); };
+window.toggleStage=(head)=>{ const c=head.closest('.stage-card, .funnel-stage'); if(!c)return; const s=c.querySelector('.stage-seg'),ch=c.querySelector('.chev'); if(!s)return; const isOpen=!s.classList.contains('hidden'); s.classList.toggle('hidden'); if(ch) ch.classList.toggle('open'); if(window.__analytics){const lb=c.querySelector('.funnel-label,.stage-label');window.__analytics.track(isOpen?'funnel_collapse':'funnel_expand',{target:lb?lb.textContent.trim():'funnel'});} };
 function aggSide(side,fs,icon){ if(!fs)return'';
  return `<div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span>
  <div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div>
