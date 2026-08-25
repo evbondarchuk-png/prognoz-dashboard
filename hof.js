@@ -146,25 +146,34 @@
     }).catch(function (e) { document.getElementById('hdBody').innerHTML = '<div class="hd-empty">Не удалось загрузить: ' + esc(e.message || e) + '</div>'; });
   };
 
-  // кнопка «👥 Коллеги» в шапке существующего Зала славы
-  function patchHof() {
-    if (typeof window.openHof !== 'function' || window.__hofPatched) return;
-    window.__hofPatched = true;
-    var orig = window.openHof;
-    window.openHof = function () {
-      orig.apply(this, arguments);
-      setTimeout(function () {
-        var mb = document.getElementById('modalHofBody'); if (!mb) return;
-        var h = mb.querySelector('.modal-title') || mb.querySelector('div > div');
-        if (h && !mb.querySelector('.hd-open-btn')) {
-          ensureStyles();
-          var s = document.createElement('button'); s.className = 'hd-open-btn'; s.textContent = '👥 Коллеги';
-          s.onclick = function () { if (window.closeModal) window.closeModal('modalHof'); window.openHofDir(); };
-          h.appendChild(s);
-        }
-      }, 0);
-    };
+  // Точки входа «👥 Коллеги»: чип рядом со ссылкой «🏆 Зал славы» + кнопка в шапке модалки.
+  // MutationObserver — НЕ зависит от порядка определения window.openHof (модули с await,
+  // чужие обёртки и т.п.): вклиниваемся в момент фактической отрисовки DOM.
+  function injectEntry() {
+    var hall = document.querySelector('.rw-hall');
+    if (hall && hall.parentNode && !hall.parentNode.querySelector('.hd-open-btn')) {
+      ensureStyles();
+      var c = document.createElement('span'); c.className = 'hd-open-btn'; c.textContent = '👥 Коллеги';
+      c.onclick = function (ev) { ev.stopPropagation(); window.openHofDir(); };
+      hall.parentNode.appendChild(c);
+    }
+    var mb = document.getElementById('modalHofBody');
+    if (mb && mb.innerHTML && !mb.querySelector('.hd-open-btn')) {
+      var h = mb.querySelector('.modal-title') || mb.querySelector('div > div');
+      if (h) {
+        ensureStyles();
+        var s = document.createElement('button'); s.className = 'hd-open-btn'; s.textContent = '👥 Коллеги';
+        s.onclick = function () { if (window.closeModal) window.closeModal('modalHof'); window.openHofDir(); };
+        h.appendChild(s);
+      }
+    }
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', patchHof);
-  else patchHof();
+  var __moT = null;
+  function scheduleInject() { if (__moT) return; __moT = setTimeout(function () { __moT = null; injectEntry(); }, 60); }
+  try {
+    var mo = new MutationObserver(scheduleInject);
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) { setInterval(injectEntry, 2000); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectEntry);
+  else injectEntry();
 })();
