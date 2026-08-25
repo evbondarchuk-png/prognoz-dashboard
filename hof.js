@@ -153,7 +153,7 @@
     var hall = document.querySelector('.rw-hall');
     if (hall && hall.parentNode && !hall.parentNode.querySelector('.hd-open-btn')) {
       ensureStyles();
-      var c = document.createElement('span'); c.className = 'hd-open-btn'; c.textContent = '👥 Коллеги';
+      var c = document.createElement('span'); c.className = 'hd-open-btn'; c.textContent = "👥 Сравни себя с коллегами";
       c.onclick = function (ev) { ev.stopPropagation(); window.openHofDir(); };
       hall.parentNode.appendChild(c);
     }
@@ -162,7 +162,7 @@
       var h = mb.querySelector('.modal-title') || mb.querySelector('div > div');
       if (h) {
         ensureStyles();
-        var s = document.createElement('button'); s.className = 'hd-open-btn'; s.textContent = '👥 Коллеги';
+        var s = document.createElement('button'); s.className = 'hd-open-btn'; s.textContent = "👥 Сравни себя с коллегами";
         s.onclick = function () { if (window.closeModal) window.closeModal('modalHof'); window.openHofDir(); };
         h.appendChild(s);
       }
