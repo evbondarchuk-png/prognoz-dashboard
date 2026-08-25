@@ -73,9 +73,9 @@
   };
   window.__hofBack = function () { renderList(); };
 
-  function ensureModal() {
-    if (document.getElementById('modalHofDir')) return;
-    var st = document.createElement('style'); st.textContent =
+  function ensureStyles() {
+    if (document.getElementById('hofDirStyles')) return;
+    var st = document.createElement('style'); st.id = 'hofDirStyles'; st.textContent =
       '#modalHofDir{position:fixed;inset:0;background:rgba(15,20,35,.55);display:none;align-items:center;justify-content:center;z-index:1200;padding:16px}' +
       '#modalHofDir.on{display:flex}' +
       '#modalHofDir .hd-card{background:var(--surface,#fff);border-radius:14px;max-width:760px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(20,30,55,.25);overflow:hidden}' +
@@ -117,8 +117,13 @@
       '#modalHofDir .hd-b-t{font-weight:700;font-size:13px;color:var(--ink,#1a1f2e)}' +
       '#modalHofDir .hd-b-s{font-size:11px;color:var(--muted,#7a8194);margin-top:1px}' +
       '#modalHofDir .hd-b-c{font-size:11px;color:var(--muted,#7a8194);margin-top:3px;font-style:italic}' +
-      '.hd-open-btn{margin-left:10px;border:1px solid var(--line,#e6e8ee);background:var(--brand-soft,#eaf2fb);color:var(--brand,#2b6cb0);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;cursor:pointer;vertical-align:middle}';
+      '.hd-open-btn{margin-left:10px;border:1px solid var(--line,#e6e8ee);background:var(--brand-soft,#eaf2fb);color:var(--brand,#2b6cb0);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;cursor:pointer;vertical-align:middle;font-family:inherit}';
     document.head.appendChild(st);
+  }
+
+  function ensureModal() {
+    ensureStyles();
+    if (document.getElementById('modalHofDir')) return;
     var m = document.createElement('div'); m.id = 'modalHofDir';
     m.innerHTML = '<div class="hd-card"><div class="hd-top"><div class="hd-title">👥 Награды коллег</div>' +
       '<button class="hd-x" title="Закрыть">✕</button></div><div id="hdBody"></div></div>';
@@ -152,6 +157,7 @@
         var mb = document.getElementById('modalHofBody'); if (!mb) return;
         var h = mb.querySelector('.modal-title') || mb.querySelector('div > div');
         if (h && !mb.querySelector('.hd-open-btn')) {
+          ensureStyles();
           var s = document.createElement('button'); s.className = 'hd-open-btn'; s.textContent = '👥 Коллеги';
           s.onclick = function () { if (window.closeModal) window.closeModal('modalHof'); window.openHofDir(); };
           h.appendChild(s);
