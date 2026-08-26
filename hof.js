@@ -1,9 +1,13 @@
 /**
- * hof.js — «Награды коллег» (витрина Зала славы), общий для всех кабинетов.
+ * hof.js — «Награды коллег» + «⭐ Звёзды» (витрина Зала славы), общий для кабинетов.
  * Открывается кнопкой «👥 Сравни себя с коллегами» в шапке Зала славы (патчит window.openHof).
- * Фильтры: моя группа / мой отдел / компания; поиск по ФИО; рейтинг по XP;
- * клик по человеку → все его медали с датами получения.
- * Данные: callable hofDirectory (список из /hof, детали из /rewards).
+ *
+ * Таб «🏅 Награды»: фильтры группа/отдел/компания, поиск по ФИО, рейтинг по XP,
+ * клик по человеку → все его медали с датами (callable hofDirectory).
+ * Таб «⭐ Звёзды»: задатки и сделки за день / неделю (пн–вс) / текущий месяц
+ * (callable starsData, /stars строит крон). Топ-8 карточек с фото (Yandex Object
+ * Storage, нет фото — инициалы); если смотрящий сам звезда — карточка светится
+ * и подпись «на вашем N месте». Срезы: моя группа / мой отдел / компания.
  */
 (function () {
   'use strict';
@@ -12,7 +16,19 @@
   var TL = { common: 'обычная', rare: 'редкая', epic: 'эпическая', legend: 'легендарная' };
   var CACHE = null, VIEWER = {}, SCOPE = 'company', Q = '';
 
+  // ── Звёзды ──
+  var STARS = null;         // {entries, viewer, date, week_start}
+  var TAB = 'awards';       // 'awards' | 'stars'
+  var PERIOD = 'day';       // 'day' | 'week' | 'month'
+  var SS = 'group';         // срез звёзд: group | dept | company
+  var RU_M = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  var MEDAL = ['🥇', '🥈', '🥉'];
+
   function dt(ts) { try { return ts ? new Date(ts).toLocaleDateString('ru-RU') : '—'; } catch (e) { return '—'; } }
+  function dtHuman(d) { if (!d || d.length < 10) return ''; return +d.slice(8, 10) + ' ' + (RU_M[+d.slice(5, 7) - 1] || ''); }
+  function pluralDep(n) { var m = n % 10, h = n % 100; if (m === 1 && h !== 11) return 'задаток'; if (m >= 2 && m <= 4 && (h < 10 || h >= 20)) return 'задатка'; return 'задатков'; }
+  function pluralDeal(n) { var m = n % 10, h = n % 100; if (m === 1 && h !== 11) return 'сделка'; if (m >= 2 && m <= 4 && (h < 10 || h >= 20)) return 'сделки'; return 'сделок'; }
+  function pluralMan(n) { var m = n % 10, h = n % 100; if (m === 1 && h !== 11) return 'человек'; if (m >= 2 && m <= 4 && (h < 10 || h >= 20)) return 'человека'; return 'человек'; }
 
   function rows() {
     var arr = (CACHE || []).slice();
@@ -20,6 +36,12 @@
     if (SCOPE === 'dept' && VIEWER.rop) arr = arr.filter(function (x) { return String(x.rop) === String(VIEWER.rop); });
     if (Q) { var q = Q.toLowerCase(); arr = arr.filter(function (x) { return (x.name || '').toLowerCase().indexOf(q) >= 0; }); }
     return arr;
+  }
+
+  function tabBar() {
+    return '<div class="hd-tabs">' +
+      '<button class="hd-tab' + (TAB === 'awards' ? ' on' : '') + '" onclick="__hofTab(\'awards\')">🏅 Награды</button>' +
+      '<button class="hd-tab' + (TAB === 'stars' ? ' on' : '') + '" onclick="__hofTab(\'stars\')">⭐ Звёзды</button></div>';
   }
 
   function renderList() {
@@ -39,17 +61,99 @@
         '<div class="hd-xp"><b>Ур.' + x.level + '</b><span>' + x.xp + ' XP · ' + x.count + ' 🎖</span></div></div>';
     }).join('');
     document.getElementById('hdBody').innerHTML =
+      tabBar() +
       '<div class="hd-bar"><div class="hd-chips">' + chips + '</div>' +
       '<input id="hdQ" class="hd-q" placeholder="🔍 Поиск по фамилии…" value="' + esc(Q) + '" oninput="__hofQ(this.value)"></div>' +
-      '<div class="hd-meta">' + (arr.length ? esc(String(arr.length)) + ' ' + plural(arr.length) + ' · рейтинг по XP · место в компании — слева' : '') + '</div>' +
+      '<div class="hd-meta">' + (arr.length ? esc(String(arr.length)) + ' ' + pluralMan(arr.length) + ' · рейтинг по XP · место в компании — слева' : '') + '</div>' +
       '<div class="hd-list">' + (list || '<div class="hd-empty">Никого не найдено</div>') + '</div>' +
       (arr.length > shown.length ? '<div class="hd-meta" style="text-align:center">показаны первые 150 — уточните поиск</div>' : '');
     var el = document.getElementById('hdQ');
     if (el && Q) { el.focus(); try { el.setSelectionRange(Q.length, Q.length); } catch (e) {} }
   }
 
-  function plural(n) { var m = n % 10, h = n % 100; if (m === 1 && h !== 11) return 'человек'; if (m >= 2 && m <= 4 && (h < 10 || h >= 20)) return 'человека'; return 'человек'; }
+  // ── Звёзды: сортировка по задаткам, затем сделкам ──
+  function starRows() {
+    var arr = (STARS && STARS.entries ? STARS.entries.slice() : []);
+    var v = STARS && STARS.viewer || {};
+    if (SS === 'group' && v.mop) arr = arr.filter(function (x) { return String(x.mop) === String(v.mop); });
+    if (SS === 'dept' && v.rop) arr = arr.filter(function (x) { return String(x.rop) === String(v.rop); });
+    arr.sort(function (a, b) {
+      var pa = (a[PERIOD] || {}), pb = (b[PERIOD] || {});
+      return (pb.dep - pa.dep) || (pb.closed - pa.closed) || (a.name < b.name ? -1 : 1);
+    });
+    return arr;
+  }
 
+  function starCard(x, i) {
+    var m = x[PERIOD] || {};
+    var me = STARS && STARS.viewer && String(STARS.viewer.code) === String(x.code);
+    var photo = x.photo
+      ? '<img class="st-photo" src="' + esc(x.photo) + '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.st-ini\').style.display=\'flex\'"><div class="st-ini" style="display:none">' + esc(ini(x.name)) + '</div>'
+      : '<div class="st-ini">' + esc(ini(x.name)) + '</div>';
+    var metrics = [];
+    if (m.dep > 0) metrics.push('<b>🤝 ' + m.dep + '</b> ' + pluralDep(m.dep));
+    if (m.closed > 0) metrics.push('<b>🏠 ' + m.closed + '</b> ' + pluralDeal(m.closed));
+    return '<div class="st-card' + (i < 3 ? ' top t' + i : '') + (me ? ' me' : '') + '">' +
+      '<div class="st-rank">' + (i < 3 ? MEDAL[i] : (i + 1)) + '</div>' +
+      '<div class="st-av">' + photo + '</div>' +
+      '<div class="st-name">' + esc(shortName(x.name)) + (me ? '<span class="st-me">⭐ это вы</span>' : '') + '</div>' +
+      '<div class="st-metrics">' + (metrics.length ? metrics.join(' · ') : '—') + '</div></div>';
+  }
+
+  function ini(name) { var p = String(name || '?').trim().split(/\s+/); return ((p[0] || '')[0] || '') + ((p[1] || '')[0] || ''); }
+  function shortName(name) { var p = String(name || '').trim().split(/\s+/); return esc((p[0] || '') + ' ' + ((p[1] || ''))); }
+
+  function renderStars() {
+    var body = document.getElementById('hdBody');
+    if (!STARS) {
+      body.innerHTML = tabBar() + '<div class="hd-empty">Считаю звёзды…</div>';
+      window.__call('starsData', {}).then(function (r) {
+        STARS = { entries: (r && r.entries) || [], viewer: (r && r.viewer) || {}, date: (r && r.date) || null, week_start: (r && r.week_start) || null };
+        if (TAB === 'stars') renderStars();
+      }).catch(function (e) {
+        if (TAB === 'stars') body.innerHTML = tabBar() + '<div class="hd-empty">Не удалось загрузить: ' + esc(e.message || e) + '</div>';
+      });
+      return;
+    }
+    var arr = starRows(); var top = arr.slice(0, 8);
+    var v = STARS.viewer || {};
+    var myIdx = -1;
+    for (var i = 0; i < arr.length; i++) { if (String(arr[i].code) === String(v.code)) { myIdx = i; break; } }
+    var myM = myIdx >= 0 ? (arr[myIdx][PERIOD] || {}) : null;
+
+    var pchips = [['day', 'За день'], ['week', 'За неделю'], ['month', 'За месяц']].map(function (p) {
+      return '<button class="hd-chip' + (PERIOD === p[0] ? ' on' : '') + '" onclick="__starsPeriod(\'' + p[0] + '\')">' + p[1] + '</button>';
+    }).join('');
+    var schips = '';
+    if (v.mop) schips += '<button class="hd-chip' + (SS === 'group' ? ' on' : '') + '" onclick="__starsScope(\'group\')">Моя группа</button>';
+    if (v.rop) schips += '<button class="hd-chip' + (SS === 'dept' ? ' on' : '') + '" onclick="__starsScope(\'dept\')">Мой отдел</button>';
+    schips += '<button class="hd-chip' + (SS === 'company' ? ' on' : '') + '" onclick="__starsScope(\'company\')">Компания</button>';
+
+    var when = PERIOD === 'day' ? 'за ' + dtHuman(STARS.date)
+      : PERIOD === 'week' ? ('с ' + dtHuman(STARS.week_start) + ' по ' + dtHuman(STARS.date))
+      : 'за ' + (STARS.date ? RU_M[+STARS.date.slice(5, 7) - 1] : '');
+    var meLine = myIdx >= 0
+      ? (myIdx < 8
+        ? '<div class="st-meline">⭐ Вы — звезда этого списка!</div>'
+        : '<div class="st-meline">⭐ Вы в списке звёзд: ' + (myM.dep || 0) + ' ' + pluralDep(myM.dep || 0) + ', ' + (myM.closed || 0) + ' ' + pluralDeal(myM.closed || 0) + ' — ' + (myIdx + 1) + '-е место</div>')
+      : '';
+
+    body.innerHTML = tabBar() +
+      '<div class="hd-bar"><div class="hd-chips">' + pchips + '</div><div class="hd-chips">' + schips + '</div></div>' +
+      '<div class="hd-meta">' + esc(when) + ' · сначала задатки, потом сделки · ' + esc(String(arr.length)) + ' ' + pluralMan(arr.length) + ' с активностью · обновляется к утру</div>' +
+      meLine +
+      '<div class="st-grid">' + (top.map(starCard).join('') || '<div class="hd-empty">Звёзд пока нет — данные приходят к утру</div>') + '</div>' +
+      (arr.length > 8 ? '<div class="hd-meta" style="text-align:center">топ-8 из ' + arr.length + '</div>' : '');
+  }
+
+  window.__hofTab = function (t) {
+    TAB = t;
+    var ttl = document.querySelector('#modalHofDir .hd-title');
+    if (ttl) ttl.textContent = t === 'stars' ? '⭐ Звёзды' : '👥 Награды коллег';
+    if (t === 'stars') renderStars(); else renderList();
+  };
+  window.__starsPeriod = function (p) { PERIOD = p; renderStars(); };
+  window.__starsScope = function (s) { SS = s; renderStars(); };
   window.__hofScope = function (k) { SCOPE = k; renderList(); };
   window.__hofQ = function (v) { Q = v; renderList(); };
   window.__hofOpen = function (code) {
@@ -83,6 +187,9 @@
       '#modalHofDir .hd-title{font-size:17px;font-weight:800;color:var(--ink,#1a1f2e)}' +
       '#modalHofDir .hd-x{background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted,#7a8194)}' +
       '#modalHofDir #hdBody{overflow-y:auto;padding:12px 20px 20px}' +
+      '#modalHofDir .hd-tabs{display:flex;gap:6px;margin:2px 0 10px;border-bottom:2px solid var(--line,#e6e8ee)}' +
+      '#modalHofDir .hd-tab{background:none;border:none;padding:8px 14px 10px;font-size:13.5px;font-weight:700;cursor:pointer;color:var(--muted,#7a8194);border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit}' +
+      '#modalHofDir .hd-tab.on{color:var(--brand,#2b6cb0);border-color:var(--brand,#2b6cb0)}' +
       '#modalHofDir .hd-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}' +
       '#modalHofDir .hd-chips{display:flex;gap:6px;flex-wrap:wrap}' +
       '#modalHofDir .hd-chip{border:1px solid var(--line,#e6e8ee);background:transparent;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-soft,#3b4358)}' +
@@ -117,6 +224,23 @@
       '#modalHofDir .hd-b-t{font-weight:700;font-size:13px;color:var(--ink,#1a1f2e)}' +
       '#modalHofDir .hd-b-s{font-size:11px;color:var(--muted,#7a8194);margin-top:1px}' +
       '#modalHofDir .hd-b-c{font-size:11px;color:var(--muted,#7a8194);margin-top:3px;font-style:italic}' +
+      // ⭐ Звёзды
+      '#modalHofDir .st-meline{margin:0 0 10px;padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,rgba(245,158,11,.14),rgba(245,158,11,.03));border:1px solid rgba(245,158,11,.45);color:#92400e;font-size:12.5px;font-weight:700}' +
+      '#modalHofDir .st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}' +
+      '#modalHofDir .st-card{position:relative;border:1px solid var(--line,#e6e8ee);border-radius:14px;padding:16px 10px 12px;text-align:center;background:linear-gradient(180deg,#fff, var(--brand-soft,#f4f7fb));transition:.15s}' +
+      '#modalHofDir .st-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(20,30,55,.10)}' +
+      '#modalHofDir .st-card.t0{border-color:#f59e0b;background:linear-gradient(180deg,#fffbeb,#fef3c7)}' +
+      '#modalHofDir .st-card.t1{border-color:#94a3b8;background:linear-gradient(180deg,#fff,#f1f5f9)}' +
+      '#modalHofDir .st-card.t2{border-color:#d97706;background:linear-gradient(180deg,#fffaf0,#fef3c7)}' +
+      '#modalHofDir .st-card.me{outline:2px solid #f59e0b;outline-offset:2px}' +
+      '#modalHofDir .st-rank{position:absolute;top:8px;left:10px;font-size:15px;font-weight:800;color:var(--muted,#7a8194)}' +
+      '#modalHofDir .st-av{width:64px;height:64px;margin:0 auto 8px;position:relative}' +
+      '#modalHofDir .st-photo{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid #f59e0b;box-shadow:0 3px 10px rgba(245,158,11,.25)}' +
+      '#modalHofDir .st-ini{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff;background:linear-gradient(135deg,var(--brand,#2b6cb0),#7c3aed);border:3px solid rgba(255,255,255,.7)}' +
+      '#modalHofDir .st-name{font-weight:700;font-size:12.5px;color:var(--ink,#1a1f2e);line-height:1.25;min-height:32px}' +
+      '#modalHofDir .st-me{display:block;color:#b45309;font-size:10.5px;font-weight:700;margin-top:2px}' +
+      '#modalHofDir .st-metrics{font-size:11px;color:var(--muted,#7a8194);margin-top:4px}' +
+      '#modalHofDir .st-metrics b{color:var(--ink,#1a1f2e)}' +
       '.hd-open-btn{margin-left:10px;border:1px solid var(--line,#e6e8ee);background:var(--brand-soft,#eaf2fb);color:var(--brand,#2b6cb0);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;cursor:pointer;vertical-align:middle;font-family:inherit}';
     document.head.appendChild(st);
   }
@@ -142,7 +266,9 @@
     else p = window.__call('hofDirectory', {}).then(function (r) { CACHE = (r && r.items) || []; VIEWER = (r && r.viewer) || {}; });
     p.then(function () {
       if (!VIEWER.mop && VIEWER.rop) SCOPE = 'dept'; else if (VIEWER.mop) SCOPE = 'group'; else SCOPE = 'company';
-      renderList();
+      var sv = (STARS && STARS.viewer) || {};
+      if (sv.mop) SS = 'group'; else if (sv.rop) SS = 'dept'; else SS = 'company';
+      if (TAB === 'stars') renderStars(); else renderList();
     }).catch(function (e) { document.getElementById('hdBody').innerHTML = '<div class="hd-empty">Не удалось загрузить: ' + esc(e.message || e) + '</div>'; });
   };
 
