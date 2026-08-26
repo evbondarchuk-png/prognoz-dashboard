@@ -79,6 +79,8 @@
     var v = STARS && STARS.viewer || {};
     if (SS === 'group' && v.mop) arr = arr.filter(function (x) { return String(x.mop) === String(v.mop); });
     if (SS === 'dept' && v.rop) arr = arr.filter(function (x) { return String(x.rop) === String(v.rop); });
+    // нули не показываем: в выбранном периоде должен быть хотя бы один задаток или сделка
+    arr = arr.filter(function (x) { var m = x[PERIOD] || {}; return (m.dep || 0) > 0 || (m.closed || 0) > 0; });
     arr.sort(function (a, b) {
       var pa = (a[PERIOD] || {}), pb = (b[PERIOD] || {});
       return (pb.dep - pa.dep) || (pb.closed - pa.closed) || (a.name < b.name ? -1 : 1);
