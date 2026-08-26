@@ -21,7 +21,9 @@
   var TAB = 'awards';       // 'awards' | 'stars'
   var PERIOD = 'day';       // 'day' | 'week' | 'month'
   var SS = 'group';         // срез звёзд: group | dept | company
+  var PAGE = 1;             // страница звёзд (по 8 карточек)
   var RU_M = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  var RU_M_NOM = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
   var MEDAL = ['🥇', '🥈', '🥉'];
 
   function dt(ts) { try { return ts ? new Date(ts).toLocaleDateString('ru-RU') : '—'; } catch (e) { return '—'; } }
@@ -84,7 +86,7 @@
     return arr;
   }
 
-  function starCard(x, i) {
+  function starCard(x, place) { // place — место в полном списке, с нуля
     var m = x[PERIOD] || {};
     var me = STARS && STARS.viewer && String(STARS.viewer.code) === String(x.code);
     var photo = x.photo
@@ -93,8 +95,8 @@
     var metrics = [];
     if (m.dep > 0) metrics.push('<b>🤝 ' + m.dep + '</b> ' + pluralDep(m.dep));
     if (m.closed > 0) metrics.push('<b>🏠 ' + m.closed + '</b> ' + pluralDeal(m.closed));
-    return '<div class="st-card' + (i < 3 ? ' top t' + i : '') + (me ? ' me' : '') + '">' +
-      '<div class="st-rank">' + (i < 3 ? MEDAL[i] : (i + 1)) + '</div>' +
+    return '<div class="st-card' + (place < 3 ? ' top t' + place : '') + (me ? ' me' : '') + '">' +
+      '<div class="st-rank">' + (place < 3 ? MEDAL[place] : (place + 1)) + '</div>' +
       '<div class="st-av">' + photo + '</div>' +
       '<div class="st-name">' + esc(shortName(x.name)) + (me ? '<span class="st-me">⭐ это вы</span>' : '') + '</div>' +
       '<div class="st-metrics">' + (metrics.length ? metrics.join(' · ') : '—') + '</div></div>';
@@ -115,11 +117,18 @@
       });
       return;
     }
-    var arr = starRows(); var top = arr.slice(0, 8);
+    var arr = starRows();
     var v = STARS.viewer || {};
     var myIdx = -1;
     for (var i = 0; i < arr.length; i++) { if (String(arr[i].code) === String(v.code)) { myIdx = i; break; } }
     var myM = myIdx >= 0 ? (arr[myIdx][PERIOD] || {}) : null;
+
+    var PER = 8;
+    var totalPages = Math.max(1, Math.ceil(arr.length / PER));
+    if (PAGE > totalPages) PAGE = totalPages;
+    if (PAGE < 1) PAGE = 1;
+    var from = (PAGE - 1) * PER;
+    var page = arr.slice(from, from + PER);
 
     var pchips = [['day', 'За день'], ['week', 'За неделю'], ['month', 'За месяц']].map(function (p) {
       return '<button class="hd-chip' + (PERIOD === p[0] ? ' on' : '') + '" onclick="__starsPeriod(\'' + p[0] + '\')">' + p[1] + '</button>';
@@ -131,19 +140,27 @@
 
     var when = PERIOD === 'day' ? 'за ' + dtHuman(STARS.date)
       : PERIOD === 'week' ? ('с ' + dtHuman(STARS.week_start) + ' по ' + dtHuman(STARS.date))
-      : 'за ' + (STARS.date ? RU_M[+STARS.date.slice(5, 7) - 1] : '');
+      : 'за ' + (STARS.date ? RU_M_NOM[+STARS.date.slice(5, 7) - 1] : '');
     var meLine = myIdx >= 0
-      ? (myIdx < 8
+      ? (myIdx < PER
         ? '<div class="st-meline">⭐ Вы — звезда этого списка!</div>'
         : '<div class="st-meline">⭐ Вы в списке звёзд: ' + (myM.dep || 0) + ' ' + pluralDep(myM.dep || 0) + ', ' + (myM.closed || 0) + ' ' + pluralDeal(myM.closed || 0) + ' — ' + (myIdx + 1) + '-е место</div>')
+      : '';
+
+    var pager = totalPages > 1
+      ? '<div class="st-pager">' +
+        '<button class="st-pg" ' + (PAGE <= 1 ? 'disabled' : '') + ' onclick="__starsPage(-1)">←</button>' +
+        '<span>' + PAGE + ' / ' + totalPages + '</span>' +
+        '<button class="st-pg" ' + (PAGE >= totalPages ? 'disabled' : '') + ' onclick="__starsPage(1)">→</button>' +
+        '<span class="hd-meta" style="margin:0 0 0 6px">' + (from + 1) + '–' + Math.min(from + PER, arr.length) + ' из ' + arr.length + '</span></div>'
       : '';
 
     body.innerHTML = tabBar() +
       '<div class="hd-bar"><div class="hd-chips">' + pchips + '</div><div class="hd-chips">' + schips + '</div></div>' +
       '<div class="hd-meta">' + esc(when) + ' · сначала задатки, потом сделки · ' + esc(String(arr.length)) + ' ' + pluralMan(arr.length) + ' с активностью · обновляется к утру</div>' +
       meLine +
-      '<div class="st-grid">' + (top.map(starCard).join('') || '<div class="hd-empty">Звёзд пока нет — данные приходят к утру</div>') + '</div>' +
-      (arr.length > 8 ? '<div class="hd-meta" style="text-align:center">топ-8 из ' + arr.length + '</div>' : '');
+      '<div class="st-grid">' + (page.map(function (x, i) { return starCard(x, from + i); }).join('') || '<div class="hd-empty">Звёзд пока нет — данные приходят к утру</div>') + '</div>' +
+      pager;
   }
 
   window.__hofTab = function (t) {
@@ -152,8 +169,11 @@
     if (ttl) ttl.textContent = t === 'stars' ? '⭐ Звёзды' : '👥 Награды коллег';
     if (t === 'stars') renderStars(); else renderList();
   };
-  window.__starsPeriod = function (p) { PERIOD = p; renderStars(); };
-  window.__starsScope = function (s) { SS = s; renderStars(); };
+  window.__starsPeriod = function (p) { PERIOD = p; PAGE = 1; renderStars(); };
+  window.__starsScope = function (s) { SS = s; PAGE = 1; renderStars(); };
+  window.__starsPage = function (d) { PAGE += d; renderStars(); };
+  // вход из основного таба кабинета: сразу открыть витрину на «⭐ Звёзды»
+  window.__openStars = function () { TAB = 'stars'; window.openHofDir(); };
   window.__hofScope = function (k) { SCOPE = k; renderList(); };
   window.__hofQ = function (v) { Q = v; renderList(); };
   window.__hofOpen = function (code) {
@@ -241,6 +261,10 @@
       '#modalHofDir .st-me{display:block;color:#b45309;font-size:10.5px;font-weight:700;margin-top:2px}' +
       '#modalHofDir .st-metrics{font-size:11px;color:var(--muted,#7a8194);margin-top:4px}' +
       '#modalHofDir .st-metrics b{color:var(--ink,#1a1f2e)}' +
+      '#modalHofDir .st-pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0 4px;font-size:12.5px;font-weight:700;color:var(--muted,#7a8194)}' +
+      '#modalHofDir .st-pg{border:1px solid var(--line,#e6e8ee);background:var(--surface,#fff);border-radius:8px;width:32px;height:28px;font-size:14px;font-weight:800;cursor:pointer;color:var(--ink,#1a1f2e)}' +
+      '#modalHofDir .st-pg:hover:not(:disabled){border-color:var(--brand,#2b6cb0);color:var(--brand,#2b6cb0)}' +
+      '#modalHofDir .st-pg:disabled{opacity:.35;cursor:default}' +
       '.hd-open-btn{margin-left:10px;border:1px solid var(--line,#e6e8ee);background:var(--brand-soft,#eaf2fb);color:var(--brand,#2b6cb0);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;cursor:pointer;vertical-align:middle;font-family:inherit}';
     document.head.appendChild(st);
   }
