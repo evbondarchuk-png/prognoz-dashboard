@@ -1010,4 +1010,14 @@ email проставлен всем, планы выданы (`assignAutoGoalsAd
 
 **Бэкенд:** см. `prognoz-functions/CLAUDE.md` §5.1 (logEvent, analyticsAdmin, computeDailyAnalytics).
 
+## 22. Инциденты и решения (продолжение)
+
+| Дата | Симптом | Причина | Фикс |
+|---|---|---|---|
+| 2026-08-25 | «Объекты в работе» = 0 у МОП/РОП/АУП на главной, у партнёров — норм | Перезапись архива (ручной реран archiver) → `/funnels` и `/aggregates` устарели | `cd prognoz-functions/functions && node fix-objects.js` (пересчёт funnels + aggregates) + `node recalc-snapshots.js` (ИР). См. память `task-aggregates-objects-fix-2026-08-25` |
+| 2026-08-25 | ИР в snapshots устарел (не совпадал со свежим computeIR из funnels) | nightlySnapshot считает ИР в 02:00 UTC; после перезаписи архива ИР не обновлялся | `node recalc-snapshots.js` — пересчёт IR для 3286 пользователей, 3103 с ИР, 0 ошибок |
+| 2026-08-26 | **Ночная цепочка не отработала** — снапшотов и агрегатов за 26.08 нет | `dataHealthDaily` за 25.08 выставил `escalation_safe=false` из-за обнуления `actONCur` после ручной перезаписи архива → вся цепочка заблокирована | Ручной пересчёт: `recalc-snapshots.js` (3 291 польз.) + `_recalc-aggregates-v2.js` (119 МОП+14 РОП) + разблокировка `escalation_safe` в `/data_health/2026-08-25` |
+
+**Вывод:** после ручной перезаписи архива сразу запускать `fix-objects.js` + `recalc-snapshots.js`, иначе `dataHealthDaily` заблокирует ночную цепочку на следующие сутки.
+
 **Важно:** Для понимания полной картины всегда читать оба CLAUDE.md — этот (фронт) и `prognoz-functions/CLAUDE.md` (общий бэкенд).
