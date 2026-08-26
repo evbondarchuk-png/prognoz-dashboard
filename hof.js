@@ -293,6 +293,14 @@
         h.appendChild(s);
       }
     }
+    // кабинет АУП: нет Зала славы — встраиваем кнопку в шапку рядом с «📊 Аналитика»
+    var ab = document.getElementById('analyticsBtn');
+    if (ab && !ab.parentNode.querySelector('.hd-open-btn')) {
+      ensureStyles();
+      var b = document.createElement('button'); b.className = 'hd-open-btn'; b.textContent = "⭐ Звёзды и коллеги";
+      b.onclick = function () { window.openHofDir(); };
+      ab.parentNode.insertBefore(b, ab.nextSibling);
+    }
   }
   var __moT = null;
   function scheduleInject() { if (__moT) return; __moT = setTimeout(function () { __moT = null; injectEntry(); }, 60); }
