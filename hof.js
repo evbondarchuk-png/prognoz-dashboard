@@ -187,7 +187,8 @@
       var bl = badges.map(function (bd) {
         return '<div class="hd-b r-' + esc(bd.tier) + '"><span class="hd-b-e">' + esc(bd.emoji) + '</span>' +
           '<div class="hd-b-m"><div class="hd-b-t">' + esc(bd.title) + '</div>' +
-          '<div class="hd-b-s">' + esc(TL[bd.tier] || bd.tier || '') + ' · получена ' + dt(bd.earned_at) + '</div>' +
+          '<div class="hd-b-s">' + esc(TL[bd.tier] || bd.tier || '') + ' · получена ' + dt(bd.earned_at) +
+          (bd.hits ? ' · попаданий в топ-8: ' + bd.hits : '') + '</div>' +
           (bd.crit ? '<div class="hd-b-c">' + esc(bd.crit) + '</div>' : '') + '</div></div>';
       }).join('');
       b.innerHTML = '<button class="hd-back" onclick="__hofBack()">← К списку</button>' +
