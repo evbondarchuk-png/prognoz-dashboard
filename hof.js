@@ -159,7 +159,7 @@
 
     body.innerHTML = tabBar() +
       '<div class="hd-bar"><div class="hd-chips">' + pchips + '</div><div class="hd-chips">' + schips + '</div></div>' +
-      '<div class="hd-meta">' + esc(when) + ' · сначала задатки, потом сделки · ' + esc(String(arr.length)) + ' ' + pluralMan(arr.length) + ' с активностью · обновляется к утру</div>' +
+      '<div class="hd-meta">' + esc(when) + '</div>' +
       meLine +
       '<div class="st-grid">' + (page.map(function (x, i) { return starCard(x, from + i); }).join('') || '<div class="hd-empty">Звёзд пока нет — данные приходят к утру</div>') + '</div>' +
       pager;
