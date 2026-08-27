@@ -917,6 +917,7 @@ function renderHero(d){
  <div class="hero-iconbar">
  <div class="hib" onclick="openNotifications()">🔔${unread?`<span class="hib-badge">${unread>99?'99+':unread}</span>`:''}</div>
  <div class="hib" onclick="goTab('tasks')">📋️</div>
+ <div class="hib" onclick="window.__requestHelp()" title="Нужна помощь — позовём вашего менеджера, он получит сообщение в чат-бот">🆘</div>
  </div>
  <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
  <span class="role-tag">${esc(u.role_label||'Партнёр')}</span>
@@ -2752,6 +2753,16 @@ function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(
  if(params.get('agent')) document.getElementById('backBtn').style.display='inline-flex';
  const fns=getFunctions(getApp(),'europe-west1');
  window.__call=(name,data)=>httpsCallable(fns,name)(data).then(r=>r.data);
+ // 🆘 «Нужна помощь»: зовём своего менеджера сообщением в чат-бот (не чаще раза в 4 часа)
+ function __helpToast(msg,ok){let t=document.getElementById('helpToast');if(!t){t=document.createElement('div');t.id='helpToast';t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2000;padding:12px 20px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:0 10px 30px rgba(20,30,55,.25);max-width:90%;text-align:center;display:none';document.body.appendChild(t);}t.textContent=msg;t.style.background=ok?'#e8f7ee':'#fdf3e3';t.style.color=ok?'#137a3d':'#8a5a00';t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.display='none';},5000);}
+ window.__requestHelp=async function(){
+  try{
+   const r=await window.__call('requestHelp',{});
+   if(r&&r.ok)__helpToast('✅ Передал: '+(r.manager_name||'менеджер')+' получил сообщение — с вами свяжутся',true);
+   else if(r&&r.cooldown_min)__helpToast('⏳ Помощь уже запрошена, менеджер в курсе. Повтор — через '+r.cooldown_min+' мин',false);
+   else __helpToast('Не получилось отправить — попробуйте ещё раз',false);
+  }catch(e){__helpToast('Не получилось отправить — попробуйте ещё раз',false);}
+ };
  // Разбор тренера пишет рассуждающая модель — она думает минутами.
  // У обычного вызова лимит около минуты, поэтому для него отдельный, длинный.
  window.__callLong=(name,data)=>httpsCallable(fns,name,{timeout:540000})(data).then(r=>r.data);
