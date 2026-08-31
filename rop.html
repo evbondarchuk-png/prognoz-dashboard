@@ -1564,7 +1564,7 @@ function renderAmbitious(){
    return `<td><input class="amb-in" type="number" min="0" step="100" data-i="${i}" data-m="${mi+1}" value="${v}" oninput="ambRecalcRow(${i})"></td>`;
   }).join('');
   return `<tr>
-   <td class="amb-name">${esc(r.mop_name)}<div class="amb-sub">${r.realtors} риелторов · ср. вал ${ambFmtK((r.avg_per_realtor||0)/1000)}/мес</div></td>
+   <td class="amb-name">${esc(r.mop_name)}<div class="amb-sub">${r.realtors} риелторов (0–3 мес: ${r.stazh?r.stazh.s0_3:0} · 4–6: ${r.stazh?r.stazh.s4_6:0} · 6+: ${r.stazh?r.stazh.s6plus:0})<br>ср. вал группы ${ambFmtK((r.avg_month_gross||0)/1000)}/мес · ${ambFmtK((r.avg_per_realtor||0)/1000)} на риелтора</div></td>
    ${cells}
    <td class="amb-total" id="ambTotal${i}">—</td>
    <td class="amb-need" id="ambNeed${i}">—</td>
