@@ -603,7 +603,6 @@
 .sv-svg-wrap svg{display:block;width:100%;height:auto;min-width:520px}
 .sv-pyr{display:flex;flex-direction:column;align-items:center;gap:4px;margin:10px 0 2px}
 .sv-pyr-row{display:flex;align-items:center;justify-content:center;gap:6px;height:22px;border-radius:6px;font-size:11px;font-weight:600;position:relative;opacity:.55;transition:opacity .15s,transform .15s,box-shadow .15s;color:#fff}
-.sv-pyr-row .sv-pyr-r{font-size:10px;font-weight:400;opacity:.6;margin-left:3px}
 .sv-pyr-row .sv-pyr-l{padding:0 12px;white-space:nowrap}
 .sv-pyr-row .sv-pyr-you{display:none;font-size:10px;font-weight:700;background:rgba(255,255,255,.9);color:#1a1f2e;padding:2px 7px;border-radius:999px;margin-left:4px}
 .sv-pyr-row .sv-pyr-cur{display:none;font-size:10px;font-weight:700;background:rgba(255,255,255,.95);color:#475569;padding:2px 7px;border-radius:999px;margin-left:4px}
@@ -2491,7 +2490,10 @@ window.initSvetoforCalc=function(){
       if(curIdx>=0&&k===curIdx)cl+=' cur';
       var w=(18+(k/(Z.length-1))*82).toFixed(0)+'%';
       var bg=CC[z[3]]||'#94a3b8';
-      html+='<div class="sv-pyr-row'+cl+'" data-idx="'+k+'" style="width:'+w+';background:'+bg+';color:#fff"><span class="sv-pyr-l">#'+z[0]+'–'+z[1]+' <span class="sv-pyr-r">≈ '+fmt(z[2])+'₽</span></span><span class="sv-pyr-you">ты будешь здесь</span><span class="sv-pyr-cur">сейчас</span></div>';
+      // Средний доход зоны у полос не показываем (решение Егора 31.08): в узких
+      // зонах (5-10 чел.) средние немонотонны и смущали. Числа z[2] остаются
+      // в расчёте места (posFor) — убрано только отображение.
+      html+='<div class="sv-pyr-row'+cl+'" data-idx="'+k+'" style="width:'+w+';background:'+bg+';color:#fff"><span class="sv-pyr-l">#'+z[0]+'–'+z[1]+'</span><span class="sv-pyr-you">ты будешь здесь</span><span class="sv-pyr-cur">сейчас</span></div>';
     }
     pyr.innerHTML=html;
   }
