@@ -1049,10 +1049,46 @@ function renderMain(d){
  <div class="ai-text">Скоро здесь появится <b>разбор группы от ИИ</b>: кто тянет вверх, кому нужна помощь, что сделать на этой неделе.</div>
  <div class="ai-note">на YandexGPT — после слёта</div></div>`);
  }
+ // 🎯 Амбициозный план по валу от УП (31.08, Егор) — только если РОП задал план
+ out.push(ambitiousCard(d));
  out.push(`<div class="card">${renderAggFunnelsPaired(a.buyer,a.seller,'группы',a.scope&&(a.scope.active_count!=null?a.scope.active_count:a.scope.members_count),(d.team_cards&&d.team_cards.members)||[])}</div>`);
  out.push(tasksMain(d));
  } else out.push(`<div class="banner">Нет агрегатов группы — возможно, ночной пересчёт ещё не прошёл.</div>`);
  document.getElementById('screen-main').innerHTML=out.join('');
+}
+
+/* ─── 🎯 Амбициозный план по валу от УП (31.08.2026, Егор) ─── */
+function _ambFmtK(n){ n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e3) return Math.round(n/1e3)+'к'; return String(Math.round(n)); }
+function ambitiousCard(d){
+ const amb=d&&d.ambitious; if(!amb) return '';
+ const plan=amb.plan_ytd||0, fact=amb.fact_ytd||0, proj=amb.projected_ytd||0;
+ const pctF=plan>0?Math.min(100,Math.round(fact/plan*100)):0;
+ const pctFDelta=plan>0?Math.max(0,Math.min(100-pctF,Math.round((proj-fact)/plan*100))):0;
+ // пропорциональная шкала при перевыполнении (как в воронках): факт и прогноз делят полосу по своей доле
+ let wF=pctF, wD=pctFDelta;
+ if(pctF+pctFDelta>100){ const k=100/(pctF+pctFDelta); wF=Math.round(pctF*k); wD=100-wF; }
+ const ttF=`факт с ${amb.months&&amb.months[0]?amb.months[0].ym:''} — ${_ambFmtK(fact)} ₽ из ${_ambFmtK(plan)} ₽ (${amb.pct_fact!=null?amb.pct_fact:'—'}%)`;
+ const ttD=`прогноз к концу месяца: +${_ambFmtK(Math.max(0,proj-fact))} ₽ → ${amb.pct_projected!=null?amb.pct_projected:'—'}% плана`;
+ const fc=amb.forecast_month_total;
+ return `<div class="card" id="ambCard">
+  <div class="card-head"><div>
+   <div class="card-title">🎯 Амбициозный план от УП · ${amb.year}</div>
+   <div class="card-hint">План валовой выручки группы на год от управляющего партнёра. Выполнение считается с мая 2026 (начало истории данных).</div>
+  </div></div>
+  <div class="hero-stat" style="display:flex;gap:22px;flex-wrap:wrap;margin:6px 0 12px">
+   <div><div class="muted" style="font-size:var(--fs-11)">Факт с мая</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb);color:var(--ok)">${_ambFmtK(fact)} ₽</div></div>
+   <div><div class="muted" style="font-size:var(--fs-11)">С прогнозом</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb);color:var(--gold)">${_ambFmtK(proj)} ₽</div></div>
+   <div><div class="muted" style="font-size:var(--fs-11)">План с мая по сейчас</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb)">${_ambFmtK(plan)} ₽</div></div>
+  </div>
+  <div class="fp-bar" style="margin-bottom:10px">
+   <div class="fp-bar-fact" data-tooltip="${esc(ttF)}" style="width:${wF}%">${wF>=12?amb.pct_fact+'%':''}</div>
+   <div class="fp-bar-forecast" data-tooltip="${esc(ttD)}" style="width:${wD}%">${wD>=12?'+'+((amb.pct_projected||0)-(amb.pct_fact||0))+'%':''}</div>
+  </div>
+  <div class="muted" style="font-size:var(--fs-12)">
+   Месяц: план <b>${_ambFmtK(amb.plan_month)} ₽</b> · факт <b>${_ambFmtK(amb.fact_month)} ₽</b>${fc!=null?` · прогноз к концу <b>${_ambFmtK(fc)} ₽</b>`:''}
+   ${amb.need_realtors!=null?`<br>Риэлторов: <b>${amb.realtors}</b> (средний вал ${_ambFmtK(amb.avg_per_realtor)} ₽/мес) · для плана года (${_ambFmtK(amb.year_total)} ₽) нужно <b>${amb.need_realtors}</b>`:''}
+  </div>
+ </div>`;
 }
 
 /* ─── ПРОГНОЗ группы (TZ-A10) ─── */

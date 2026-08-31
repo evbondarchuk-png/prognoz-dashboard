@@ -468,6 +468,16 @@
 .pl-seg-input{width:64px;font-size:var(--fs-14);padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;background:var(--surface);text-align:center;font-weight:var(--fw-sb)}
 .pl-seg-unit{font-size:var(--fs-12);color:var(--muted)}
 .pl-btn-row{display:flex;gap:10px;margin-top:18px}
+/* ── амбициозные планы по валу (31.08.2026) ── */
+.amb-table{width:100%;border-collapse:collapse;font-size:12px;min-width:980px}
+.amb-table th{font-weight:var(--fw-sb);color:var(--muted);padding:6px 4px;text-align:right;white-space:nowrap}
+.amb-table th:first-child{text-align:left}
+.amb-table td{padding:5px 4px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+.amb-table td.amb-name{text-align:left;font-weight:var(--fw-sb)}
+.amb-sub{font-weight:var(--fw-r);color:var(--muted);font-size:11px;white-space:normal}
+.amb-in{width:56px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:12px;font-family:inherit;background:var(--surface)}
+.amb-total{font-weight:var(--fw-b)}
+.amb-need{font-weight:var(--fw-b);color:var(--brand)}
 .pl-notify{display:flex;align-items:flex-start;gap:10px;background:var(--warn-bg);border:1px solid #f7d9a8;border-radius:var(--r-md);padding:10px 13px;margin-top:10px;font-size:var(--fs-12);color:#7c4a03}
 .pl-success{margin-top:14px;background:var(--ok-bg);color:var(--ok);border-radius:8px;padding:10px 13px;font-size:var(--fs-13)}
 .pl-error{margin-top:14px;background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:10px 13px;font-size:var(--fs-13)}
@@ -1507,9 +1517,11 @@ function renderPlanningScreen(){
    <button class="btn-secondary" onclick="planningReset()">Сбросить</button>
   </div>
   <div id="plMsg"></div>
- </div>`;
+ </div>
+ <div id="ambWrap"></div>`;
  document.getElementById('screen-planning').innerHTML=html;
  planningUpdateNotify();
+ window.loadAmbitious&&window.loadAmbitious();
 }
 window.planningSave=async function(){
  if(PLAN_STATE.saving) return;
@@ -1526,6 +1538,87 @@ window.planningSave=async function(){
  }finally{
   PLAN_STATE.saving=false;
   if(btn){btn.disabled=false;btn.textContent='Сохранить минимумы';}
+ }
+};
+
+/* ── 🎯 Амбициозные планы по валовой выручке (31.08.2026, Егор) ── */
+const AMB_MONTHS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+let AMB={ropCode:null,rows:[],year:null,saving:false};
+function ambFmtK(th){ th=Number(th)||0; if(th>=1000) return (th/1000).toFixed(1).replace('.',',')+' млн'; return String(Math.round(th))+'к'; } // th — тыс ₽
+window.loadAmbitious=async function(){
+ const wrap=document.getElementById('ambWrap'); if(!wrap) return;
+ wrap.innerHTML='<div class="banner">Загружаю амбициозные планы…</div>';
+ try{
+  const res=await window.__call('getAmbitiousGrossPlans',{rop_code:PLAN_STATE.ropCode});
+  AMB.ropCode=PLAN_STATE.ropCode; AMB.rows=res.rows||[]; AMB.year=res.year||new Date().getFullYear();
+  renderAmbitious();
+ }catch(e){ wrap.innerHTML='<div class="banner">Не удалось загрузить планы: '+esc(e.message||e)+'</div>'; }
+};
+function renderAmbitious(){
+ const wrap=document.getElementById('ambWrap'); if(!wrap) return;
+ if(!AMB.rows.length){ wrap.innerHTML=''; return; }
+ const rowsHtml=AMB.rows.map((r,i)=>{
+  const cells=AMB_MONTHS.map((_,mi)=>{
+   const ym=AMB.year+'-'+String(mi+1).padStart(2,'0');
+   const v=(r.gross&&r.gross[ym]!=null)?Math.round(r.gross[ym]/1000):''; // тыс ₽
+   return `<td><input class="amb-in" type="number" min="0" step="100" data-i="${i}" data-m="${mi+1}" value="${v}" oninput="ambRecalcRow(${i})"></td>`;
+  }).join('');
+  return `<tr>
+   <td class="amb-name">${esc(r.mop_name)}<div class="amb-sub">${r.realtors} риелторов · ср. вал ${ambFmtK((r.avg_per_realtor||0)/1000)}/мес</div></td>
+   ${cells}
+   <td class="amb-total" id="ambTotal${i}">—</td>
+   <td class="amb-need" id="ambNeed${i}">—</td>
+  </tr>`;
+ }).join('');
+ wrap.innerHTML=`<div class="card" style="margin-top:18px">
+  <div class="card-head"><div>
+   <div class="card-title">🎯 Амбициозные планы по валовой выручке · ${AMB.year}</div>
+   <div class="card-hint">Планы в <b>тыс ₽</b> на каждый месяц года. «Нужно риелторов» считается автоматически: годовой план ÷ (фактический средний вал на 1 риэлтора за 3 закрытых месяца × 12). Средний вал берётся живой — при изменении группы пересчёт на перевкладке.</div>
+  </div></div>
+  <div style="overflow-x:auto"><table class="amb-table">
+   <thead><tr><th>Менеджер</th>${AMB_MONTHS.map((m)=>`<th>${m}</th>`).join('')}<th>Год</th><th>Нужно риелторов</th></tr></thead>
+   <tbody>${rowsHtml}</tbody>
+  </table></div>
+  <div class="pl-btn-row"><button class="btn-primary" id="ambSaveBtn" onclick="ambSave()">Сохранить планы</button><span class="muted" style="align-self:center;font-size:12px">Планы видны менеджерам в брифе и на Главной их кабинета сразу после сохранения</span></div>
+  <div id="ambMsg"></div>
+ </div>`;
+ AMB.rows.forEach((_,i)=>ambRecalcRow(i));
+}
+window.ambRecalcRow=function(i){
+ const r=AMB.rows[i]; if(!r) return;
+ let sum=0;
+ for(let m=1;m<=12;m++){
+  const el=document.querySelector(`.amb-in[data-i="${i}"][data-m="${m}"]`);
+  sum+=(Number(el&&el.value)||0)*1000;
+ }
+ const tot=document.getElementById('ambTotal'+i);
+ if(tot) tot.textContent=sum>0?ambFmtK(sum/1000)+' ₽':'—';
+ const need=document.getElementById('ambNeed'+i);
+ if(need){
+  if(r.avg_per_realtor>0&&sum>0) need.textContent=(Math.round(sum/(r.avg_per_realtor*12)*10)/10)+' из '+r.realtors;
+  else need.textContent=r.realtors?String(r.realtors):'—';
+ }
+};
+window.ambSave=async function(){
+ if(AMB.saving) return; AMB.saving=true;
+ const btn=document.getElementById('ambSaveBtn'); if(btn){btn.disabled=true;btn.textContent='Сохраняю…';}
+ const msg=document.getElementById('ambMsg');
+ try{
+  const plans=AMB.rows.map((r,i)=>{
+   const months={};
+   for(let m=1;m<=12;m++){
+    const el=document.querySelector(`.amb-in[data-i="${i}"][data-m="${m}"]`);
+    months[String(m)]=Math.round((Number(el&&el.value)||0)*1000);
+   }
+   return {mop_code:r.mop_code,months};
+  });
+  const res=await window.__call('setAmbitiousGrossPlans',{rop_code:AMB.ropCode,year:AMB.year,plans});
+  if(msg) msg.innerHTML=`<div class="pl-success">✅ Сохранено планов: ${res.saved} (год ${res.year})</div>`;
+ }catch(e){
+  if(msg) msg.innerHTML=`<div class="pl-error">Не удалось сохранить: ${esc(e.message||e)}</div>`;
+ }finally{
+  AMB.saving=false;
+  if(btn){btn.disabled=false;btn.textContent='Сохранить планы';}
  }
 };
 
