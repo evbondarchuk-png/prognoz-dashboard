@@ -1585,7 +1585,7 @@ function renderAmbitious(){
    <div class="card-hint">Планы в <b>тыс ₽</b> на каждый месяц года — видно ~3 месяца, остальные прокруткой, текущий подсвечен ●. «Нужно риелторов» считается автоматически: годовой план ÷ (фактический средний вал на 1 риэлтора за 3 закрытых месяца × 12). Средний вал берётся живой — при изменении группы пересчёт на перевкладке.</div>
   </div></div>
   <div class="amb-scroll"><table class="amb-table">
-   <thead><tr><th>Менеджер</th>${AMB_MONTHS.map((m,mi)=>`<th${mi+1===curM?' class="amb-cur"':''}>${m} ${yr2}${mi+1===curM?' ●':''}</th>`).join('')}join('')}<th>Год</th><th>Нужно риелторов</th></tr></thead>
+   <thead><tr><th>Менеджер</th>${AMB_MONTHS.map((m,mi)=>`<th${mi+1===curM?' class="amb-cur"':''}>${m} ${yr2}${mi+1===curM?' ●':''}</th>`).join('')}<th>Год</th><th>Нужно риелторов</th></tr></thead>
    <tbody>${rowsHtml}</tbody>
   </table></div>
   <div class="pl-btn-row"><button class="btn-primary" id="ambSaveBtn" onclick="ambSave()">Сохранить планы</button><span class="muted" style="align-self:center;font-size:12px">Планы видны менеджерам в брифе и на Главной их кабинета сразу после сохранения</span></div>
