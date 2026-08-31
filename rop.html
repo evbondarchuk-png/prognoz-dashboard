@@ -1466,8 +1466,10 @@ function planningUpdateNotify(){
   const el=document.querySelector(`.pl-seg-input[data-side="${side}"][data-metric="flow"][data-seg="${s.key}"]`);
   sum+=Number((el&&el.value)||0);
  });
- if(total>0 && sum!==total){
-  box.innerHTML=`<div class="pl-notify">⚠️ Сумма по сегментам (${sum}) не совпадает с общим минимумом (${total}). Это уведомление — сохранить всё равно можно.</div>`;
+ if(total>0 && sum<total){
+  box.innerHTML=`<div class="pl-notify">ℹ️ Сумма по сегментам (${sum}) меньше общего минимума (${total}) — при расчёте плана система пропорционально поднимет до ${total}. Сохранить можно.</div>`;
+ } else if(total>0 && sum>total){
+  box.innerHTML=`<div class="pl-notify">ℹ️ Посегментные минимумы в сумме (${sum}) выше общей цифры (${total}) — работать будут они.</div>`;
  } else box.innerHTML='';
 }
 function renderPlanningScreen(){
@@ -1484,7 +1486,7 @@ function renderPlanningScreen(){
  <div class="card">
   <div class="card-head"><div>
    <div class="card-title">Минимальные показатели отдела</div>
-   <div class="card-hint">Задаёшь общую цифру в месяц — система пропорционально раскладывает по сегментам. Ниже итогового плана риэлтора система не поставит, даже если у него уже больше по факту. Изменения учитываются при следующем расчёте дохода риэлтора — задним числом уже посчитанные планы не трогаем.</div>
+   <div class="card-hint">Общая цифра в месяц — это жёсткий минимум: если у риэлтора план по сумме сегментов выйдет меньше, система пропорционально подтянет его до этой цифры при следующем расчёте дохода. Минимумы по сегментам — точечный контроль снизу (берётся максимум из расчёта и сегментного минимума). Задним числом уже посчитанные планы не трогаем.</div>
   </div></div>
   <div class="pl-side-switch">
    <button class="pl-side-btn ${side==='buyer'?'on-buyer':''}" onclick="planningPickSide('buyer')"><span class="pl-side-dot" style="background:var(--buyer)"></span>🛒 Покупатель</button>
