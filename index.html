@@ -917,7 +917,7 @@ function renderHero(d){
  <div class="hero-iconbar">
  <div class="hib" onclick="openNotifications()">🔔${unread?`<span class="hib-badge">${unread>99?'99+':unread}</span>`:''}</div>
  <div class="hib" onclick="goTab('tasks')">📋️</div>
- <div class="hib" onclick="window.__requestHelp()" title="Нужна помощь — позовём вашего менеджера, он получит сообщение в чат-бот">🆘</div>
+
  </div>
  <div class="profile"><div class="ava">${esc(initials(u.name))}</div><div style="flex:1;min-width:0">
  <span class="role-tag">${esc(u.role_label||'Партнёр')}</span>
@@ -1079,7 +1079,9 @@ window.openManager=()=>{
  <div class="mgr-topic"><span>Разобрать сложного клиента</span><span class="muted">→</span></div>
  <div class="mgr-topic"><span>Подсказать по сделке и документам</span><span class="muted">→</span></div>
  <div class="mgr-topic"><span>Помочь с возражениями</span><span class="muted">→</span></div>
- <div class="muted" style="margin-top:12px">Свяжись со старшим партнёром лично или через корпоративный чат.</div>`;
+ <div class="muted" style="margin-top:12px">Свяжись со старшим партнёром лично или через корпоративный чат — или нажми кнопку, и я передам ему сообщение в чат-бот.</div>
+ <button class="help-btn" style="margin-top:14px;margin-bottom:0" onclick="window.__requestHelp()">🆘 Запросить помощь</button>
+ <div class="muted" style="margin-top:8px;font-size:12px">Не чаще одного раза в 4 часа</div>`;
  document.getElementById('modalMgr').classList.add('on');
 };
 
