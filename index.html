@@ -1625,25 +1625,32 @@ const RADAR_WORDS={
 const RADAR_PERIOD={buyer:[' в мес',' в мес',' в мес',' в мес','',''],
                     seller:['',' в мес',' в мес',' в мес','','']};
 function radarFmt(v){v=Math.round(v*10)/10;return (Math.abs(v-Math.round(v))<0.05)?String(Math.round(v)):String(v);}
-// mine[] для радара из факта и нормы (в % от нормы грейда, кап 100)
-function radarMine(fact,norm){if(!fact||!norm)return null;return norm.map((n,i)=>n>0?Math.min(100,Math.round(fact[i]/n*100)):0);}
+// mine[] для радара из факта и нормы (в % от нормы грейда, кап 100).
+// Ось без нормы грейда (n<=0, напр. Топ-10 не торгует коммерцией): факт есть → 100
+// (грейд ничего не требует, риелтор делает — перевыполнение бесконечно), факта
+// нет → 0. Раньше n<=0 всегда давал 0 — паутина резалась в центр по «выполненным»
+// осям (Кулиев 63239, коммерция vs Топ-10: нормы задатков/сделок = 0).
+function radarMine(fact,norm){if(!fact||!norm)return null;return norm.map((n,i)=>n>0?Math.min(100,Math.round(fact[i]/n*100)):(fact[i]>0?100:0));}
 // список: абсолютная разница «норма − факт» по каждой оси, ✓ если факт≥нормы
 function radarRenderGaps(elId,fact,norm,labels,units,side){
  const box=document.getElementById(elId); if(!box) return;
  if(!fact||!norm){box.innerHTML='<div class="radar-nodata">В этом сегменте нет данных.</div>';return;}
  const OV=(RADAR_LABELS[side]||[]), WD=(RADAR_WORDS[side]||[]), PD=(RADAR_PERIOD[side]||[]);
- // сортируем: сначала невыполненные (по величине разницы), потом выполненные
+ // сортируем: сначала невыполненные (по величине разницы), потом выполненные,
+ // в самом конце — оси без нормы грейда (грейд не торгует сегментом)
  const rows=labels.map((lab0,i)=>{
   const lab=OV[i]||lab0;
   const unit=units[i]==='%'?'%':'';
+  const noNorm=!(norm[i]>0);
   const rawDiff=norm[i]-fact[i];
   // счётчики (штуки) — целые, стандартное округление; конверсии — в % как есть
   const diff=unit?rawDiff:Math.round(rawDiff);
-  const done=unit?(fact[i]>=norm[i]-0.05):(diff<=0);
-  return {lab,diff,done,unit,fact:fact[i],norm:norm[i],words:WD[i],period:PD[i]};
- }).sort((a,b)=>(a.done-b.done)||(b.diff-a.diff));
+  const done=!noNorm&&(unit?(fact[i]>=norm[i]-0.05):(diff<=0));
+  return {lab,diff,done,noNorm,factHas:fact[i]>0,unit,fact:fact[i],norm:norm[i],words:WD[i],period:PD[i]};
+ }).sort((a,b)=>((a.noNorm?2:(a.done?0:1))-(b.noNorm?2:(b.done?0:1)))||(b.diff-a.diff));
  box.innerHTML=rows.map(r=>{
   const fmt=(v)=>r.unit==='%'?radarFmt(v):String(Math.round(v));
+  if(r.noNorm) return '<div class="radar-gap"><span class="k">— '+esc(r.lab)+'</span><span class="dd" style="color:var(--muted);font-weight:var(--fw-r)">'+(r.factHas?'делает без нормы грейда':'нет нормы грейда')+'</span></div>';
   if(r.done) return '<div class="radar-gap done"><span class="k">✓ '+esc(r.lab)+'</span><span class="dd ok">есть</span></div>';
   const w=r.unit?'':(r.words?' '+plural(r.diff,r.words)+(r.period||''):'');
   return '<div class="radar-gap"><span class="k">'+esc(r.lab)+' <small>'+fmt(r.fact)+'→'+fmt(r.norm)+r.unit+'</small></span><span class="dd">+'+fmt(r.diff)+r.unit+esc(w)+'</span></div>';
