@@ -469,11 +469,17 @@
 .pl-seg-unit{font-size:var(--fs-12);color:var(--muted)}
 .pl-btn-row{display:flex;gap:10px;margin-top:18px}
 /* ── амбициозные планы по валу (31.08.2026) ── */
+.amb-scroll{overflow-x:auto;max-width:680px;-webkit-overflow-scrolling:touch;border-radius:8px}
 .amb-table{width:100%;border-collapse:collapse;font-size:12px;min-width:980px}
 .amb-table th{font-weight:var(--fw-sb);color:var(--muted);padding:6px 4px;text-align:right;white-space:nowrap}
 .amb-table th:first-child{text-align:left}
 .amb-table td{padding:5px 4px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
 .amb-table td.amb-name{text-align:left;font-weight:var(--fw-sb)}
+/* имя менеджера прилипает слева при прокрутке месяцев; текущий месяц подсвечен */
+.amb-table th:first-child,.amb-table td.amb-name{position:sticky;left:0;background:var(--surface);z-index:2;box-shadow:2px 0 6px rgba(15,23,42,.08)}
+.amb-table th.amb-cur{color:var(--brand);font-weight:var(--fw-b);border-bottom:2px solid var(--brand)}
+.amb-table td.amb-cur{background:color-mix(in srgb,var(--brand) 6%,var(--surface))}
+.amb-table td.amb-name.amb-cur{background:var(--surface)}
 .amb-sub{font-weight:var(--fw-r);color:var(--muted);font-size:11px;white-space:normal}
 .amb-in{width:56px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:12px;font-family:inherit;background:var(--surface)}
 .amb-total{font-weight:var(--fw-b)}
@@ -1557,11 +1563,14 @@ window.loadAmbitious=async function(){
 function renderAmbitious(){
  const wrap=document.getElementById('ambWrap'); if(!wrap) return;
  if(!AMB.rows.length){ wrap.innerHTML=''; return; }
+ // текущий месяц по Екб — подсвечиваем столбец («сейчас август» и т.п.)
+ const curM=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Yekaterinburg',month:'2-digit'}).format(new Date()));
+ const yr2=String(AMB.year).slice(2); // «26» для подписей «янв 26»
  const rowsHtml=AMB.rows.map((r,i)=>{
   const cells=AMB_MONTHS.map((_,mi)=>{
    const ym=AMB.year+'-'+String(mi+1).padStart(2,'0');
    const v=(r.gross&&r.gross[ym]!=null)?Math.round(r.gross[ym]/1000):''; // тыс ₽
-   return `<td><input class="amb-in" type="number" min="0" step="100" data-i="${i}" data-m="${mi+1}" value="${v}" oninput="ambRecalcRow(${i})"></td>`;
+   return `<td${mi+1===curM?' class="amb-cur"':''}><input class="amb-in" type="number" min="0" step="100" data-i="${i}" data-m="${mi+1}" value="${v}" oninput="ambRecalcRow(${i})"></td>`;
   }).join('');
   return `<tr>
    <td class="amb-name">${esc(r.mop_name)}<div class="amb-sub">${r.realtors} риелторов (0–3 мес: ${r.stazh?r.stazh.s0_3:0} · 4–6: ${r.stazh?r.stazh.s4_6:0} · 6+: ${r.stazh?r.stazh.s6plus:0})<br>ср. вал группы ${ambFmtK((r.avg_month_gross||0)/1000)}/мес · ${ambFmtK((r.avg_per_realtor||0)/1000)} на риелтора</div></td>
@@ -1573,10 +1582,10 @@ function renderAmbitious(){
  wrap.innerHTML=`<div class="card" style="margin-top:18px">
   <div class="card-head"><div>
    <div class="card-title">🎯 Амбициозные планы по валовой выручке · ${AMB.year}</div>
-   <div class="card-hint">Планы в <b>тыс ₽</b> на каждый месяц года. «Нужно риелторов» считается автоматически: годовой план ÷ (фактический средний вал на 1 риэлтора за 3 закрытых месяца × 12). Средний вал берётся живой — при изменении группы пересчёт на перевкладке.</div>
+   <div class="card-hint">Планы в <b>тыс ₽</b> на каждый месяц года — видно ~3 месяца, остальные прокруткой, текущий подсвечен ●. «Нужно риелторов» считается автоматически: годовой план ÷ (фактический средний вал на 1 риэлтора за 3 закрытых месяца × 12). Средний вал берётся живой — при изменении группы пересчёт на перевкладке.</div>
   </div></div>
-  <div style="overflow-x:auto"><table class="amb-table">
-   <thead><tr><th>Менеджер</th>${AMB_MONTHS.map((m)=>`<th>${m}</th>`).join('')}<th>Год</th><th>Нужно риелторов</th></tr></thead>
+  <div class="amb-scroll"><table class="amb-table">
+   <thead><tr><th>Менеджер</th>${AMB_MONTHS.map((m,mi)=>`<th${mi+1===curM?' class="amb-cur"':''}>${m} ${yr2}${mi+1===curM?' ●':''}</th>`).join('')}join('')}<th>Год</th><th>Нужно риелторов</th></tr></thead>
    <tbody>${rowsHtml}</tbody>
   </table></div>
   <div class="pl-btn-row"><button class="btn-primary" id="ambSaveBtn" onclick="ambSave()">Сохранить планы</button><span class="muted" style="align-self:center;font-size:12px">Планы видны менеджерам в брифе и на Главной их кабинета сразу после сохранения</span></div>
