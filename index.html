@@ -164,6 +164,7 @@
  .hero-sub{font-size:var(--fs-12);color:var(--muted);margin-top:3px}
  .sf-mini{margin-top:10px;display:inline-flex;align-items:baseline;gap:8px;background:var(--surface-2);border-radius:10px;padding:8px 14px;cursor:pointer}
  .sf-mini b{font-size:var(--fs-22);font-weight:var(--fw-eb);color:var(--ink)} .sf-mini .sf-z{font-size:var(--fs-11)}
+ .sf-mini .sf-tz{font-size:var(--fs-12);font-weight:var(--fw-sb);color:var(--brand)}
 
  /* достижения */
  .achievements{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:14px;padding-bottom:2px}
@@ -868,7 +869,14 @@ function renderHero(d){
  const unread=nb?.unread_count||0;
  const meta=[]; if(u.mop_name)meta.push('Старший партнёр: '+esc(u.mop_name)); if(u.stazh_label)meta.push('стаж '+esc(u.stazh_label));
  const sfPos=(u.position_in_pool!=null?u.position_in_pool:u.position_in_company);
- const sfMini=sfPos!=null?`<div class="sf-mini" onclick="goTab('svetofor')"><b>#${sfPos}</b><span class="sf-z muted">${esc(u.svetofor_zone_label||'')} · светофор ›</span></div>`:'';
+ const tzLabel=g&&g.target_zone_label?g.target_zone_label:null;
+ // Светофор в шапке (Егор, 01.09): текущее место + зона + куда ведёт цель.
+ // Показываем и без места (новичок) — тогда только целевая зона.
+ const sfParts=[];
+ if(sfPos!=null) sfParts.push(`<b>#${sfPos}</b>`);
+ if(u.svetofor_zone_label) sfParts.push(`<span class="sf-z muted">${esc(u.svetofor_zone_label)}</span>`);
+ if(tzLabel) sfParts.push(`<span class="sf-tz">${sfPos!=null?'':'🎯 '}цель → ${esc(tzLabel)}</span>`);
+ const sfMini=sfParts.length?`<div class="sf-mini" onclick="goTab('svetofor')" title="Светофор: место сейчас и зона, куда ведёт цель">${sfParts.join('')}<span class="sf-z muted">· светофор ›</span></div>`:'';
  const ach=(d.achievements||[]).map(a=>`<div class="ach-chip">${esc(a.emoji)} ${esc(a.text)}</div>`).join('');
  // медальоны полученных наград в шапке (клик → Зал славы)
  const _rwE=(d.rewards&&Array.isArray(d.rewards.badges))?d.rewards.badges.filter(b=>b.earned):[];
