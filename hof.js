@@ -1,5 +1,5 @@
 /**
- * hof.js v12 — витрина «⭐ Звёзды» (общая для всех кабинетов).
+ * hof.js v13 — витрина «⭐ Звёзды» (общая для всех кабинетов).
  *
  * Переделка по решению Егора 01.09.2026: витрина «Награды коллег» убрана —
  * теперь только Звёзды с ТАБАМИ-МЕТРИКАМИ: Задатки · Сделки · Валовка ·
@@ -275,64 +275,7 @@
     }).catch(function (e) { document.getElementById('hdBody').innerHTML = '<div class="hd-empty">Не удалось загрузить: ' + esc(e.message || e) + '</div>'; });
   };
 
-  // Точки входа «⭐ Звёзды» во всех кабинетах (решение Егора 01.09):
-  //  - партнёр: иконка ⭐ в hero-iconbar шапки + чип у Зала славы;
-  //  - МОП/РОП: чип у ссылки «Зал славы»;
-  //  - АУП: кнопка в шапке рядом с «📊 Аналитика».
-  // MutationObserver — не зависит от порядка отрисовки DOM.
-  function injectEntry() {
-    var ib = document.querySelector('.hero-iconbar');
-    if (ib && !ib.querySelector('.hd-star-ico')) {
-      ensureStyles();
-      var ic = document.createElement('div');
-      ic.className = 'hib hd-star-ico'; ic.textContent = '⭐';
-      ic.title = 'Звёзды — кто лучший по задаткам, сделкам, валовой, набору объектов и покупателей';
-      ic.style.cursor = 'pointer';
-      ic.onclick = function () { window.openHofDir(); };
-      ib.appendChild(ic);
-    }
-    var hall = document.querySelector('.rw-hall');
-    if (hall && hall.parentNode && !hall.parentNode.querySelector('.hd-open-btn')) {
-      ensureStyles();
-      var c = document.createElement('span'); c.className = 'hd-open-btn'; c.textContent = '⭐ Звёзды';
-      c.onclick = function (ev) { ev.stopPropagation(); window.openHofDir(); };
-      hall.parentNode.appendChild(c);
-    }
-    var mb = document.getElementById('modalHofBody');
-    if (mb && mb.innerHTML && !mb.querySelector('.hd-open-btn')) {
-      var h = mb.querySelector('.modal-title') || mb.querySelector('div > div');
-      if (h) {
-        ensureStyles();
-        var s = document.createElement('button'); s.className = 'hd-open-btn'; s.textContent = '⭐ Звёзды';
-        s.onclick = function () { if (window.closeModal) window.closeModal('modalHof'); window.openHofDir(); };
-        h.appendChild(s);
-      }
-    }
-    // МОП/РОП: Зал славы рендерится только при наличии наград (rw-hall нет),
-    // hero-iconbar тоже нет — кнопка в правый блок шапки (рядом с «Выход»).
-    // Не дублируем, если уже есть точка входа (hero-iconbar партнёра, Аналитика АУП).
-    var hr = document.querySelector('.app-header-right');
-    if (hr && !hr.querySelector('.hd-open-btn') && !document.querySelector('.hero-iconbar') && !document.getElementById('analyticsBtn')) {
-      ensureStyles();
-      var hb = document.createElement('button'); hb.className = 'hd-open-btn'; hb.textContent = '⭐ Звёзды';
-      hb.onclick = function () { window.openHofDir(); };
-      hr.insertBefore(hb, hr.firstChild);
-    }
-    // кабинет АУП: нет Зала славы — кнопка в шапке рядом с «📊 Аналитика»
-    var ab = document.getElementById('analyticsBtn');
-    if (ab && !ab.parentNode.querySelector('.hd-open-btn')) {
-      ensureStyles();
-      var b = document.createElement('button'); b.className = 'hd-open-btn'; b.textContent = '⭐ Звёзды';
-      b.onclick = function () { window.openHofDir(); };
-      ab.parentNode.insertBefore(b, ab.nextSibling);
-    }
-  }
-  var __moT = null;
-  function scheduleInject() { if (__moT) return; __moT = setTimeout(function () { __moT = null; injectEntry(); }, 60); }
-  try {
-    var mo = new MutationObserver(scheduleInject);
-    mo.observe(document.documentElement, { childList: true, subtree: true });
-  } catch (e) { setInterval(injectEntry, 2000); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectEntry);
-  else injectEntry();
+  // Точки входа (Егор, 01.09 вечер): звёзды — ТАБ в центральном меню
+  // каждого кабинета (добавлен в rtab-бар самих HTML), не кнопки в шапке.
+  ensureStyles();
 })();
