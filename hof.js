@@ -1,5 +1,5 @@
 /**
- * hof.js v11 — витрина «⭐ Звёзды» (общая для всех кабинетов).
+ * hof.js v12 — витрина «⭐ Звёзды» (общая для всех кабинетов).
  *
  * Переделка по решению Егора 01.09.2026: витрина «Награды коллег» убрана —
  * теперь только Звёзды с ТАБАМИ-МЕТРИКАМИ: Задатки · Сделки · Валовка ·
@@ -307,6 +307,16 @@
         s.onclick = function () { if (window.closeModal) window.closeModal('modalHof'); window.openHofDir(); };
         h.appendChild(s);
       }
+    }
+    // МОП/РОП: Зал славы рендерится только при наличии наград (rw-hall нет),
+    // hero-iconbar тоже нет — кнопка в правый блок шапки (рядом с «Выход»).
+    // Не дублируем, если уже есть точка входа (hero-iconbar партнёра, Аналитика АУП).
+    var hr = document.querySelector('.app-header-right');
+    if (hr && !hr.querySelector('.hd-open-btn') && !document.querySelector('.hero-iconbar') && !document.getElementById('analyticsBtn')) {
+      ensureStyles();
+      var hb = document.createElement('button'); hb.className = 'hd-open-btn'; hb.textContent = '⭐ Звёзды';
+      hb.onclick = function () { window.openHofDir(); };
+      hr.insertBefore(hb, hr.firstChild);
     }
     // кабинет АУП: нет Зала славы — кнопка в шапке рядом с «📊 Аналитика»
     var ab = document.getElementById('analyticsBtn');
