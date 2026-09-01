@@ -1057,36 +1057,35 @@ function renderMain(d){
  document.getElementById('screen-main').innerHTML=out.join('');
 }
 
-/* ─── 🎯 Амбициозный план по валу от УП (31.08.2026, Егор) ─── */
+/* ─── 🎯 Амбициозный план от УП (01.09: только текущий месяц — план месяца,
+   факт и прогноз выполнения; без плана карточки нет вообще) ─── */
 function _ambFmtK(n){ n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e3) return Math.round(n/1e3)+'к'; return String(Math.round(n)); }
 function ambitiousCard(d){
  const amb=d&&d.ambitious; if(!amb) return '';
- const plan=amb.plan_ytd||0, fact=amb.fact_ytd||0, proj=amb.projected_ytd||0;
- const pctF=plan>0?Math.min(100,Math.round(fact/plan*100)):0;
- const pctFDelta=plan>0?Math.max(0,Math.min(100-pctF,Math.round((proj-fact)/plan*100))):0;
- // пропорциональная шкала при перевыполнении (как в воронках): факт и прогноз делят полосу по своей доле
- let wF=pctF, wD=pctFDelta;
- if(pctF+pctFDelta>100){ const k=100/(pctF+pctFDelta); wF=Math.round(pctF*k); wD=100-wF; }
- const ttF=`факт с ${amb.months&&amb.months[0]?amb.months[0].ym:''} — ${_ambFmtK(fact)} ₽ из ${_ambFmtK(plan)} ₽ (${amb.pct_fact!=null?amb.pct_fact:'—'}%)`;
- const ttD=`прогноз к концу месяца: +${_ambFmtK(Math.max(0,proj-fact))} ₽ → ${amb.pct_projected!=null?amb.pct_projected:'—'}% плана`;
- const fc=amb.forecast_month_total;
+ const plan=amb.plan_month||0, fact=amb.fact_month||0;
+ const proj=amb.forecast_month_total!=null?Math.max(amb.forecast_month_total,fact):fact;
+ const pf=amb.pct_month_fact, pp=amb.pct_month_projected;
+ const MN=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+ const ym=amb.month_ym||''; const mon=ym.length>=7?(MN[+ym.slice(5,7)-1]+' '+ym.slice(0,4)):'';
+ // полоска факт+прогноз против плана месяца; перевыполнение — пропорционально
+ let wF=pf!=null?Math.min(100,Math.round(pf)):0;
+ let wD=pp!=null?Math.max(0,Math.min(100-wF,Math.round(pp)-wF)):0;
+ const ttF='факт '+_ambFmtK(fact)+' ₽ из плана '+_ambFmtK(plan)+' ₽ ('+(pf!=null?pf:'—')+'%)';
+ const ttD='прогноз к концу месяца: '+_ambFmtK(proj)+' ₽ ('+(pp!=null?pp:'—')+'% плана)';
  return `<div class="card" id="ambCard">
   <div class="card-head"><div>
-   <div class="card-title">🎯 Амбициозный план от УП · ${amb.year}</div>
-   <div class="card-hint">План валовой выручки группы на год от управляющего партнёра. Выполнение считается с мая 2026 (начало истории данных).</div>
+   <div class="card-title">🎯 План от УП${mon?' · '+mon:''}</div>
+   <div class="card-hint">Амбициозный план по валовой выручке группы на текущий месяц от управляющего партнёра.</div>
   </div></div>
+  <div class="muted" style="font-size:var(--fs-12);margin:-6px 0 10px">Средний вал группы за последние 3 мес: <b>${_ambFmtK(amb.avg_month_gross||0)} ₽/мес</b></div>
   <div class="hero-stat" style="display:flex;gap:22px;flex-wrap:wrap;margin:6px 0 12px">
-   <div><div class="muted" style="font-size:var(--fs-11)">Факт с мая</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb);color:var(--ok)">${_ambFmtK(fact)} ₽</div></div>
-   <div><div class="muted" style="font-size:var(--fs-11)">С прогнозом</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb);color:var(--gold)">${_ambFmtK(proj)} ₽</div></div>
-   <div><div class="muted" style="font-size:var(--fs-11)">План с мая по сейчас</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb)">${_ambFmtK(plan)} ₽</div></div>
+   <div><div class="muted" style="font-size:var(--fs-11)">План месяца</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb)">${_ambFmtK(plan)} ₽</div></div>
+   <div><div class="muted" style="font-size:var(--fs-11)">Факт</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb);color:var(--ok)">${_ambFmtK(fact)} ₽</div></div>
+   <div><div class="muted" style="font-size:var(--fs-11)">Прогноз к концу</div><div style="font-size:var(--fs-22);font-weight:var(--fw-eb);color:var(--gold)">${_ambFmtK(proj)} ₽</div></div>
   </div>
   <div class="fp-bar" style="margin-bottom:10px">
-   <div class="fp-bar-fact" data-tooltip="${esc(ttF)}" style="width:${wF}%">${wF>=12?amb.pct_fact+'%':''}</div>
-   <div class="fp-bar-forecast" data-tooltip="${esc(ttD)}" style="width:${wD}%">${wD>=12?'+'+((amb.pct_projected||0)-(amb.pct_fact||0))+'%':''}</div>
-  </div>
-  <div class="muted" style="font-size:var(--fs-12)">
-   Месяц: план <b>${_ambFmtK(amb.plan_month)} ₽</b> · факт <b>${_ambFmtK(amb.fact_month)} ₽</b>${fc!=null?` · прогноз к концу <b>${_ambFmtK(fc)} ₽</b>`:''}
-   ${amb.need_realtors!=null?`<br>Риэлторов: <b>${amb.realtors}</b> (средний вал ${_ambFmtK(amb.avg_per_realtor)} ₽/мес) · для плана года (${_ambFmtK(amb.year_total)} ₽) нужно <b>${amb.need_realtors}</b>`:''}
+   <div class="fp-bar-fact" data-tooltip="${esc(ttF)}" style="width:${wF}%">${wF>=12?(pf!=null?pf+'%':''):''}</div>
+   <div class="fp-bar-forecast" data-tooltip="${esc(ttD)}" style="width:${wD}%">${wD>=12&&pp!=null?('+'+(pp-(pf||0))+'%'):''}</div>
   </div>
  </div>`;
 }
