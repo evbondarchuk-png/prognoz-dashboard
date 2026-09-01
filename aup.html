@@ -596,10 +596,10 @@ function _tasksStat(tasks){
 function renderTiles(o){
  // ── ПЛИТКА 1: ИР разделена на 2 части (TZ-A30, правка Егора 18.06):
  //   сверху — 4 ячейки по неделям месяца (только завершённые), снизу — месячный ИР.
- const today=new Date();
- const dayN=today.getDate();
- // граничные дни: 7, 14, 21, последний день месяца → сколько завершённых недель
- const lastDay=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+ const dataDate = o.date || new Date().toISOString().slice(0, 10);
+ const dayN = parseInt(dataDate.slice(8, 10), 10);
+ const [dataY, dataM] = dataDate.split('-').map(Number);
+ const lastDay = new Date(Date.UTC(dataY, dataM, 0)).getUTCDate();
  const completedWeeks=dayN>lastDay?4:dayN>21?3:dayN>14?2:dayN>7?1:0;
  const currentWeekIdx = completedWeeks < 4 ? completedWeeks : -1;
  const wk=(o.irWeekly||[]).slice(-completedWeeks||0);
@@ -643,7 +643,7 @@ function renderTiles(o){
  const taskDonePct=tasksS.total?Math.round((tasksS.done/tasksS.total)*100):0;
  return `<div class="tiles">
   <div class="tile" onclick="openTileModal('ir')"><span class="chev">›</span>
-   <div class="tile-cap">ИР ${esc(o.scope)} · ${esc(_monthShort())}</div>
+   <div class="tile-cap">ИР ${esc(o.scope)} · ${esc(_monthShort(dataDate))}</div>
    <div class="ir-tile-split">
     <div class="ir-tile-weeks">
      <div class="ir-tile-weeks-cap">по неделям</div>
@@ -672,7 +672,11 @@ function renderTiles(o){
    <div class="tile-sub">${taskDonePct}% выполнено${tasksS.overdue?` · ${tasksS.overdue} просрочено`:''}</div></div>
  </div>`;
 }
-function _monthShort(){ const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; return m[new Date().getMonth()]; }
+function _monthShort(dStr){
+ const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+ const d = dStr ? new Date(dStr+'T12:00:00Z') : new Date();
+ return m[d.getMonth()];
+}
 window.openTileModal=function(kind){
  const d=CTX.data; if(!d) return;
  const a=d.aggregates||{}; const members=(d.team_cards&&d.team_cards.members)||[];
@@ -735,6 +739,7 @@ function renderHero(d){
  const inIRcnt = (typeof a.scope.members_count === 'number') ? a.scope.members_count : (inIR||0);
  stats = renderTiles({
    scope:'компании',
+	   date: d && d.dataDate,
    irValue: irCo,
    irMonth: (typeof a.ir_v2_month_total === 'number') ? a.ir_v2_month_total : irCo,
    irWeekly: (d&&d.ir_history&&d.ir_history.week_history&&d.ir_history.week_history.total)||[],
