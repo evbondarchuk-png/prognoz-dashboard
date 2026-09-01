@@ -743,8 +743,9 @@ function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return
 // ИР МЕСЯЦА — цвет по темпу недельных циклов (нед1=25%..нед4=100%, допуск 0.9).
 // Ожидаемый ИР на СЕГОДНЯ — пропорционально дню внутри недельного цикла (д7=25%..конец=100%).
 function _expectedIrNow(){ const n=new Date(), d=n.getDate(), last=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(); const B=[0,7,14,21,last], T=[0,25,50,75,100]; for(let i=1;i<B.length;i++){ if(d<=B[i]) return T[i-1]+(T[i]-T[i-1])*(d-B[i-1])/(B[i]-B[i-1]); } return 100; }
-function _irMonthColor(p){ const e=_expectedIrNow(); return p>=e?'var(--ok)':p>=e*0.7?'var(--warn)':'var(--bad)'; }
-function _irMonthStatus(p){ const e=_expectedIrNow(); return p>=e?'ok':p>=e*0.7?'warn':'bad'; }
+function _irMonthColor(p){ return p>=70?'var(--ok)':p>=50?'var(--warn)':'var(--bad)'; }
+// Правило Егора 01.09: плоские пороги цвета ИР — ≥70 зелёный, 50–70 жёлтый, <50 красный
+function _irMonthStatus(p){ return p>=70?'ok':p>=50?'warn':'bad'; }
 function _irSideBadge(fs){
   var ps=(fs.ir==null||fs.ir_status==='no_data')?'no_data':(_irMonthStatus(fs.ir)==='ok'?'green':_irMonthStatus(fs.ir)==='warn'?'yellow':'red');
   var pl=ps==='no_data'?(fs.ir_status_label||'нет данных'):({green:'в норме',yellow:'в риске',red:'провал'}[ps]);
