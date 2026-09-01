@@ -708,7 +708,7 @@ function renderTiles(o){
  const dayN = parseInt(dataDate.slice(8, 10), 10);
  const [dataY, dataM] = dataDate.split('-').map(Number);
  const lastDay = new Date(Date.UTC(dataY, dataM, 0)).getUTCDate();
- const completedWeeks=dayN>lastDay?4:dayN>21?3:dayN>14?2:dayN>7?1:0;
+ const completedWeeks = dayN >= lastDay ? 4 : dayN > 21 ? 3 : dayN > 14 ? 2 : dayN > 7 ? 1 : 0;
  // Текущая (незакрытая) неделя = следующая после завершённых. -1 = месяц закрыт.
  const currentWeekIdx = completedWeeks < 4 ? completedWeeks : -1;
  // берём последние completedWeeks значений (это завершённые недели текущего месяца)
