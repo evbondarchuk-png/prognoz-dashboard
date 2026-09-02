@@ -1901,7 +1901,7 @@ function renderMpPanel(){
    }
    const dk=mpDirtyKey(m.ym,side,seg,mtc);
    const isDirty=MP.dirty.hasOwnProperty(dk);
-   return `<td><input class="mp-cell-input ${isDirty?'edited':''}" type="number" min="0" value="${v}" onchange="mpOnInput('${m.ym}','${side}','${seg}','${mtc}',this)"></td>`;
+   return `<td><input class="mp-cell-input ${isDirty?'edited':''}" type="number" min="0" value="${v}" oninput="mpOnInput('${m.ym}','${side}','${seg}','${mtc}',this)"></td>`;
   }).join('');
   return `<tr><td>${esc(label)}</td>${cells}</tr>`;
  }
@@ -1923,7 +1923,7 @@ function renderMpPanel(){
    const hasDirty=MP.dirty.hasOwnProperty(dk);
    const cur=hasDirty?MP.dirty[dk]:(m.seller_flow_total!=null?Math.round(m.seller_flow_total):0);
    if(m.closed) return `<td><span class="mp-cell-ro">${cur}</span><div class="mp-cell-cap">месяц закрыт</div></td>`;
-   return `<td><input class="mp-cell-input ${hasDirty?'edited':''}" type="number" min="0" value="${cur}" onchange="mpOnInput('${m.ym}','seller','all','flow',this)"></td>`;
+   return `<td><input class="mp-cell-input ${hasDirty?'edited':''}" type="number" min="0" value="${cur}" oninput="mpOnInput('${m.ym}','seller','all','flow',this)"></td>`;
   }).join('');
   return `<tr><td>Набор новых объектов (шт/мес)</td>${cells}</tr>`;
  }
