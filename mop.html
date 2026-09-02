@@ -1809,6 +1809,9 @@ window.mpPickSeg=function(seg){ MP.segKey=seg; renderMpPanel(); };
 window.mpOnInput=function(ym,side,seg,metric,el){
  const v=el.value===''?0:Math.round(Number(el.value));
  MP.dirty[mpDirtyKey(ym,side,seg,metric)]=isFinite(v)?v:0;
+ // кнопка блокируется при рендере панели — оживляем сразу после ввода,
+ // иначе приходится переключать сторону, чтобы она стала активной
+ const b=document.getElementById('mpSaveBtn'); if(b) b.disabled=false;
 };
 // Правка «Итого по всем сегментам» (Поток/Остаток или Горячих) — раскидываем
 // новую сумму по сегментам ПРОПОРЦИОНАЛЬНО их текущему весу (решение Егора
