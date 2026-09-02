@@ -1480,6 +1480,13 @@ function planningGetTotal(side,metric){
 function planningCapture(){
  if(!PLAN_STATE.minimums) PLAN_STATE.minimums=planningEmptyMinimums();
  const side=PLAN_STATE.side; const m=PLAN_STATE.minimums;
+ if(side==='seller'){
+  // посегментных минимумов продавца больше нет (Егор 02.09) — только total
+  if(m.seller&&m.seller.flow) m.seller.flow.segments={};
+  const totalEl=document.getElementById('plTotalFlow');
+  if(m.seller&&m.seller.flow&&totalEl) m.seller.flow.total=totalEl.value===''?0:(Number(totalEl.value)||0);
+  return;
+ }
  ['flow','hot'].forEach(metric=>{
   if(!m[side][metric]) m[side][metric]={total:0,segments:{}};
   if(!m[side][metric].segments) m[side][metric].segments={};
@@ -1496,6 +1503,8 @@ window.planningReset=async function(){ await window.loadPlanning(); };
 function planningUpdateNotify(){
  const side=PLAN_STATE.side;
  const box=document.getElementById('plNotify'); if(!box) return;
+ // у продавца сегментных полей больше нет — информировать не о чем
+ if(side==='seller'){ box.innerHTML=''; return; }
  const totalEl=document.getElementById('plTotalFlow');
  const total=Number((totalEl&&totalEl.value)||0);
  let sum=0;
@@ -1512,32 +1521,39 @@ function planningUpdateNotify(){
 function renderPlanningScreen(){
  const side=PLAN_STATE.side;
  const segs=planningSegsFor(side);
- const flowLabel=side==='buyer'?'поток':'набор ОН';
+ const flowLabel=side==='buyer'?'поток':'набор объектов';
  const flowUnit=side==='buyer'?'заявок':'объектов';
- const segRows=segs.map(s=>`
+ // Егор 02.09 (вечер): у продавца — ТОЛЬКО общая цифра набора, посегментные
+ // минимумы убраны («иначе путаница»); раскладку по сегментам делает система.
+ const segRows=side==='seller'?'':segs.map(s=>`
   <div class="pl-seg-row">
    <div class="pl-seg-name">${esc(s.label)}</div>
    <div class="pl-seg-input-wrap"><input class="pl-seg-input" type="number" min="0" data-side="${side}" data-metric="flow" data-seg="${s.key}" value="${planningGetSeg(side,'flow',s.key)}" oninput="planningUpdateNotify()"><span class="pl-seg-unit">/мес</span></div>
   </div>`).join('');
+ const sideHint=side==='seller'
+  ?'Общая цифра набора объектов в месяц — жёсткий минимум для каждого риэлтора отдела: план остатков поднимается так, чтобы прирост за месяц был не меньше этой цифры. Раскладка по сегментам — автоматически, по долям расчётного плана. Задним числом уже посчитанные планы не трогаем.'
+  :'Общая цифра в месяц — это жёсткий минимум: если у риэлтора план по сумме сегментов выйдет меньше, система пропорционально подтянет его до этой цифры при следующем расчёте дохода. Минимумы по сегментам — точечный контроль снизу (берётся максимум из расчёта и сегментного минимума). Задним числом уже посчитанные планы не трогаем.';
+ const segTableHtml=side==='seller'?'':`
+  <div class="pl-total-hint">Ниже — как это распределилось по сегментам. Можно поправить любой сегмент вручную.</div>
+  <div class="pl-seg-table">
+   <div class="pl-seg-row head"><div class="pl-seg-cap">Сегмент</div><div class="pl-seg-cap">Мин. ${esc(flowLabel)} / мес</div></div>
+   ${segRows}
+  </div>`;
  const html=`
  <div class="card">
   <div class="card-head"><div>
    <div class="card-title">Минимальные показатели отдела</div>
-   <div class="card-hint">Общая цифра в месяц — это жёсткий минимум: если у риэлтора план по сумме сегментов выйдет меньше, система пропорционально подтянет его до этой цифры при следующем расчёте дохода. Минимумы по сегментам — точечный контроль снизу (берётся максимум из расчёта и сегментного минимума). Задним числом уже посчитанные планы не трогаем.</div>
+   <div class="card-hint">${sideHint}</div>
   </div></div>
   <div class="pl-side-switch">
    <button class="pl-side-btn ${side==='buyer'?'on-buyer':''}" onclick="planningPickSide('buyer')"><span class="pl-side-dot" style="background:var(--buyer)"></span>🛒 Покупатель</button>
    <button class="pl-side-btn ${side==='seller'?'on-seller':''}" onclick="planningPickSide('seller')"><span class="pl-side-dot" style="background:var(--seller)"></span>🏠 Продавец</button>
   </div>
   <div class="pl-total-row">
-   <div class="pl-total-item"><span class="pl-total-cap">Общий мин. ${esc(flowLabel)} / мес</span>
+   <div class="pl-total-item"><span class="pl-total-cap">Минимум ${esc(flowLabel)} / мес на риэлтора</span>
     <div><input class="pl-total-input" type="number" min="0" id="plTotalFlow" value="${planningGetTotal(side,'flow')}" oninput="planningUpdateNotify()"> <span class="pl-total-unit">${esc(flowUnit)}</span></div></div>
   </div>
-  <div class="pl-total-hint">Ниже — как это распределилось по сегментам. Можно поправить любой сегмент вручную.</div>
-  <div class="pl-seg-table">
-   <div class="pl-seg-row head"><div class="pl-seg-cap">Сегмент</div><div class="pl-seg-cap">Мин. ${esc(flowLabel)} / мес</div></div>
-   ${segRows}
-  </div>
+  ${segTableHtml}
   <div id="plNotify"></div>
   <div class="pl-btn-row">
    <button class="btn-primary" id="plSaveBtn" onclick="planningSave()">Сохранить минимумы</button>
