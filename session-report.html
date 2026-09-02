@@ -635,9 +635,18 @@ function chipsMopHTML(c) {
 function membersTableHTML(state) {
   const members = state.members || [];
   if (!members.length) return '<div class="muted">В группе нет партнёров.</div>';
+  // Егор 02.09: норматив темпа ИР месяца (недели 25/50/75/100%, внутри пропорционально дню)
+  const irMonthPaceColor = (p) => {
+    const d = new Date(), day = d.getDate(), last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const B = [0, 7, 14, 21, last], T = [0, 25, 50, 75, 100];
+    let n = 100;
+    for (let i = 1; i < B.length; i++) { if (day <= B[i]) { n = T[i - 1] + (T[i] - T[i - 1]) * (day - B[i - 1]) / (B[i] - B[i - 1]); break; } }
+    return p >= n ? 'var(--ok)' : p >= n * 0.8 ? 'var(--warn)' : 'var(--bad)';
+  };
   const row = (m) => {
     const irM = m.ir_v2_month != null ? m.ir_v2_month : '—';
-    const irClr = m.ir_v2_month == null ? 'var(--muted)' : m.ir_v2_month >= 70 ? 'var(--ok)' : m.ir_v2_month >= 40 ? 'var(--warn)' : 'var(--bad)';
+    // Егор 02.09: месячный ИР — по нормативу темпа (≥норматива зелёный, 80–99% жёлтый, <80% красный)
+    const irClr = m.ir_v2_month == null ? 'var(--muted)' : irMonthPaceColor(m.ir_v2_month);
     const status = m.is_group_zero ? '🛌 группа 0' : m.is_newbie ? '🌱 новичок' : m.risk_level >= 1 ? `🔴 Н${Math.min(4, m.risk_level)}` : '✅';
     const plan = m.plan_month > 0 ? fmtK(m.plan_month) : '—';
     const fact = fmtK(m.fact_month);

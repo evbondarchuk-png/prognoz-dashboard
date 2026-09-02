@@ -1153,11 +1153,18 @@ window.openCreateTaskFor=(code)=>{ window.openCreateTask(); const sel=document.g
 window.openAchievementsModal=(code,n)=>{ alert('История достижений — скоро здесь будет.\nДостижений за месяц: '+(n||0)); };
 /* TZ-A28: таб «Команда» РОПа — таблица СП с подтабами Общее/Неделя/Месяц */
 function _irStatus(p){ return p>=70?'ok':p>=50?'warn':'bad'; }
-// ИР МЕСЯЦА красим по темпу недельных циклов (нед1=25%..нед4=100%, допуск 0.9), а не плоским 70%.
-// Ожидаемый ИР на СЕГОДНЯ — пропорционально дню внутри недельного цикла (д7=25%,д14=50%,д21=75%,конец=100%).
-function _expectedIrNow(){ const n=new Date(), d=n.getDate(), last=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(); const B=[0,7,14,21,last], T=[0,25,50,75,100]; for(let i=1;i<B.length;i++){ if(d<=B[i]) return T[i-1]+(T[i]-T[i-1])*(d-B[i-1])/(B[i]-B[i-1]); } return 100; }
-// Правило Егора 01.09: плоские пороги цвета ИР — ≥70 зелёный, 50–70 жёлтый, <50 красный
-function _irMonthStatus(p){ return p>=70?'ok':p>=50?'warn':'bad'; }
+// Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа (недели 1–7/8–14/15–21/22–конец →
+// 25/50/75/100%, внутри недели пропорционально дню; от ДАТЫ ДАННЫХ). Цвет: ≥норматива —
+// зелёный, 80–99% норматива — жёлтый, <80% — красный. Недельный ИР (_irStatus) не трогаем.
+function _irPaceNorm(){
+  const ds=window.__irDataDate;
+  const d=(ds&&/^\d{4}-\d{2}-\d{2}$/.test(ds))?new Date(ds+'T00:00:00'):new Date();
+  const day=d.getDate(), last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  const B=[0,7,14,21,last], T=[0,25,50,75,100];
+  for(let i=1;i<B.length;i++){ if(day<=B[i]) return T[i-1]+(T[i]-T[i-1])*(day-B[i-1])/(B[i]-B[i-1]); }
+  return 100;
+}
+function _irMonthStatus(p){ const n=_irPaceNorm(); if(p>=n) return 'ok'; if(p>=n*0.8) return 'warn'; return 'bad'; }
 function _irSideBadge(fs){
   var ps=(fs.ir==null||fs.ir_status==='no_data')?'no_data':(_irMonthStatus(fs.ir)==='ok'?'green':_irMonthStatus(fs.ir)==='warn'?'yellow':'red');
   var pl=ps==='no_data'?(fs.ir_status_label||'нет данных'):({green:'в норме',yellow:'в риске',red:'провал'}[ps]);
@@ -1630,7 +1637,7 @@ window.ambSave=async function(){
  }
 };
 
-function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderGroups(d); renderTasks(d); window.initIrCards&&window.initIrCards(); maybeAwardToast(d); }
+function render(d){ window.__irDataDate=(d&&d.dataDate)||null; renderHero(d); renderMain(d); renderPrognoz(d); renderGroups(d); renderTasks(d); window.initIrCards&&window.initIrCards(); maybeAwardToast(d); }
 
 (async ()=>{
  const me=await requireAuth();
@@ -1810,7 +1817,7 @@ function renderIrCard(opts){
     </div>
     <div class="ir-body">
       <div>
-        <div class="ir-total" style="color:${barColor(h.now.total)}">${h.now.total}%</div>
+        <div class="ir-total" style="color:${_irMonthColor(h.now.total)}">${h.now.total}%</div>
         <span class="ir-total-delta hidden">·</span>
       </div>
       <div class="ir-channels">
@@ -1864,7 +1871,7 @@ window.applyIrMode=function(card, mode){
   setChan(rows[1], 'seller', '#10b981');
   // Общий ИР + дельта
   elTotal.textContent = src.total+'%';
-  elTotal.style.color = barColor(src.total);
+  elTotal.style.color = mode==='month' ? _irMonthColor(src.total) : barColor(src.total); // месяц — темп (Егор 02.09)
   if (mode==='now'){
     elTotalDelta.classList.add('hidden');
   } else {

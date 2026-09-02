@@ -740,12 +740,20 @@ const CTX={data:null,target:null,me:null,role:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtShort=(n)=>{ n=Number(n)||0; const a=Math.abs(n); if(a<1000)return String(Math.round(n)); if(a<1e6)return Math.round(n/1000)+'к'; return (Math.round(n/1e5)/10).toString().replace('.',',')+' млн'; };
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
-// ИР МЕСЯЦА — цвет по темпу недельных циклов (нед1=25%..нед4=100%, допуск 0.9).
-// Ожидаемый ИР на СЕГОДНЯ — пропорционально дню внутри недельного цикла (д7=25%..конец=100%).
-function _expectedIrNow(){ const n=new Date(), d=n.getDate(), last=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(); const B=[0,7,14,21,last], T=[0,25,50,75,100]; for(let i=1;i<B.length;i++){ if(d<=B[i]) return T[i-1]+(T[i]-T[i-1])*(d-B[i-1])/(B[i]-B[i-1]); } return 100; }
-function _irMonthColor(p){ return p>=70?'var(--ok)':p>=50?'var(--warn)':'var(--bad)'; }
-// Правило Егора 01.09: плоские пороги цвета ИР — ≥70 зелёный, 50–70 жёлтый, <50 красный
-function _irMonthStatus(p){ return p>=70?'ok':p>=50?'warn':'bad'; }
+// Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа. Норматив на дату данных:
+// недели 1–7/8–14/15–21/22–конец → 25/50/75/100%, внутри недели пропорционально
+// дню (3 сентября → 25/7×3 ≈ 10,7%; 14-е → 50%). Цвет: ≥норматива — зелёный,
+// 80–99% норматива — жёлтый, <80% — красный. НЕДЕЛЬНЫЙ ИР (barColor) не трогаем.
+function _irPaceNorm(){
+  const ds=window.__irDataDate;
+  const d=(ds&&/^\d{4}-\d{2}-\d{2}$/.test(ds))?new Date(ds+'T00:00:00'):new Date();
+  const day=d.getDate(), last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  const B=[0,7,14,21,last], T=[0,25,50,75,100];
+  for(let i=1;i<B.length;i++){ if(day<=B[i]) return T[i-1]+(T[i]-T[i-1])*(day-B[i-1])/(B[i]-B[i-1]); }
+  return 100;
+}
+function _irMonthStatus(p){ const n=_irPaceNorm(); if(p>=n) return 'ok'; if(p>=n*0.8) return 'warn'; return 'bad'; }
+function _irMonthColor(p){ const s=_irMonthStatus(p); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 function _irSideBadge(fs){
   var ps=(fs.ir==null||fs.ir_status==='no_data')?'no_data':(_irMonthStatus(fs.ir)==='ok'?'green':_irMonthStatus(fs.ir)==='warn'?'yellow':'red');
   var pl=ps==='no_data'?(fs.ir_status_label||'нет данных'):({green:'в норме',yellow:'в риске',red:'провал'}[ps]);
@@ -1138,7 +1146,7 @@ function renderMain(d){
  // месячные факт/план, поэтому ИР воронки тоже месячный — иначе рассинхрон со скобкой).
  const vSrc = v2m || v2;
  if (vSrc) {
-   const sideSt = (p) => p >= 70 ? 'green' : (p >= 50 ? 'yellow' : 'red');
+   const sideSt = (p) => { const s=_irMonthStatus(p); return s==='ok'?'green':s==='warn'?'yellow':'red'; }; // темп месяца (Егор 02.09)
    const sideLbl = { green: 'в норме', yellow: 'в риске', red: 'провал' };
    if (typeof vSrc.buyer_pct === 'number') {
      f.buyer.ir = vSrc.buyer_pct;
@@ -2765,7 +2773,7 @@ function maybeShowCycleFinish(d){
  if(seen) return;
  setTimeout(()=>window.openCycleFinish(),450);
 }
-function render(d){ renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); maybeShowCycleFinish(d); maybeAwardToast(d); }
+function render(d){ window.__irDataDate=(d&&d.dataDate)||null; renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); maybeShowCycleFinish(d); maybeAwardToast(d); }
 
 (async ()=>{
  const me=await requireAuth();
@@ -2981,7 +2989,7 @@ function renderIrCard(opts){
     </div>
     <div class="ir-body">
       <div>
-        <div class="ir-total" style="color:${barColor(h.now.total)}">${h.now.total}%</div>
+        <div class="ir-total" style="color:${_irMonthColor(h.now.total)}">${h.now.total}%</div>
         <span class="ir-total-delta hidden">·</span>
       </div>
       <div class="ir-channels">
