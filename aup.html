@@ -607,8 +607,17 @@ function renderTiles(o){
  const irCurWeek = (typeof o.irCurrentWeek === 'number') ? o.irCurrentWeek : null;
  const cellW=(v,state)=>{
   if(state==='empty' || v==null) return `<div class="ir-wk-cell empty">—</div>`;
-  const c=v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)';
-  const tip = state==='current' ? ' title="Текущая неделя — динамический ИР, закроется в конце недели"' : '';
+  // Егор 02.09: «СЕЙЧАС» красим по темпу НЕДЕЛИ (прошло дней из 7: ≥норматива
+  // зелёный, 80–99% жёлтый, <80% красный); закрытые недели — факт (≥70/50).
+  let c;
+  if(state==='current'){
+    const wd=(new Date(dataDate+'T00:00:00').getDay()+6)%7+1; // пн=1 … вс=7
+    const n=100*wd/7;
+    c=v>=n?'var(--ok)':v>=n*0.8?'var(--warn)':'var(--bad)';
+  } else {
+    c=v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)';
+  }
+  const tip = state==='current' ? ' title="Текущая неделя — динамический ИР, цвет по темпу недели (прошло дней из 7)"' : '';
   const badge = state==='current' ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.05em">СЕЙЧАС</div>` : '';
   return `<div class="ir-wk-cell"${tip} style="color:${c}">${v}%${badge}</div>`;
  };
