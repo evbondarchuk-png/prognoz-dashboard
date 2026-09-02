@@ -137,6 +137,14 @@ function render(d){
   const sv = d.svetofor || {};
   const svu = sv.users || {};
   const svz = sv.zones || {};
+  const svf = sv.feed || null;
+  // сигнал выгрузки мест: пусто со 2-го числа месяца = тревога (02.09)
+  const feedBad = !!(svf && svf.days_missing > 0 && svf.day >= 2);
+  const feedHtml = !svf ? '' : (feedBad
+    ? `<div class="chip bad" style="display:block;padding:10px 12px;margin-bottom:10px;font-size:13px">🚨 Места светофора не выгружаются: за ${esc(svf.date)} мест нет. Последний день с местами: <b>${esc(svf.last_ok_date || '—')}</b> — чинить ранжирование в листе (n8n/Сценарии), кабинеты стоят на прошлом месяце.</div>`
+    : (svf.days_missing > 0
+      ? `<div class="chip warn" style="display:block;padding:10px 12px;margin-bottom:10px;font-size:13px">🟡 Стык месяца: за ${esc(svf.date)} мест пока нет — норма на 1-е число, со 2-го должны появиться.</div>`
+      : `<div class="chip ok" style="display:block;padding:10px 12px;margin-bottom:10px;font-size:13px">✅ Места светофора за ${esc(svf.date)} выгружаются.</div>`));
   const pl = d.plans || {};
   const sc = d.scenarios || {};
   const fl = d.flags || {};
@@ -220,6 +228,7 @@ function render(d){
         </div>
         <div class="card">
           <h2>📍 Позиции (по /users)</h2>
+          ${feedHtml}
           <div class="kpis" style="margin-bottom:8px">
             <div class="kpi"><div class="n ${svu.without_position ? 'warn' : 'ok'}">${esc(svu.without_position || 0)}</div><div class="l">опытных без места</div></div>
             <div class="kpi"><div class="n ${svu.position_zero ? 'warn' : 'ok'}">${esc(svu.position_zero || 0)}</div><div class="l">место = 0 (мусор)</div></div>
