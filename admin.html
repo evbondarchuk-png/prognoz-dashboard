@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Админ · Прогноз</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="importmap">
+{ "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
+</script>
+<script src="/metrika.js"></script>
+<script src="/analytics.js"></script>
+<style>
+:root{
+  --bg:#f4f5f7; --surface:#fff; --surface-2:#f1f3f7; --line:#e6e8ee;
+  --shadow:0 1px 3px rgba(20,30,55,.06),0 6px 24px rgba(20,30,55,.05);
+  --ink:#1a1f2e; --muted:#7a8194; --muted-2:#a8aebd;
+  --brand:#2b6cb0; --brand-soft:#eaf2fb;
+  --ok:#16a34a; --ok-bg:#e9f6ec; --warn:#d97706; --warn-bg:#fdf3e3; --bad:#dc2626; --bad-bg:#fdeaea;
+  --r:12px; --r-sm:8px; --pill:999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;padding-bottom:40px}
+.app-header{background:var(--surface);border-bottom:1px solid var(--line);padding:0 18px;display:flex;align-items:center;gap:12px;height:54px;position:sticky;top:0;z-index:50}
+.app-header .logo{font-weight:800;color:var(--brand)}.app-header .logo span{color:var(--muted);font-weight:500}
+.app-header .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.app-header button{font-size:12px;font-weight:700;color:var(--brand);background:var(--brand-soft);border:none;border-radius:var(--pill);padding:8px 14px;cursor:pointer;font-family:inherit}
+.app-header .tab-link{font-size:13px;font-weight:700;color:var(--muted);background:none;padding:8px 14px;cursor:pointer;font-family:inherit;border-radius:var(--pill);text-decoration:none}
+.app-header .tab-link.active{color:var(--brand);background:var(--brand-soft)}
+.wrap{max-width:1200px;margin:18px auto;padding:0 16px}
+.loading{text-align:center;padding:60px 20px;color:var(--muted)}
+.loading .sp{display:inline-block;width:32px;height:32px;border:3px solid var(--surface-2);border-top-color:var(--brand);border-radius:50%;animation:sp 1s linear infinite;margin-bottom:12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+h1{font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.sec-tabs{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
+.sec-tabs button{padding:7px 14px;border:none;border-radius:var(--pill);cursor:pointer;background:var(--surface-2);font-size:13px;font-weight:600;color:var(--muted);font-family:inherit}
+.sec-tabs button.act{background:var(--brand);color:#fff}
+.sec-tabs button:hover:not(.act){background:var(--line)}
+.sec-pane{display:none}.sec-pane.act{display:block}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.kpi .n{font-size:26px;font-weight:800;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .n.ok{color:var(--ok)}.kpi .n.warn{color:var(--warn)}.kpi .n.bad{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card h2{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.wr{overflow-x:auto;overflow-y:auto;max-height:450px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;position:sticky;top:0;background:var(--surface);z-index:1}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr:hover td{background:#f8f9fc}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--pill)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.u{background:var(--surface-2);color:var(--muted)}
+.muted{color:var(--muted)}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.nt{font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:6px;padding:8px 10px;margin-bottom:8px}
+.act-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+button.b{font-size:12px;font-weight:700;border:none;border-radius:var(--pill);padding:8px 14px;cursor:pointer;font-family:inherit;background:var(--brand-soft);color:var(--brand)}
+button.b.warn{background:var(--warn-bg);color:var(--warn)}
+button.b.danger{background:var(--bad-bg);color:var(--bad)}
+button.b:disabled{opacity:.5;cursor:default}
+pre.res{background:#0f172a;color:#d7e3f4;font-size:11px;line-height:1.45;border-radius:var(--r-sm);padding:12px;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+.flag-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:10px;flex-wrap:wrap}
+.flag-card .t{flex:1;min-width:220px}
+.flag-card .t b{display:block;font-size:13px}
+.flag-card .t span{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="logo">Прогноз <span>· админ</span></div>
+  <div class="actions">
+    <a href="/analytics-stats.html" class="tab-link">📊 Аналитика</a>
+    <a href="/prognosha-stats.html" class="tab-link">🦊 Прогноша</a>
+    <button onclick="loadData()">↻ Обновить</button>
+    <button onclick="location.href='aup.html'">← Кабинет</button>
+  </div>
+</div>
+
+<div class="wrap" id="root">
+  <div class="loading"><div class="sp"></div><div>Собираю состояние системы…</div></div>
+</div>
+
+<script type="module">
+import { requireAuth } from './auth-guard.js';
+import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
+
+const root = document.getElementById('root');
+const fns = getFunctions(getApp(), 'europe-west1');
+const call = (name, data, timeout) => httpsCallable(fns, name, timeout ? { timeout } : undefined)(data || {}).then(r => r.data);
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmtDate(ts){if(!ts)return'—';const d=new Date(ts);return d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function fmtAgo(ts){if(!ts)return'—';const m=Math.round((Date.now()-ts)/60000);if(m<1)return'только что';if(m<60)return m+' мин назад';const h=Math.round(m/60);if(h<24)return h+' ч назад';return Math.round(h/24)+' дн назад';}
+
+// Только АУП/админ
+await requireAuth({ allowedRoles: ['aup', 'admin'] });
+
+window.swPane = (id) => {
+  document.querySelectorAll('.sec-pane').forEach(p => p.classList.remove('act'));
+  document.querySelectorAll('.sec-tabs button').forEach(b => b.classList.remove('act'));
+  document.getElementById('pane-' + id).classList.add('act');
+  document.querySelector('.sec-tabs [data-pane="' + id + '"]').classList.add('act');
+};
+
+loadData();
+window.loadData = loadData;
+
+let LAST = null;
+
+async function loadData(){
+  root.innerHTML = '<div class="loading"><div class="sp"></div><div>Собираю состояние системы…</div></div>';
+  try {
+    const d = await call('systemStatusAdmin', {}, 240000);
+    LAST = d;
+    render(d);
+  } catch (e) {
+    const msg = (e && e.message) || String(e);
+    const denied = /permission|denied|admin/i.test(msg);
+    root.innerHTML = '<div class="empty">' + (denied
+      ? '🔒 Пульт доступен только руководству (АУП/админ).'
+      : 'Не удалось загрузить: ' + esc(msg)) + '</div>';
+  }
+}
+
+function render(d){
+  const h = d.health || {};
+  const ch = d.chain || {};
+  const sv = d.svetofor || {};
+  const svu = sv.users || {};
+  const svz = sv.zones || {};
+  const pl = d.plans || {};
+  const sc = d.scenarios || {};
+  const fl = d.flags || {};
+  const briefsOn = !fl.briefs_disabled.value;
+  const monthlyOn = !fl.monthly_brief_disabled.value;
+
+  root.innerHTML = `
+    <h1>🛠 Админ · пульт системы</h1>
+    <div class="sub">Данные за ${esc(d.data.date || '—')} · ${esc(d.data.count || '—')} партнёров в архиве · обновлено ${fmtDate(d.generated_at)}</div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="n ${h.ok === true ? 'ok' : h.ok === false ? 'bad' : ''}">${h.ok === true ? '✓' : h.ok === false ? '✕' : '—'}</div><div class="l">здоровье данных</div></div>
+      <div class="kpi"><div class="n ${ch.fail_count ? 'bad' : 'ok'}">${ch.ok_count || 0}/12</div><div class="l">ночная цепочка</div></div>
+      <div class="kpi"><div class="n ${pl.no_plan_count > 0 ? 'warn' : 'ok'}">${pl.no_plan_count || 0}</div><div class="l">без плана (стаж 1+)</div></div>
+      <div class="kpi"><div class="n ${svz.wiped_count ? 'bad' : 'ok'}">${svz.wiped_count || 0}</div><div class="l">обнулённых зон</div></div>
+      <div class="kpi"><div class="n ${svu.without_position + svu.position_zero > 0 ? 'warn' : 'ok'}">${(svu.without_position || 0) + (svu.position_zero || 0)}</div><div class="l">опытных без места</div></div>
+      <div class="kpi"><div class="n ${briefsOn ? 'ok' : 'warn'}">${briefsOn ? 'вкл' : 'стоп'}</div><div class="l">утренние брифы</div></div>
+      <div class="kpi"><div class="n ${monthlyOn ? 'ok' : 'warn'}">${monthlyOn ? 'вкл' : 'стоп'}</div><div class="l">месячные брифы</div></div>
+    </div>
+
+    <div class="sec-tabs">
+      <button class="act" data-pane="chain" onclick="swPane('chain')">🌙 Ночная цепочка</button>
+      <button data-pane="health" onclick="swPane('health')">❤️ Здоровье данных</button>
+      <button data-pane="svetofor" onclick="swPane('svetofor')">🚦 Светофор</button>
+      <button data-pane="scenarios" onclick="swPane('scenarios')">📋 Сценарии</button>
+      <button data-pane="plans" onclick="swPane('plans')">🎯 Без плана</button>
+      <button data-pane="flags" onclick="swPane('flags')">🎛 Брифы и флаги</button>
+    </div>
+
+    ${pane('chain', true, `
+      ${ch.note ? `<div class="nt">ℹ️ ${esc(ch.note)}</div>` : ''}
+      <div class="card">
+        <h2>🌙 Цепочка за ${esc(ch.computed_for || '')} — живой пересчёт</h2>
+        <div class="wr"><table><thead><tr><th>Шаг</th><th>Время Екб</th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+        ${(ch.steps || []).map(s => `
+          <tr><td><b>${esc(s.name)}</b></td><td>${esc(s.time || '')}</td>
+          <td><span class="chip ${s.ok === true ? 'ok' : s.ok === false ? 'bad' : 'u'}">${s.ok === true ? '✅ ок' : s.ok === false ? '❌ сбой' : '⏭ нет данных'}</span></td>
+          <td class="muted">${esc(s.detail || '')}</td></tr>`).join('')}
+        </tbody></table></div>
+        ${ch.ir_mean != null ? `<div class="nt">Средний ИР по компании: ${esc(ch.ir_mean)}%${h.ir_mean_prev != null ? ' (вчера ' + esc(h.ir_mean_prev) + '%)' : ''}</div>` : ''}
+        ${(ch.errors || []).length ? `<div class="nt" style="color:var(--bad)">⚠️ Системные ошибки за сегодня: ${ch.errors.map(esc).join(', ')}</div>` : ''}
+      </div>
+    `)}
+
+    ${pane('health', false, `
+      <div class="grid2">
+        <div class="card">
+          <h2>❤️ Данные-здоровье (${esc(h.date || d.data.date || '—')})</h2>
+          <div class="kpis" style="margin-bottom:8px">
+            <div class="kpi"><div class="n ${h.ok === true ? 'ok' : 'bad'}">${h.ok === true ? 'ок' : 'тревога'}</div><div class="l">общий статус</div></div>
+            <div class="kpi"><div class="n ${h.escalation_safe === false ? 'bad' : 'ok'}">${h.escalation_safe === false ? 'блок' : 'ок'}</div><div class="l">эскалация</div></div>
+            <div class="kpi"><div class="n">${h.coverage != null ? Math.round(h.coverage * 100) + '%' : '—'}</div><div class="l">покрытие снапшотами</div></div>
+            <div class="kpi"><div class="n">${esc(h.ir_mean_today != null ? h.ir_mean_today : '—')}%</div><div class="l">средний ИР</div></div>
+          </div>
+          ${(h.reasons || []).length ? `<div class="nt" style="color:var(--bad)">Причины: ${h.reasons.map(esc).join('; ')}</div>` : '<div class="nt">Причин для тревоги нет.</div>'}
+          <div class="act-row"><button class="b" onclick="act('dataHealthAdmin', {dryRun:true}, this)">🔍 Проверить сейчас (без записи)</button></div>
+          <div class="res-slot"></div>
+        </div>
+        <div class="card">
+          <h2>🧩 Составляющие ИР (доля компаний с компонентой)</h2>
+          <div class="wr"><table><thead><tr><th>Компонента</th><th class="num">сегодня</th><th class="num">вчера</th></tr></thead><tbody>
+          ${Object.entries(h.per_component || {}).map(([k, v]) => `
+            <tr><td>${esc(k)}</td><td class="num">${v && v.today_share != null ? Math.round(v.today_share * 100) + '%' : '—'}</td>
+            <td class="num">${v && v.yest_share != null ? Math.round(v.yest_share * 100) + '%' : '—'}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">нет данных</td></tr>'}
+          </tbody></table></div>
+          <div class="nt" style="margin-top:8px">Проверяется ${esc(h.eligible || '—')} партнёров. Готовность цепочки: ready_date = ${esc(d.data.ready_date || '—')}</div>
+        </div>
+      </div>
+    `)}
+
+    ${pane('svetofor', false, `
+      <div class="grid2">
+        <div class="card">
+          <h2>🚦 Пулы (system_totals, ${fmtAgo(sv.totals && sv.totals.updated_at)})</h2>
+          <div class="kpis" style="margin-bottom:8px">
+            <div class="kpi"><div class="n">${esc(sv.totals ? sv.totals.experienced : '—')}</div><div class="l">опытные</div></div>
+            <div class="kpi"><div class="n">${esc(sv.totals ? sv.totals.newbie : '—')}</div><div class="l">новички</div></div>
+            <div class="kpi"><div class="n">${esc(sv.totals ? sv.totals.no_svetofor : '—')}</div><div class="l">без светофора</div></div>
+          </div>
+          <div class="nt">Источник позиций: месяц ${esc(sv.totals && sv.totals.source_month || '—')} · меты зон: ${fmtAgo(svz.meta_updated_at)}</div>
+        </div>
+        <div class="card">
+          <h2>📍 Позиции (по /users)</h2>
+          <div class="kpis" style="margin-bottom:8px">
+            <div class="kpi"><div class="n ${svu.without_position ? 'warn' : 'ok'}">${esc(svu.without_position || 0)}</div><div class="l">опытных без места</div></div>
+            <div class="kpi"><div class="n ${svu.position_zero ? 'warn' : 'ok'}">${esc(svu.position_zero || 0)}</div><div class="l">место = 0 (мусор)</div></div>
+            <div class="kpi"><div class="n ${svu.without_zone ? 'warn' : 'ok'}">${esc(svu.without_zone || 0)}</div><div class="l">без зоны</div></div>
+            <div class="kpi"><div class="n">${esc(svu.newbie_without_position || 0)}</div><div class="l">новичков без места</div></div>
+          </div>
+          <div class="nt">Боевых зон: ${esc(svz.live || 0)}${svz.wiped_count ? ` · <b style="color:var(--bad)">обнулено: ${svz.wiped_count} (${svz.wiped.map(esc).join(', ')})</b>` : ' · обнулённых нет'}</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🛠 Действия со светофором (осторожно!)</h2>
+        <div class="nt">Проверки ничего не пишут (dryRun). «Пересчитать зоны» — пишет svetofor_zone_id пользователям по позициям.</div>
+        <div class="act-row">
+          <button class="b" onclick="act('dataDivisionRestoreAdmin', {dryRun:true}, this)">🔍 Чек зон (dryRun)</button>
+          <button class="b" onclick="act('poolReconcileAdmin', {dryRun:true}, this)">🔍 Сверка пулов (dryRun)</button>
+          <button class="b" onclick="act('svetoforRestoreAdmin', {dryRun:true}, this)">🔍 Восстановление позиций (dryRun)</button>
+          <button class="b warn" onclick="act('recomputeSvetoforZonesAdmin', {}, this, 'Пересчитать зоны всем опытным по позициям?')">🔁 Пересчитать зоны</button>
+        </div>
+        <div class="res-slot"></div>
+      </div>
+      <div class="card">
+        <h2>🕘 Следы восстановлений</h2>
+        <div class="wr"><table><thead><tr><th>Что</th><th>Детали</th></tr></thead><tbody>
+        ${Object.entries(sv.restore || {}).filter(([,v]) => v).map(([k, v]) => `<tr><td><b>${esc(k)}</b></td><td class="muted">${esc(JSON.stringify(v))}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">нет следов</td></tr>'}
+        </tbody></table></div>
+      </div>
+    `)}
+
+    ${pane('scenarios', false, `
+      <div class="grid2">
+        <div class="card">
+          <h2>⚙️ Сценарии (/scenarios/items)</h2>
+          <div class="wr"><table><thead><tr><th>Сценарий</th><th>Статус</th><th>Последний прогон</th><th class="num">всего</th><th class="num">за 24ч</th></tr></thead><tbody>
+          ${(sc.items || []).map(it => `
+            <tr><td><b>${esc(it.id)}</b></td>
+            <td><span class="chip ${it.is_active ? 'ok' : 'u'}">${it.is_active ? 'активен' : 'выключен'}</span></td>
+            <td class="muted">${fmtAgo(it.last_run_at)}</td>
+            <td class="num">${esc(it.triggered_total)}</td><td class="num">${esc(it.triggered_24h)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">нет</td></tr>'}
+          </tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>🎯 Цели (заполненность)</h2>
+          <div class="kpis" style="margin-bottom:8px">
+            <div class="kpi"><div class="n">${esc(sc.goals ? sc.goals.realtors_with_goal : 0)}</div><div class="l">с активной целью</div></div>
+            <div class="kpi"><div class="n">${esc(sc.goals ? sc.goals.auto : 0)}</div><div class="l">авто-цели</div></div>
+            <div class="kpi"><div class="n">${esc(sc.goals ? sc.goals.manual : 0)}</div><div class="l">ручные</div></div>
+            <div class="kpi"><div class="n">${esc(sc.goals ? sc.goals.changed_more_than_one || sc.goals.changed_more_than_once : 0)}</div><div class="l">меняли 1+ раз</div></div>
+          </div>
+          <div class="nt">Планы: с планом ${esc(pl.with_plan || 0)} из ${esc(pl.candidates || 0)} кандидатов (стаж 1+, не Группа 0) — по снапшотам за ${esc(pl.data_date || '—')}</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>📋 Сценарные задачи по типам (${esc(sc.tasks_total || 0)} всего)</h2>
+        <div class="wr"><table><thead><tr><th>Сценарий</th><th class="num">всего</th><th class="num">открытых</th><th class="num">закрыто авто</th><th class="num">закрыто руками</th><th class="num">просрочено</th><th class="num">снято</th></tr></thead><tbody>
+        ${(sc.tasks_by_scenario || []).map(t => `
+          <tr><td><b>${esc(t.id)}</b></td><td class="num">${esc(t.total)}</td><td class="num">${esc(t.active)}</td>
+          <td class="num">${esc(t.done_auto)}</td><td class="num">${esc(t.done_manual)}</td>
+          <td class="num">${esc(t.expired)}</td><td class="num">${esc(t.skipped)}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">нет</td></tr>'}
+        </tbody></table></div>
+      </div>
+    `)}
+
+    ${pane('plans', false, `
+      <div class="card">
+        <h2>🎯 Риэлторы без плана (стаж 1+ мес, не Группа 0) — ${esc(pl.no_plan_count || 0)} из ${esc(pl.candidates || 0)}</h2>
+        <div class="nt">${esc(pl.note || '')}</div>
+        <div class="wr"><table><thead><tr><th>МОП</th><th class="num">без плана</th><th>Кто (первые 8)</th></tr></thead><tbody>
+        ${(pl.no_plan_by_mop || []).slice(0, 30).map(m => `
+          <tr><td><b>${esc(m.mop_name)}</b> <span class="muted">${esc(m.mop_code)}</span></td>
+          <td class="num">${esc(m.count)}</td>
+          <td class="muted">${m.sample.map(s => esc(s.name) + ' <span style="color:var(--muted-2)">(стаж ' + esc(s.stazh == null ? '—' : s.stazh) + ')</span>').join(', ')}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Все кандидаты с планом 👍</td></tr>'}
+        </tbody></table></div>
+        ${(pl.no_plan_by_mop || []).length > 30 ? '<div class="nt">…и ещё ' + ((pl.no_plan_by_mop.length - 30)) + ' МОПов (список укорочен)</div>' : ''}
+      </div>
+    `)}
+
+    ${pane('flags', false, `
+      <div class="nt" style="background:var(--warn-bg);color:var(--warn)">⚠️ Брифы уходят только по команде Егора. Тумблеры управляют только расписанием — мгновенной рассылки не происходит.</div>
+      <div class="card">
+        <h2>🎛 Рассылки и генерация</h2>
+        ${flagCard('briefs_disabled', 'Утренние брифы + отчёты МОП/РОП + ночной алерт', !fl.briefs_disabled.value, 'стоп', 'вкл')}
+        ${flagCard('monthly_brief_disabled', 'Месячные брифы «итоги месяца» (1-е числа; fail-safe: без флага — стоп)', !fl.monthly_brief_disabled.value, 'стоп', 'вкл')}
+        ${flagCard('genCoachTasks_disabled', 'ИИ-задачи коуча (по понедельникам)', !(fl.genCoachTasks_disabled && fl.genCoachTasks_disabled.value), 'стоп', 'вкл')}
+        <div class="nt">Аудит переключений — /system_logs/config/{дата}. ИИ-разбор: provider=${esc(fl.coach_report && fl.coach_report.provider || '—')} · model=${esc(fl.coach_report && fl.coach_report.model || '—')} · допуск риска недель: ${esc(fl.risk_week_tolerance)}</div>
+      </div>
+    `)}
+  `;
+}
+
+function pane(id, active, content){
+  return `<div id="pane-${id}" class="sec-pane ${active ? 'act' : ''}">${content}</div>`;
+}
+function flagCard(flag, title, isOn){
+  return `<div class="flag-card">
+    <div class="t"><b>${esc(title)}</b><span>${esc(flag)}</span></div>
+    <span class="chip ${isOn ? 'ok' : 'warn'}">${isOn ? '🟢 работают' : '🔴 остановлены'}</span>
+    <button class="b ${isOn ? 'danger' : ''}" onclick="toggleFlag('${esc(flag)}', ${!isOn})">${isOn ? 'Остановить' : 'Включить'}</button>
+  </div>`;
+}
+
+// ── Действия (dryRun-проверки и пересчёты) ──
+window.act = async (name, payload, btn, confirmText) => {
+  if (confirmText && !confirm(confirmText)) return;
+  const slot = btn.closest('.card').querySelector('.res-slot');
+  btn.disabled = true; const old = btn.textContent; btn.textContent = '⏳ выполняю…';
+  try {
+    const res = await call(name, payload, 240000);
+    if (slot) slot.innerHTML = `<pre class="res">✅ ${esc(name)}\n${esc(JSON.stringify(res, null, 2))}</pre>`;
+  } catch (e) {
+    if (slot) slot.innerHTML = `<pre class="res" style="color:#fca5a5">❌ ${esc(name)}: ${esc((e && e.message) || e)}</pre>`;
+  } finally { btn.disabled = false; btn.textContent = old; }
+};
+
+// ── Тумблеры ──
+// Включение — с типизированным подтверждением словом ВКЛЮЧИТЬ (сервер
+// для месячных брифов его требует: false вооружает крон 1-го числа)
+window.toggleFlag = async (flag, value) => {
+  const title = { briefs_disabled: 'утренние брифы', monthly_brief_disabled: 'месячные брифы', genCoachTasks_disabled: 'ИИ-задачи коуча' }[flag] || flag;
+  let payload = { flag, value };
+  if (value) {
+    const word = prompt('Чтобы ВКЛЮЧИТЬ ' + title + ', введите слово ВКЛЮЧИТЬ:\n(месячные брифы: крон 1-го числа начнёт рассылать сам)');
+    if (!word) return;
+    payload.confirm = String(word).trim();
+  } else {
+    if (!confirm('Остановить ' + title + '?')) return;
+  }
+  try {
+    await call('setSystemFlagAdmin', payload);
+    loadData();
+  } catch (e) {
+    alert('Не получилось: ' + ((e && e.message) || e));
+  }
+};
+</script>
+</body>
+</html>
