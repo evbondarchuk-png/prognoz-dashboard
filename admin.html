@@ -78,7 +78,7 @@ pre.res{background:#0f172a;color:#d7e3f4;font-size:11px;line-height:1.45;border-
   <div class="actions">
     <a href="/analytics-stats.html" class="tab-link">📊 Аналитика</a>
     <a href="/prognosha-stats.html" class="tab-link">🦊 Прогноша</a>
-    <button onclick="loadData()">↻ Обновить</button>
+    <button onclick="loadData(true)">↻ Обновить</button>
     <button onclick="location.href='aup.html'">← Кабинет</button>
   </div>
 </div>
@@ -115,10 +115,11 @@ window.loadData = loadData;
 
 let LAST = null;
 
-async function loadData(){
+async function loadData(force){
   root.innerHTML = '<div class="loading"><div class="sp"></div><div>Собираю состояние системы…</div></div>';
   try {
-    const d = await call('systemStatusAdmin', {}, 240000);
+    // без force — из 5-минутного кэша (экономия обращений к базе)
+    const d = await call('systemStatusAdmin', { refresh: !!force }, 240000);
     LAST = d;
     render(d);
   } catch (e) {
@@ -144,7 +145,7 @@ function render(d){
 
   root.innerHTML = `
     <h1>🛠 Админ · пульт системы</h1>
-    <div class="sub">Данные за ${esc(d.data.date || '—')} · ${esc(d.data.count || '—')} партнёров в архиве · обновлено ${fmtDate(d.generated_at)}</div>
+    <div class="sub">Данные за ${esc(d.data.date || '—')} · ${esc(d.data.count || '—')} партнёров в архиве · собрано ${fmtDate(d.generated_at)}${d.cached ? ` · <span style="color:var(--ok)">из кэша (${Math.round((d.cache_age_ms || 0) / 60000)} мин назад, «Обновить» пересоберёт)</span>` : ''}</div>
 
     <div class="kpis">
       <div class="kpi"><div class="n ${h.ok === true ? 'ok' : h.ok === false ? 'bad' : ''}">${h.ok === true ? '✓' : h.ok === false ? '✕' : '—'}</div><div class="l">здоровье данных</div></div>
