@@ -1126,8 +1126,16 @@ function renderMain(d){
  // Егор 01.09 (Пермякова 67137): блок ИР на главной = МЕСЯЧНЫЙ ИР — подпись
  // под ним «факт за месяц / план месяца», а брали недельный (c капнутыми
  // общими блоками они расходились). Недельный остаётся в табе «Неделя».
- if (v2 && typeof v2.ir_total === 'number') {
-   irHist.week = { total: v2.ir_total, buyer: v2.buyer_pct != null ? v2.buyer_pct : irHist.now.buyer, seller: v2.seller_pct != null ? v2.seller_pct : irHist.now.seller };
+ // Егор 03.09 (вечер): таб «Неделя» — в НЕДЕЛЬНОЙ шкале: 25% месячного ИР
+ // = 100% недели (кап). Полосы сторон — месячные доли (в 1-ю неделю = недельным).
+ {
+   const wd = d.ir_history && d.ir_history.week_deltas;
+   const cur = wd && typeof wd.current === 'number' ? Math.min(100, Math.round(wd.current * 4)) : null;
+   if (cur != null) {
+     irHist.week = { total: cur, buyer: v2m && typeof v2m.buyer_pct === 'number' ? v2m.buyer_pct : irHist.now.buyer, seller: v2m && typeof v2m.seller_pct === 'number' ? v2m.seller_pct : irHist.now.seller };
+   } else if (v2 && typeof v2.ir_total === 'number') {
+     irHist.week = { total: v2.ir_total, buyer: v2.buyer_pct != null ? v2.buyer_pct : irHist.now.buyer, seller: v2.seller_pct != null ? v2.seller_pct : irHist.now.seller };
+   }
  }
  if (v2m && typeof v2m.ir_total === 'number') {
    irHist.month = {

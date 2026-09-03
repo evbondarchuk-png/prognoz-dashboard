@@ -768,23 +768,17 @@ function renderTiles(o){
  const currentWeekIdx = completedWeeks < 4 ? completedWeeks : -1;
  // Завершённые: берём последние completedWeeks значений из истории (это точки -21,-14,-7,today).
  // Егор 03.09: квадраты = прирост месячного ИР за неделю (дельты границ 7/14/21/конец)
- const wk=((o.weekDeltas&&o.weekDeltas.deltas)||[]).slice(0,completedWeeks);
+ // недельная шкала: 25% месячного ИР = 100% недели (кап 100)
+  const wk=((o.weekDeltas&&o.weekDeltas.deltas)||[]).slice(0,completedWeeks).map(v=>v==null?null:Math.min(100,Math.round(v*4)));
  // Текущий динамический недельный ИР — из ir_v2_week_total агрегата (для группы/отдела/компании).
- const irCurWeek = (o.weekDeltas && typeof o.weekDeltas.current === 'number') ? o.weekDeltas.current : null;
+ const irCurWeek = (o.weekDeltas && typeof o.weekDeltas.current === 'number') ? Math.min(100, Math.round(o.weekDeltas.current * 4)) : null;
  const cellW=(v,state)=>{
   // state: 'closed' | 'current' | 'empty'
   if(state==='empty' || v==null) return `<div class="ir-wk-cell empty">—</div>`;
-  // Егор 02.09: «СЕЙЧАС» красим по темпу НЕДЕЛИ (прошло дней из 7: ≥норматива
-  // зелёный, 80–99% жёлтый, <80% красный); закрытые недели — факт (≥70/50).
-  let c;
-  if(state==='current'){
-    const wd=(new Date(dataDate+'T00:00:00').getDay()+6)%7+1; // пн=1 … вс=7
-    const n=100*wd/7;
-    c=v>=n?'var(--ok)':v>=n*0.8?'var(--warn)':'var(--bad)';
-  } else {
-    c=v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)';
-  }
-  const tip = state==='current' ? ' title="Текущая неделя — динамический ИР, цвет по темпу недели (прошло дней из 7)"' : '';
+  // Егор 03.09 (вечер): значения приходят в НЕДЕЛЬНОЙ шкале (25% месячного ИР
+  // = 100% недели, кап), красим плоско 70/50 — без внутринедельного темпа.
+  const c=v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)';
+  const tip = state==='current' ? ' title="Текущая неделя — динамический ИР, недельная шкала: 25% месячного ИР = 100%"' : '';
   const badge = state==='current' ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.05em">СЕЙЧАС</div>` : '';
   return `<div class="ir-wk-cell"${tip} style="color:${c}">${v}%${badge}</div>`;
  };
@@ -824,7 +818,7 @@ function renderTiles(o){
    <div class="tile-cap">ИР ${esc(o.scope)} · ${esc(_monthShort(dataDate))}</div>
    <div class="ir-tile-split">
     <div class="ir-tile-weeks">
-     <div class="ir-tile-weeks-cap">прирост по неделям</div>
+     <div class="ir-tile-weeks-cap">недели (25%=100%)</div>
      <div class="ir-tile-weeks-row">${weekRow}</div>
     </div>
     <div class="ir-tile-month">
@@ -1412,7 +1406,7 @@ window.showIrWeeks=function(el){
   var raw=el.getAttribute('data-weeks')||'',parts=raw.split('|').filter(Boolean),cur=null,weeks=[];
   parts.forEach(function(p){var kv=p.split(':');if(kv[0]==='cur')cur=kv[1];else weeks.push({n:kv[0],v:kv[1]});});
   // Егор 03.09: недели = ПРИРОСТ месячного ИР (дельта от прошлой границы)
-  var _prev=0; weeks=weeks.map(function(w){var has=w.v!==''&&w.v!=null;var val=has?parseInt(w.v,10):null;var d=(has&&!isNaN(val))?val-_prev:null; if(has&&!isNaN(val))_prev=val; return {n:w.n,d:(d==null||isNaN(d))?null:d};});
+  var _prev=0; weeks=weeks.map(function(w){var has=w.v!==''&&w.v!=null;var val=has?parseInt(w.v,10):null;var d=(has&&!isNaN(val))?val-_prev:null; if(has&&!isNaN(val))_prev=val; return {n:w.n,d:(d==null||isNaN(d))?null:Math.min(100,Math.round(d*4))};}); // нед.шкала 25%=100
   function cellHtml(label,v,isCur){var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;var c=!has?'#9ca3af':n>=70?'#16a34a':n>=50?'#d97706':'#dc2626';return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div></div>';}
   var cells=weeks.map(function(w){return cellHtml('Нед '+w.n,(w.d==null?'':String(w.d)),false);}).join('');
   if(cur!=null)cells+=cellHtml('Тек.',cur,true);
@@ -1429,7 +1423,7 @@ function teamRowCommon(m,idx){
   // tooltip с недельным значением (ir_v2_week_total).
   const irM = (typeof m.ir_v2_month_total==='number') ? m.ir_v2_month_total : (m.ir_month||0);
   // Егор 03.09: «ИР нед» = прирост месячного ИР за текущую неделю (дельта), не темп
-  const irW = (typeof m.ir_week_delta==='number') ? m.ir_week_delta : ((typeof m.ir_v2_week_total==='number') ? m.ir_v2_week_total : null);
+  const irW = (typeof m.ir_week_delta==='number') ? Math.min(100, Math.round(m.ir_week_delta * 4)) : ((typeof m.ir_v2_week_total==='number') ? m.ir_v2_week_total : null); // недельная шкала 25%=100%
   const irTip = irW!=null ? `прирост ИР за текущую неделю: ${irW}%` : 'нет недельного ИР';
   const wkData=(m.ir_weeks_month||[]).map(w=>w.weekN+':'+(w.ir_pct==null?'':w.ir_pct)).join('|')+(irW!=null?'|cur:'+irW:'');
   const plan=m.plan_month||0;
