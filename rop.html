@@ -1195,7 +1195,7 @@ function _statusBadge(m){
   if(w===1) return `<span class="status-badge-team w1" title="${esc(tip)}">Н1${sig}</span>`;
   if(w===2) return `<span class="status-badge-team w2" title="${esc(tip)}">Н2${sig}</span>`;
   if(w===3) return `<span class="status-badge-team w3" title="${esc(tip)}">Н3${sig}</span>`;
-  return `<span class="status-badge-team w4" title="${esc(tip)}">Н4${sig}</span>`;
+  return `<span class="status-badge-team w4" title="${esc(tip)}">Н${w}${sig}</span>`;
 }
 function _statusBarCls(m){ const w=m.weeks_in_risk_streak||0; if(w===0)return 'ok'; if(w<=1)return 'warn'; return 'bad'; }
 // Hover-попап: ИР по завершённым неделям тек.месяца (данные из m.ir_weeks_month + текущая неделя).

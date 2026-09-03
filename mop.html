@@ -1337,7 +1337,7 @@ function _statusBadge(m){
   if(w===1) return `<span class="status-badge-team w1" title="1 неделя ниже целевого темпа — флаг.${esc(detail)}">${sig?`Н1${sig}`:"Н1"}</span>`;
   if(w===2) return `<span class="status-badge-team w2" title="2 недели подряд ниже целевого темпа — встреча с менеджером.${esc(detail)}">${sig?`Н2${sig}`:"Н2"}</span>`;
   if(w===3) return `<span class="status-badge-team w3" title="3 недели подряд ниже целевого темпа — нужен план выхода.${esc(detail)}">${sig?`Н3${sig}`:"Н3"}</span>`;
-  return `<span class="status-badge-team w4" title="4+ недель подряд ниже целевого темпа — эскалация РОПу.${esc(detail)}">${sig?`Н4${sig}`:"Н4"}</span>`;
+  return `<span class="status-badge-team w4" title="${w} недель подряд ниже целевого темпа — эскалация РОПу.${esc(detail)}">${sig?`Н${w}${sig}`:"Н${w}"}</span>`;
 }
 function _statusBarCls(m){
   const w=m.weeks_in_risk_streak||0;
