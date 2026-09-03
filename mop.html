@@ -1330,10 +1330,13 @@ function _statusBadge(m){
   });
   const detail=bad.length?'  '+bad.join(' · ')+'. Текущий день в стрик не входит — учитываются только границы недель.':'';
   if(w===0) return '<span class="status-badge-team ok">норма</span>';
-  if(w===1) return `<span class="status-badge-team w1" title="1 неделя ниже целевого темпа — флаг.${esc(detail)}">Н1</span>`;
-  if(w===2) return `<span class="status-badge-team w2" title="2 недели подряд ниже целевого темпа — встреча с менеджером.${esc(detail)}">Н2</span>`;
-  if(w===3) return `<span class="status-badge-team w3" title="3 недели подряд ниже целевого темпа — нужен план выхода.${esc(detail)}">Н3</span>`;
-  return `<span class="status-badge-team w4" title="4+ недель подряд ниже целевого темпа — эскалация РОПу.${esc(detail)}">Н4</span>`;
+  // Егор 03.09: в бейдже видно, за что Н — итог последнего закрытого месяца (напр. «авг 62%»)
+  const lastBad=(m.weeks_in_risk_examined||[]).find(x=>x&&x.isRisk&&typeof x.irMonth==="number");
+  const sig=lastBad?` · ${monRu[parseInt(lastBad.date.split("-")[1])-1]} ${lastBad.irMonth}%`:"";
+  if(w===1) return `<span class="status-badge-team w1" title="1 неделя ниже целевого темпа — флаг.${esc(detail)}">${sig?`Н1${sig}`:"Н1"}</span>`;
+  if(w===2) return `<span class="status-badge-team w2" title="2 недели подряд ниже целевого темпа — встреча с менеджером.${esc(detail)}">${sig?`Н2${sig}`:"Н2"}</span>`;
+  if(w===3) return `<span class="status-badge-team w3" title="3 недели подряд ниже целевого темпа — нужен план выхода.${esc(detail)}">${sig?`Н3${sig}`:"Н3"}</span>`;
+  return `<span class="status-badge-team w4" title="4+ недель подряд ниже целевого темпа — эскалация РОПу.${esc(detail)}">${sig?`Н4${sig}`:"Н4"}</span>`;
 }
 function _statusBarCls(m){
   const w=m.weeks_in_risk_streak||0;

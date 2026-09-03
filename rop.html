@@ -1185,11 +1185,16 @@ function _fmtK(n){ const a=Math.abs(n); if(a>=1000000)return (n/1000000).toFixed
 function _avatar(name){ const p=String(name||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
 function _statusBadge(m){
   const w=m.weeks_in_risk_streak||0;
+  // Егор 03.09: в бейдже видно, за что Н — итог последнего закрытого месяца (напр. «авг 62%»)
+  const monRu=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  const lastBad=(m.weeks_in_risk_examined||[]).find(x=>x&&x.isRisk&&typeof x.irMonth==='number');
+  const sig=lastBad?` · ${monRu[parseInt(lastBad.date.split('-')[1])-1]} ${lastBad.irMonth}%`:'';
+  const tip=(m.weeks_in_risk_examined||[]).filter(x=>x&&x.isRisk).map(x=>`нед ${x.weekN}: ${x.irMonth}% / нужно ≥${x.threshold}%`).join(' · ');
   if(w===0) return '<span class="status-badge-team ok">норма</span>';
-  if(w===1) return '<span class="status-badge-team w1">Н1</span>';
-  if(w===2) return '<span class="status-badge-team w2">Н2</span>';
-  if(w===3) return '<span class="status-badge-team w3">Н3</span>';
-  return '<span class="status-badge-team w4">Н4</span>';
+  if(w===1) return `<span class="status-badge-team w1" title="${esc(tip)}">Н1${sig}</span>`;
+  if(w===2) return `<span class="status-badge-team w2" title="${esc(tip)}">Н2${sig}</span>`;
+  if(w===3) return `<span class="status-badge-team w3" title="${esc(tip)}">Н3${sig}</span>`;
+  return `<span class="status-badge-team w4" title="${esc(tip)}">Н4${sig}</span>`;
 }
 function _statusBarCls(m){ const w=m.weeks_in_risk_streak||0; if(w===0)return 'ok'; if(w<=1)return 'warn'; return 'bad'; }
 // Hover-попап: ИР по завершённым неделям тек.месяца (данные из m.ir_weeks_month + текущая неделя).
