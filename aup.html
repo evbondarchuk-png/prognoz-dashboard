@@ -603,8 +603,9 @@ function renderTiles(o){
  const lastDay = new Date(Date.UTC(dataY, dataM, 0)).getUTCDate();
  const completedWeeks = dayN >= lastDay ? 4 : dayN > 21 ? 3 : dayN > 14 ? 2 : dayN > 7 ? 1 : 0;
  const currentWeekIdx = completedWeeks < 4 ? completedWeeks : -1;
- const wk=(o.irWeekly||[]).slice(-completedWeeks||0);
- const irCurWeek = (typeof o.irCurrentWeek === 'number') ? o.irCurrentWeek : null;
+ // Егор 03.09: квадраты = прирост месячного ИР за неделю (дельты границ 7/14/21/конец)
+ const wk=((o.weekDeltas&&o.weekDeltas.deltas)||[]).slice(0,completedWeeks);
+ const irCurWeek = (o.weekDeltas && typeof o.weekDeltas.current === 'number') ? o.weekDeltas.current : null;
  const cellW=(v,state)=>{
   if(state==='empty' || v==null) return `<div class="ir-wk-cell empty">—</div>`;
   // Егор 02.09: «СЕЙЧАС» красим по темпу НЕДЕЛИ (прошло дней из 7: ≥норматива
@@ -656,7 +657,7 @@ function renderTiles(o){
    <div class="tile-cap">ИР ${esc(o.scope)} · ${esc(_monthShort(dataDate))}</div>
    <div class="ir-tile-split">
     <div class="ir-tile-weeks">
-     <div class="ir-tile-weeks-cap">по неделям</div>
+     <div class="ir-tile-weeks-cap">прирост по неделям</div>
      <div class="ir-tile-weeks-row">${weekRow}</div>
     </div>
     <div class="ir-tile-month">
@@ -752,7 +753,7 @@ function renderHero(d){
 	   date: d && d.dataDate,
    irValue: irCo,
    irMonth: (typeof a.ir_v2_month_total === 'number') ? a.ir_v2_month_total : irCo,
-   irWeekly: (d&&d.ir_history&&d.ir_history.week_history&&d.ir_history.week_history.total)||[],
+   weekDeltas: (d&&d.ir_history&&d.ir_history.week_deltas)||null,
    irCurrentWeek: (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : null,
    perf, perfTotal: inIRcnt,
    newbies: (typeof a.scope.newbies_count==='number'?a.scope.newbies_count:0),
