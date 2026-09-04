@@ -143,6 +143,7 @@
  .rtab{font-size:var(--fs-14);padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:var(--fw-sb);white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
  .rtab:hover{color:var(--ink);background:rgba(255,255,255,.7)}
  .rtab.on{background:#fff;color:var(--brand);font-weight:var(--fw-b);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+ .rtab-push{margin-left:auto}
  .screen{display:none} .screen.on{display:block}
 
  .ir-top{display:flex;align-items:center;gap:18px}
@@ -408,10 +409,11 @@
 <div class="container">
  <div id="hero"></div>
  <div class="rtab-bar" id="tabbar">
- <div class="rtab on" data-tab="main" onclick="showTab('main',this)">🏠 Главная<div class="rtab" onclick="window.openHofDir&&window.openHofDir()">⭐ Звёзды</div></div>
+ <div class="rtab on" data-tab="main" onclick="showTab('main',this)">🏠 Главная</div>
  <div class="rtab" data-tab="prognoz" onclick="showTab('prognoz',this)">📈 Прогноз</div>
  <div class="rtab" data-tab="depts" onclick="showTab('depts',this)">👥 Отделы</div>
  <div class="rtab" data-tab="tasks" onclick="showTab('tasks',this)">📋 Задачи и календарь<span id="taskDot"></span></div>
+ <div class="rtab rtab-push" onclick="window.openHofDir&&window.openHofDir()">⭐ Звёзды</div>
  </div>
  <div class="screen on" id="screen-main"></div>
  <div class="screen" id="screen-prognoz"></div>
@@ -1050,8 +1052,9 @@ window.showIrWeeks=function(el){
 window.hideIrWeeks=function(){var p=document.getElementById('irWeekPop');if(p)p.style.display='none';};
 function teamRowCommon(m){
   const irM = (typeof m.ir_v2_month_total==='number') ? m.ir_v2_month_total : (m.ir_month||0);
-  // Егор 03.09: «ИР нед» = прирост месячного ИР за текущую неделю (дельта), не темп
-  const irW = (typeof m.ir_week_delta==='number') ? Math.min(100, Math.round(m.ir_week_delta * 4)) : ((typeof m.ir_v2_week_total==='number') ? m.ir_v2_week_total : null); // недельная шкала 25%=100%
+  // Егор 04.09: «ИР нед» РОПа = среднее недельных шкал его менеджеров (групп)
+  // (ir_week_scale с бэка, уже в недельной шкале), fallback — дельта/темп как раньше.
+  const irW = (m.ir_week_scale!=null) ? Math.min(100,m.ir_week_scale) : ((typeof m.ir_week_delta==='number') ? Math.min(100, Math.round(m.ir_week_delta * 4)) : ((typeof m.ir_v2_week_total==='number') ? m.ir_v2_week_total : null)); // недельная шкала 25%=100%
   const irTip = irW!=null ? `прирост ИР за текущую неделю: ${irW}%` : 'нет недельного ИР';
   const wkData=(m.ir_weeks_month||[]).map(w=>w.weekN+':'+(w.ir_pct==null?'':w.ir_pct)).join('|')+(irW!=null?'|cur:'+irW:'');
   const plan=m.plan_month||0; const fact=m.fact_month||0; const forecast=m.forecast_month||0;

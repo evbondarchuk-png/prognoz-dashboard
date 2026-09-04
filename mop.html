@@ -144,6 +144,7 @@
  .rtab{font-size:var(--fs-14);padding:11px 16px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:var(--fw-sb);white-space:nowrap;transition:all .15s;flex-shrink:0;display:flex;align-items:center;gap:6px}
  .rtab:hover{color:var(--ink);background:rgba(255,255,255,.7)}
  .rtab.on{background:#fff;color:var(--brand);font-weight:var(--fw-b);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+ .rtab-push{margin-left:auto}
  /* карточки команды (TZ-A20) */
  .member-row{padding:16px 18px;background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
  .member-row.drill .rr-name{cursor:pointer}.member-row.drill .rr-name:hover{color:var(--brand)}
@@ -469,12 +470,13 @@
 <div class="container">
  <div id="hero"></div>
  <div class="rtab-bar" id="tabbar">
- <div class="rtab on" data-tab="main" onclick="showTab('main',this)">🏠 Главная<div class="rtab" onclick="window.openHofDir&&window.openHofDir()">⭐ Звёзды</div></div>
+ <div class="rtab on" data-tab="main" onclick="showTab('main',this)">🏠 Главная</div>
  <div class="rtab" data-tab="prognoz" onclick="showTab('prognoz',this)">📈 Прогноз</div>
  <div class="rtab" data-tab="team" onclick="showTab('team',this)">👥 Команда</div>
  <div class="rtab" data-tab="tasks" onclick="showTab('tasks',this)">📋 Задачи и календарь<span id="taskDot"></span></div>
  <div class="rtab" data-tab="planning" onclick="showTab('planning',this)">🎯 Планирование</div>
  <div class="rtab" data-tab="report" onclick="openGroupReport()">📄 Отчёт</div>
+ <div class="rtab rtab-push" onclick="window.openHofDir&&window.openHofDir()">⭐ Звёзды</div>
  </div>
  <div class="screen on" id="screen-main"></div>
  <div class="screen" id="screen-prognoz"></div>
