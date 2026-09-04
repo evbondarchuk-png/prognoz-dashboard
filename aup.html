@@ -1053,8 +1053,9 @@ window.hideIrWeeks=function(){var p=document.getElementById('irWeekPop');if(p)p.
 function teamRowCommon(m){
   const irM = (typeof m.ir_v2_month_total==='number') ? m.ir_v2_month_total : (m.ir_month||0);
   // Егор 04.09: «ИР нед» РОПа = среднее недельных шкал его менеджеров (групп)
-  // (ir_week_scale с бэка, уже в недельной шкале), fallback — дельта/темп как раньше.
-  const irW = (m.ir_week_scale!=null) ? Math.min(100,m.ir_week_scale) : ((typeof m.ir_week_delta==='number') ? Math.min(100, Math.round(m.ir_week_delta * 4)) : ((typeof m.ir_v2_week_total==='number') ? m.ir_v2_week_total : null)); // недельная шкала 25%=100%
+  // (ir_week_scale с бэка, уже в недельной шкале). Старую темповую метрику не
+  // показываем: нет данных → «—».
+  const irW = (m.ir_week_scale!=null) ? Math.min(100,m.ir_week_scale) : ((typeof m.ir_week_delta==='number') ? Math.min(100, Math.round(m.ir_week_delta * 4)) : null); // недельная шкала 25%=100%
   const irTip = irW!=null ? `прирост ИР за текущую неделю: ${irW}%` : 'нет недельного ИР';
   const wkData=(m.ir_weeks_month||[]).map(w=>w.weekN+':'+(w.ir_pct==null?'':w.ir_pct)).join('|')+(irW!=null?'|cur:'+irW:'');
   const plan=m.plan_month||0; const fact=m.fact_month||0; const forecast=m.forecast_month||0;
