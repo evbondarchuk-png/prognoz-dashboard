@@ -796,22 +796,19 @@ function renderTiles(o){
  const irMonth=typeof o.irMonth==='number'?o.irMonth:o.irValue;
  const irMonthClr=_irMonthColor(irMonth);
 
- // ── ПЛИТКА 2: вверху — ИР ≥70%, снизу — план по валу с учётом прогноза
- const perfTotal=o.perfTotal||1;
- const perfPct=Math.round((o.perf/perfTotal)*100);
- const perfClr=perfPct>=50?'var(--ok)':perfPct>=25?'var(--warn)':'var(--bad)';
- // план по валу с учётом прогноза — членов где forecast_month >= plan_month
+ // ── ПЛИТКА 2 (Егор 07.09): «Выполняют ИР» — зелёные по МЕСЯЧНОМУ ИР на сегодня
+ // (норматив темпа), по партнёрам группы; ниже — «план по валу (с прогнозом)»
+ // по партнёрам. Обе из агрегата группы (бэк считает по каждому риелтору).
+ const pmTotal = o.perfMonthTotal||1;
+ const pmOk = o.perfMonth!=null ? o.perfMonth : o.perf;
+ const pmPct = Math.round((pmOk/pmTotal)*100);
+ const pmClr = pmPct>=50?'var(--ok)':pmPct>=25?'var(--warn)':'var(--bad)';
+ const grTotal = o.grossTotal||1;
+ const grOk = o.grossOk!=null ? o.grossOk : 0;
+ const grPct = Math.round((grOk/grTotal)*100);
+ const grClr = grPct>=50?'var(--ok)':grPct>=25?'var(--warn)':'var(--bad)';
+ // (по карточкам команды больше не считаем — единый источник агрегат)
  const _mems = (o.teamMembers||[]).filter(m=>!m.is_self);
- let revOk=0, revTotal=0;
- _mems.forEach(m=>{
-  const plan=Number(m.plan_month)||0;
-  if(plan<=0) return;
-  revTotal++;
-  const fc=Number(m.forecast_month)||0;
-  if(fc>=plan) revOk++;
- });
- const revPct = revTotal? Math.round((revOk/revTotal)*100):0;
- const revClr = revPct>=50?'var(--ok)':revPct>=25?'var(--warn)':'var(--bad)';
 
  // ── ПЛИТКА 3: подписи теперь под каждым столбиком
  const stazh=_stazhBars(o.teamMembers, o.scope, o.stazhDist);
@@ -832,12 +829,12 @@ function renderTiles(o){
     </div>
    </div></div>
   <div class="tile" onclick="openTileModal('perf')"><span class="chev">›</span>
-   <div class="tile-cap">Выполняют ИР ≥ 70%</div>
-   <div class="tile-val">${o.perf} <span class="tile-sub-num">из ${perfTotal}</span></div>
-   <div class="tile-seg"><i style="width:${perfPct}%;background:${perfClr}"></i></div>
-   <div class="tile-cap" style="margin-top:8px">Выполняют план по валу <span class="muted" style="font-weight:var(--fw-r)">(с прогнозом)</span></div>
-   <div class="tile-val">${revOk} <span class="tile-sub-num">из ${revTotal}</span></div>
-   <div class="tile-seg"><i style="width:${revPct}%;background:${revClr}"></i></div></div>
+   <div class="tile-cap">Выполняют ИР</div>
+   <div class="tile-val">${pmOk} <span class="tile-sub-num">из ${pmTotal}</span></div>
+   <div class="tile-seg"><i style="width:${pmPct}%;background:${pmClr}"></i></div>
+   <div class="tile-cap" style="margin-top:8px">План по валу <span class="muted" style="font-weight:var(--fw-r)">(с прогнозом)</span></div>
+   <div class="tile-val">${grOk} <span class="tile-sub-num">из ${grTotal}</span></div>
+   <div class="tile-seg"><i style="width:${grPct}%;background:${grClr}"></i></div></div>
   <div class="tile" onclick="openTileModal('stazh')"><span class="chev">›</span>
    <div class="tile-cap">Состав по стажу <span class="muted" style="font-weight:var(--fw-r)">· мес</span></div>
    ${stazh.html}
@@ -866,12 +863,16 @@ window.openTileModal=function(kind){
    <div style="margin-bottom:8px"><b>По неделям (последние 4):</b> ${w.length?w.join(' · '):'нет данных'}</div>
    <div><b>По месяцам:</b> ${m.length?m.join(' · '):'нет данных'}</div>`;
  } else if(kind==='perf'){
-  const ok=members.filter(m=>typeof m.ir_v2_week_total==='number'?m.ir_v2_week_total>=70:m.ir_month>=70);
-  const bad=members.filter(m=>(typeof m.ir_v2_week_total==='number'?m.ir_v2_week_total:m.ir_month)<70);
-  title='Выполняют ≥ 70% — список';
-  body=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-   <div><b style="color:var(--ok)">Выполняют (${ok.length})</b>${ok.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+ok.map(m=>'<li>'+esc(m.name)+' — '+(m.ir_v2_week_total!=null?m.ir_v2_week_total:m.ir_month)+'%</li>').join('')+'</ul>':'<div class="muted" style="font-size:var(--fs-12);margin-top:4px">никого</div>'}</div>
-   <div><b style="color:var(--bad)">Ниже нормы (${bad.length})</b>${bad.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+bad.map(m=>'<li>'+esc(m.name)+' — '+(m.ir_v2_week_total!=null?m.ir_v2_week_total:m.ir_month)+'%</li>').join('')+'</ul>':'<div class="muted" style="font-size:var(--fs-12);margin-top:4px">никого</div>'}</div></div>`;
+  // Егор 07.09: список по МЕСЯЧНОМУ ИР — зелёные = ≥норматива темпа на дату
+  // данных (как колонка «ИР мес»), не плоские 70%.
+  const irMof=(m)=>(typeof m.ir_v2_month_total==='number')?(m.ir_v2_month_total):(m.ir_month||0);
+  const ok=members.filter(m=>_irMonthStatus(irMof(m))==='ok');
+  const bad=members.filter(m=>_irMonthStatus(irMof(m))!=='ok');
+  title='Выполняют ИР — список';
+  body=`<p class="muted" style="margin-bottom:10px">Зелёные = месячный ИР не ниже нормы на сегодня (темп недель: 25/50/75/100%).</p>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+   <div><b style="color:var(--ok)">В норме (${ok.length})</b>${ok.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+ok.map(m=>'<li>'+esc(m.name)+' — '+irMof(m)+'%</li>').join('')+'</ul>':'<div class="muted" style="font-size:var(--fs-12);margin-top:4px">никого</div>'}</div>
+   <div><b style="color:var(--bad)">Ниже нормы (${bad.length})</b>${bad.length?'<ul style="margin:6px 0 0 18px;font-size:var(--fs-12)">'+bad.map(m=>'<li>'+esc(m.name)+' — '+irMof(m)+'%</li>').join('')+'</ul>':'<div class="muted" style="font-size:var(--fs-12);margin-top:4px">никого</div>'}</div></div>`;
  } else if(kind==='stazh'){
   const cats=[
    {label:'6+ мес',min:6,max:Infinity,color:'var(--brand)'},
@@ -927,6 +928,12 @@ function renderHero(d){
    weekDeltas: (d&&d.ir_history&&d.ir_history.week_deltas)||null,
    irCurrentWeek: (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : null,
    perf, perfTotal: inIRcnt, newbies, g0,
+   // Егор 07.09: «Выполняют ИР» — зелёные по месячному ИР (по темпу на дату данных)
+   // и «план по валу (с прогнозом)» — по партнёрам группы, из агрегата.
+   perfMonth: (typeof a.scope.performers_month_count==='number'?a.scope.performers_month_count:null),
+   perfMonthTotal: (typeof a.scope.ir_v2_month_count==='number'?a.scope.ir_v2_month_count:0),
+   grossOk: (typeof a.scope.gross_plan_ok_count==='number'?a.scope.gross_plan_ok_count:null),
+   grossTotal: (typeof a.scope.gross_plan_total==='number'?a.scope.gross_plan_total:0),
    teamMembers: (d&&d.team_cards&&d.team_cards.members)||[],
    stazhDist: a.stazh_distribution || null,
    tasks: (d&&d.tasks)||[]
