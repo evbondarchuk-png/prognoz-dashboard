@@ -1133,7 +1133,9 @@ function renderMain(d){
  // = 100% недели (кап). Полосы сторон — месячные доли (в 1-ю неделю = недельным).
  {
    const wd = d.ir_history && d.ir_history.week_deltas;
-   const cur = wd && typeof wd.current === 'number' ? Math.min(100, Math.round(wd.current * 4)) : null;
+   // Егор 08.09: current с бэка уже в недельной шкале (долевая норма по дням,
+   // пол 0, кап 100) — не умножаем.
+   const cur = wd && typeof wd.current === 'number' ? Math.min(100, wd.current) : null;
    if (cur != null) {
      irHist.week = { total: cur, buyer: v2m && typeof v2m.buyer_pct === 'number' ? v2m.buyer_pct : irHist.now.buyer, seller: v2m && typeof v2m.seller_pct === 'number' ? v2m.seller_pct : irHist.now.seller };
    } else if (v2 && typeof v2.ir_total === 'number') {

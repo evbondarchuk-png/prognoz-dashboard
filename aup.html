@@ -612,7 +612,7 @@ function renderTiles(o){
  // Егор 03.09: квадраты = прирост месячного ИР за неделю (дельты границ 7/14/21/конец)
  // недельная шкала: 25% месячного ИР = 100% недели (кап 100)
   const wk=((o.weekDeltas&&o.weekDeltas.deltas)||[]).slice(0,completedWeeks).map(v=>v==null?null:Math.min(100,Math.round(v*4)));
- const irCurWeek = (o.weekDeltas && typeof o.weekDeltas.current === 'number') ? Math.min(100, Math.round(o.weekDeltas.current * 4)) : null;
+ const irCurWeek = (o.weekDeltas && typeof o.weekDeltas.current === 'number') ? Math.min(100, o.weekDeltas.current) : null; // Егор 08.09: current с бэка уже в недельной шкале
  const cellW=(v,state)=>{
   if(state==='empty' || v==null) return `<div class="ir-wk-cell empty">—</div>`;
   // Егор 03.09 (вечер): значения приходят в НЕДЕЛЬНОЙ шкале (25% месячного ИР
@@ -1074,7 +1074,7 @@ window.showIrWeeks=function(el){
   var raw=el.getAttribute('data-weeks')||'',parts=raw.split('|').filter(Boolean),cur=null,weeks=[];
   parts.forEach(function(p){var kv=p.split(':');if(kv[0]==='cur')cur=kv[1];else weeks.push({n:kv[0],v:kv[1]});});
   // Егор 03.09: недели = ПРИРОСТ месячного ИР (дельта от прошлой границы)
-  var _prev=0; weeks=weeks.map(function(w){var has=w.v!==''&&w.v!=null;var val=has?parseInt(w.v,10):null;var d=(has&&!isNaN(val))?val-_prev:null; if(has&&!isNaN(val))_prev=val; return {n:w.n,d:(d==null||isNaN(d))?null:Math.min(100,Math.round(d*4))};}); // нед.шкала 25%=100
+  var _prev=0; weeks=weeks.map(function(w){var has=w.v!==''&&w.v!=null;var val=has?parseInt(w.v,10):null;var d=(has&&!isNaN(val))?val-_prev:null; if(has&&!isNaN(val))_prev=val; return {n:w.n,d:(d==null||isNaN(d))?null:Math.max(0,Math.min(100,Math.round(d*4)))};}); // нед.шкала 25%=100
   function cellHtml(label,v,isCur){var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;var c=!has?'#9ca3af':n>=70?'#16a34a':n>=50?'#d97706':'#dc2626';return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div></div>';}
   var cells=weeks.map(function(w){return cellHtml('Нед '+w.n,(w.d==null?'':String(w.d)),false);}).join('');
   if(cur!=null)cells+=cellHtml('Тек.',cur,true);
