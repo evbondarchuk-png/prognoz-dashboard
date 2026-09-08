@@ -603,6 +603,22 @@
 .radar-note{background:var(--brand-soft);border-radius:var(--r-md);padding:10px 12px;font-size:12.5px;color:var(--brand-hover);margin-top:12px}
 
 /* ── таб «Светофор»: линейный график места + калькулятор с пирамидой зон ── */
+/* Светофор команды (Егор 08.09): списки коллег, два пула, динамика мест */
+.sf-team-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.sf-team-chips{display:flex;gap:6px}
+.sf-chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:var(--fs-13);font-weight:var(--fw-sb);color:var(--muted);cursor:pointer;transition:.15s}
+.sf-chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.sf-sec{margin-bottom:14px}
+.sf-sec-ttl{font-size:var(--fs-13);font-weight:var(--fw-b);color:var(--ink);margin-bottom:6px}
+.sf-rows{display:flex;flex-direction:column;gap:2px;max-height:340px;overflow-y:auto}
+.sf-row{display:grid;grid-template-columns:52px 1fr 18px 44px 92px;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;transition:.12s}
+.sf-row:hover{background:var(--brand-soft)}
+.sf-place{font-weight:var(--fw-b);color:var(--brand);font-size:var(--fs-13)}
+.sf-name{font-size:var(--fs-13);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sf-zone i{display:block;width:10px;height:10px;border-radius:3px}
+.sf-delta{font-size:var(--fs-12);text-align:right;font-weight:var(--fw-sb)}
+.sf-spark{text-align:right}
+@media(max-width:560px){.sf-row{grid-template-columns:44px 1fr 14px 40px 68px;gap:5px}.sf-spark svg{width:66px}}
 .sv-svg-wrap{width:100%;overflow-x:auto;margin:0 -2px}
 .sv-svg-wrap svg{display:block;width:100%;height:auto;min-width:520px}
 .sv-pyr{display:flex;flex-direction:column;align-items:center;gap:4px;margin:10px 0 2px}
@@ -2501,8 +2517,77 @@ function svetoforForecastCard(d){
 }
 
 function renderSvetofor(d){
- document.getElementById('screen-svetofor').innerHTML = svetoforForecastCard(d);
+ document.getElementById('screen-svetofor').innerHTML = svetoforForecastCard(d)
+  + `<div class="card" id="sfTeamCard">
+  <div class="sf-team-head">
+   <div><div class="section-title" style="margin:0">🚦 Светофор команды</div>
+   <div class="muted" style="font-size:var(--fs-12);margin-top:3px">места коллег в своём пуле · динамика за полгода</div></div>
+   <div class="sf-team-chips">
+    <button class="sf-chip on" data-sf-scope="group" onclick="__sfTeamScope('group')">Моя группа</button>
+    <button class="sf-chip" data-sf-scope="department" onclick="__sfTeamScope('department')">Мой отдел</button>
+   </div>
+  </div>
+  <div id="sfTeamBody"><div class="muted" style="padding:var(--sp-4);text-align:center">Загружаем список коллег…</div></div>
+  </div>`;
  if(document.getElementById('svV')) setTimeout(function(){initSvetoforCalcWithData(d);},0);
+ window.__loadSvetoforTeam&&window.__loadSvetoforTeam(window.__sfTeamCur||'group');
+}
+/* ── Светофор команды (Егор 08.09): списки коллег по группе/отделу, опытные/новички
+   раздельно, место + Δ к прошлому месяцу + спарклайн мест за 6 мес. ── */
+window.__sfTeamScope=function(scope){
+ document.querySelectorAll('[data-sf-scope]').forEach(b=>b.classList.toggle('on',b.dataset.sfScope===scope));
+ window.__loadSvetoforTeam(scope);
+};
+window.__loadSvetoforTeam=async function(scope){
+ window.__sfTeamCur=scope;
+ const body=document.getElementById('sfTeamBody'); if(!body) return;
+ const cache=window.__sfTeamCache=window.__sfTeamCache||{};
+ if(cache[scope]){ paintSvetoforTeam(cache[scope]); return; }
+ body.innerHTML='<div class="muted" style="padding:var(--sp-4);text-align:center">Загружаем список коллег…</div>';
+ try{
+  const r=await window.__call('svetoforTeamData',{scope});
+  cache[scope]=r; paintSvetoforTeam(r);
+ }catch(e){
+  body.innerHTML='<div class="muted" style="padding:var(--sp-4)">Не удалось загрузить: '+esc(e&&e.message||'')+'</div>';
+ }
+};
+const SF_ZONE_COLOR={dark_green:'#047857',green:'#16a34a',yellow:'#d97706',orange:'#ea580c',red:'#dc2626',no_data:'#9ca3af'};
+const SF_ZONE_LABEL={dark_green:'тёмно-зелёная',green:'зелёная',yellow:'жёлтая',orange:'оранжевая',red:'красная',no_data:'без зоны'};
+function sfTeamSpark(hist){
+ // места за 6 мес: меньше = выше на графике (инверсия)
+ const pts=(hist||[]).map(h=>h.place).filter(v=>v!=null);
+ if(pts.length<2) return '<span class="muted" style="font-size:var(--fs-11)">—</span>';
+ const mx=Math.max(...pts), mn=Math.min(...pts, mx-1);
+ const W=88,H=22;
+ const xy=pts.map((v,i)=>[((W/(pts.length-1))*i).toFixed(1),(H-3-((mx-v)/Math.max(1,mx-mn))*(H-6)).toFixed(1)]);
+ const last=xy[xy.length-1];
+ return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block"><polyline points="${xy.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#64748b" stroke-width="1.6"/><circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="var(--brand)"/></svg>`;
+}
+function sfTeamRow(m,isMe){
+ const d=m.prev_place!=null&&m.place!=null?m.prev_place-m.place:null;
+ const dHtml=d==null?'<span class="muted">—</span>':(d>0?`<span class="t-up">▲${d}</span>`:d<0?`<span class="t-down">▼${-d}</span>`:'<span class="muted">≈</span>');
+ const zc=SF_ZONE_COLOR[m.zone]||SF_ZONE_COLOR.no_data;
+ const me=isMe?' style="font-weight:var(--fw-b)"':'';
+ return `<div class="sf-row" onclick="location.href='index.html?agent=${esc(m.code)}'">
+  <div class="sf-place"${me}>${m.place!=null?'#'+m.place:'—'}</div>
+  <div class="sf-name"${me}>${esc(m.name.split(' ').slice(0,2).join(' '))}${isMe?' <span class="muted" style="font-weight:var(--fw-r)">(это ты)</span>':''}</div>
+  <div class="sf-zone"><i style="background:${zc}" title="${SF_ZONE_LABEL[m.zone]}"></i></div>
+  <div class="sf-delta">${dHtml}</div>
+  <div class="sf-spark">${sfTeamSpark(m.history)}</div></div>`;
+}
+function paintSvetoforTeam(r){
+ const body=document.getElementById('sfTeamBody'); if(!body) return;
+ const myCode=window.CTX&&CTX.target;
+ if(r&&r.empty_reason){ body.innerHTML='<div class="muted" style="padding:var(--sp-4)">Группа/отдел не найдены.</div>'; return; }
+ const sizes=(r&&r.pool_sizes)||{};
+ const sec=(title,arr)=>{
+  if(!arr||!arr.length) return '';
+  return `<div class="sf-sec"><div class="sf-sec-ttl">${title} · ${arr.length}</div>
+   <div class="sf-rows">${arr.map(m=>sfTeamRow(m,m.code===myCode)).join('')}</div></div>`;
+ };
+ body.innerHTML=sec('Опытные'+(sizes.experienced?` <span class="muted" style="font-weight:var(--fw-r)">из ${sizes.experienced}</span>`:''),r.experienced)
+  +sec('Новички'+(sizes.newbie?` <span class="muted" style="font-weight:var(--fw-r)">из ${sizes.newbie}</span>`:''),r.newbie)
+  ||'<div class="muted" style="padding:var(--sp-4)">Пока нет данных по коллегам.</div>';
 }
 
 // Инициализация калькулятора (ЧИСТАЯ ПЕРЕЗАПИСЬ — все переменные в одной области)
