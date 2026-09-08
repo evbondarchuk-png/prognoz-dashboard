@@ -742,6 +742,18 @@ const SIDE_COLOR={buyer:'#3b82f6',seller:'#10b981'};
 const CTX={data:null,target:null,me:null,role:null};
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtShort=(n)=>{ n=Number(n)||0; const a=Math.abs(n); if(a<1000)return String(Math.round(n)); if(a<1e6)return Math.round(n/1000)+'к'; return (Math.round(n/1e5)/10).toString().replace('.',',')+' млн'; };
+// Егор 08.09: доля прошедших дней ТЕКУЩЕЙ недели (0–100%) — норматив пути недели
+// на сегодня (неделя = 25% месячного ИР; на 8-е пройден 1 день из 7 → 14%).
+function _weekDayNorm(){
+  const ds=window.__irDataDate; const d=(ds&&/^\d{4}-\d{2}-\d{2}$/.test(ds))?new Date(ds+'T00:00:00'):new Date();
+  const day=d.getDate(), last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  const cw = day>21?3:day>14?2:day>7?1:0;
+  const b = cw===3?21:7*cw; const len = cw===3?(last-21):7;
+  return Math.min(100, Math.round(Math.max(1,day-b)/Math.max(1,len)*100));
+}
+// Статус «ИР нед» (путь недели): ≥доли дней — зелёный, 80–99% — жёлтый, ниже — красный.
+function _weekPathStatus(v){ const n=_weekDayNorm(); if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
+function _weekPathColor(v){ const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
 // Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа. Норматив на дату данных:
 // недели 1–7/8–14/15–21/22–конец → 25/50/75/100%, внутри недели пропорционально
@@ -3057,7 +3069,7 @@ window.applyIrMode=function(card, mode){
   setChan(rows[1], 'seller', '#10b981');
   // Общий ИР + дельта
   elTotal.textContent = src.total+'%';
-  elTotal.style.color = mode==='month' ? _irMonthColor(src.total) : barColor(src.total);
+  elTotal.style.color = mode==='month' ? _irMonthColor(src.total) : _weekPathColor(src.total); // неделя — путь по дням (Егор 08.09)
   if (mode==='now'){
     elTotalDelta.classList.add('hidden');
   } else {

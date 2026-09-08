@@ -783,8 +783,12 @@ function renderTiles(o){
   if(state==='empty' || v==null) return `<div class="ir-wk-cell empty">—</div>`;
   // Егор 03.09 (вечер): значения приходят в НЕДЕЛЬНОЙ шкале (25% месячного ИР
   // = 100% недели, кап), красим плоско 70/50 — без внутринедельного темпа.
-  const c=v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)';
-  const tip = state==='current' ? ' title="Текущая неделя — динамический ИР, недельная шкала: 25% месячного ИР = 100%"' : '';
+  // Егор 08.09: ТЕКУЩУЮ неделю красим по доле прошедших дней, закрытые — плоско 70/50.
+  const dn=_weekDayNorm();
+  const c = state==='current'
+    ? (v>=dn?'var(--ok)':(v>=dn*0.8?'var(--warn)':'var(--bad)'))
+    : (v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)');
+  const tip = state==='current' ? ` title="Текущая неделя: путь от 25%×закрытых недель до следующей границы. Норма на сегодня — ${dn}% пути (по дням)"` : '';
   const badge = state==='current' ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.05em">СЕЙЧАС</div>` : '';
   return `<div class="ir-wk-cell"${tip} style="color:${c}">${v}%${badge}</div>`;
  };
@@ -1300,6 +1304,18 @@ window.openAchievementsModal=(code,n)=>{ alert('История достижен�
 /* TZ-A28: таб «Команда» — таблица с под-табами Общее/Неделя/Месяц */
 function _zoneLabel(z){ return ({dark_green:'тёмно-зелёная',green:'зелёная',yellow:'жёлтая',orange:'оранжевая',red:'красная'})[z]||''; }
 function _irStatus(p){ return p>=70?'ok':p>=50?'warn':'bad'; }
+// Егор 08.09: доля прошедших дней ТЕКУЩЕЙ недели (0–100%) — норматив пути недели
+// на сегодня (неделя = 25% месячного ИР; на 8-е пройден 1 день из 7 → 14%).
+function _weekDayNorm(){
+  const ds=window.__irDataDate; const d=(ds&&/^\d{4}-\d{2}-\d{2}$/.test(ds))?new Date(ds+'T00:00:00'):new Date();
+  const day=d.getDate(), last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  const cw = day>21?3:day>14?2:day>7?1:0;
+  const b = cw===3?21:7*cw; const len = cw===3?(last-21):7;
+  return Math.min(100, Math.round(Math.max(1,day-b)/Math.max(1,len)*100));
+}
+// Статус «ИР нед» (путь недели): ≥доли дней — зелёный, 80–99% — жёлтый, ниже — красный.
+function _weekPathStatus(v){ const n=_weekDayNorm(); if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
+function _weekPathColor(v){ const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 // Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа (недели 1–7/8–14/15–21/22–конец →
 // 25/50/75/100%, внутри недели пропорционально дню; от ДАТЫ ДАННЫХ). Цвет: ≥норматива —
 // зелёный, 80–99% норматива — жёлтый, <80% — красный. Недельный ИР (_irStatus) не трогаем.
@@ -1420,7 +1436,7 @@ window.showIrWeeks=function(el){
   parts.forEach(function(p){var kv=p.split(':');if(kv[0]==='cur')cur=kv[1];else weeks.push({n:kv[0],v:kv[1]});});
   // Егор 03.09: недели = ПРИРОСТ месячного ИР (дельта от прошлой границы)
   var _prev=0; weeks=weeks.map(function(w){var has=w.v!==''&&w.v!=null;var val=has?parseInt(w.v,10):null;var d=(has&&!isNaN(val))?val-_prev:null; if(has&&!isNaN(val))_prev=val; return {n:w.n,d:(d==null||isNaN(d))?null:Math.max(0,Math.min(100,Math.round(d*4)))};}); // нед.шкала 25%=100
-  function cellHtml(label,v,isCur){var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;var c=!has?'#9ca3af':n>=70?'#16a34a':n>=50?'#d97706':'#dc2626';return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div></div>';}
+  function cellHtml(label,v,isCur){var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;var dn=_weekDayNorm();var c=!has?'#9ca3af':n>=(isCur?dn:70)?'#16a34a':n>=(isCur?dn*0.8:50)?'#d97706':'#dc2626'; return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div></div>';}
   var cells=weeks.map(function(w){return cellHtml('Нед '+w.n,(w.d==null?'':String(w.d)),false);}).join('');
   if(cur!=null)cells+=cellHtml('Тек.',cur,true);
   if(!cells)cells='<div class="iwp-empty">Завершённых недель ещё нет</div>';
@@ -1454,7 +1470,7 @@ function teamRowCommon(m,idx){
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}${_trafficBadge(m.traffic_position)}</div></div></div></td>
     <td><span class="t-ir ${_irMonthStatus(irM)}" data-weeks="${wkData}" onmouseenter="showIrWeeks(this)" onmouseleave="hideIrWeeks()" style="cursor:help" title="ИР по неделям месяца">${irM}%</span></td>
-    <td><span class="t-ir ${irW!=null?_irStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
+    <td><span class="t-ir ${irW!=null?_weekPathStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
@@ -2238,7 +2254,7 @@ window.applyIrMode=function(card, mode){
   setChan(rows[1], 'seller', '#10b981');
   // Общий ИР + дельта
   elTotal.textContent = src.total+'%';
-  elTotal.style.color = mode==='month' ? _irMonthColor(src.total) : barColor(src.total); // месяц — темп (Егор 02.09)
+  elTotal.style.color = mode==='month' ? _irMonthColor(src.total) : _weekPathColor(src.total); // неделя — путь по дням (Егор 08.09) // месяц — темп (Егор 02.09)
   if (mode==='now'){
     elTotalDelta.classList.add('hidden');
   } else {
