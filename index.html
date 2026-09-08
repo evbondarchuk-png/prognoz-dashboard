@@ -606,18 +606,21 @@
 /* Светофор команды (Егор 08.09): списки коллег, два пула, динамика мест */
 .sf-team-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .sf-team-chips{display:flex;gap:6px}
+.sf-place-cell{min-width:52px;text-align:right;font-size:var(--fs-12);font-weight:var(--fw-sb);color:var(--ink)}
+.sf-place-cell .sf-place{background:var(--surface-2);border-radius:6px;padding:2px 7px}
+.sf-mine{margin:0 0 8px;font-size:var(--fs-12);background:#eff6ff;border:1px solid #cfe3fb;border-radius:8px;padding:8px 12px;color:var(--ink)}
 .sf-chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:var(--fs-13);font-weight:var(--fw-sb);color:var(--muted);cursor:pointer;transition:.15s}
 .sf-chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .sf-sec{margin-bottom:14px}
 .sf-sec-ttl{font-size:var(--fs-13);font-weight:var(--fw-b);color:var(--ink);margin-bottom:6px}
 .sf-rows{display:flex;flex-direction:column;gap:2px;max-height:340px;overflow-y:auto}
-.sf-row{display:grid;grid-template-columns:36px 1fr 16px 44px;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;transition:.12s}
+.sf-row{display:grid;grid-template-columns:36px 1fr 56px 16px 44px;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;transition:.12s}
 .sf-row:hover{background:var(--brand-soft)}
 .sf-rank{font-weight:var(--fw-b);color:var(--brand);font-size:var(--fs-13);font-variant-numeric:tabular-nums}
 .sf-name{font-size:var(--fs-13);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sf-zone i{display:block;width:10px;height:10px;border-radius:3px}
 .sf-delta{font-size:var(--fs-12);text-align:right;font-weight:var(--fw-sb)}
-@media(max-width:560px){.sf-row{grid-template-columns:32px 1fr 14px 40px;gap:5px}}
+@media(max-width:560px){.sf-row{grid-template-columns:30px 1fr 48px 14px 38px;gap:5px}}
 .sv-svg-wrap{width:100%;overflow-x:auto;margin:0 -2px}
 .sv-svg-wrap svg{display:block;width:100%;height:auto;min-width:520px}
 .sv-pyr{display:flex;flex-direction:column;align-items:center;gap:4px;margin:10px 0 2px}
@@ -2524,6 +2527,7 @@ function renderSvetofor(d){
    <div class="sf-team-chips">
     <button class="sf-chip on" data-sf-scope="group" onclick="__sfTeamScope('group')">Моя группа</button>
     <button class="sf-chip" data-sf-scope="department" onclick="__sfTeamScope('department')">Мой отдел</button>
+    <button class="sf-chip" data-sf-scope="company" onclick="__sfTeamScope('company')">Компания</button>
    </div>
   </div>
   <div id="sfTeamBody"><div class="muted" style="padding:var(--sp-4);text-align:center">Загружаем список коллег…</div></div>
@@ -2557,9 +2561,11 @@ function sfTeamRow(m,idx,isMe){
  const dHtml=d==null?'<span class="muted">—</span>':(d>0?`<span class="t-up">▲${d}</span>`:d<0?`<span class="t-down">▼${-d}</span>`:'<span class="muted">≈</span>');
  const zc=SF_ZONE_COLOR[m.zone]||SF_ZONE_COLOR.no_data;
  const me=isMe?' style="font-weight:var(--fw-b)"':'';
+ const placeHtml=m.place!=null?`<span class="sf-place" title="место в светофоре (весь пул)">#${m.place}</span>`:'<span class="muted">—</span>';
  return `<div class="sf-row" onclick="location.href='index.html?agent=${esc(m.code)}'">
   <div class="sf-rank"${me}>${String(idx+1).padStart(2,'0')}</div>
   <div class="sf-name"${me}>${esc(m.name.split(' ').slice(0,2).join(' '))}${isMe?' <span class="muted" style="font-weight:var(--fw-r)">(это ты)</span>':''}</div>
+  <div class="sf-place-cell">${placeHtml}</div>
   <div class="sf-zone"><i style="background:${zc}" title="${m.place!=null?'#'+m.place+' в пуле · ':''}${SF_ZONE_LABEL[m.zone]}"></i></div>
   <div class="sf-delta">${dHtml}</div></div>`;
 }
@@ -2577,10 +2583,21 @@ function paintSvetoforTeam(r){
  // Егор 09.09: табы Опытные/Новички, ранжирование 01..N, без графиков; Δ месяца остаётся.
  const pool=window.__sfPoolCur||(exp.length?'experienced':'newbie');
  const arr=pool==='newbie'?nw:exp;
+ // Егор 09.09: текущее место смотрящего — отдельной строкой над списком,
+ // чтобы в длинном списке (компания — 1000+) не искать себя глазами.
+ const mine=arr.find(m=>m.code===myCode)||(pool==='newbie'?exp:nw).find(m=>m.code===myCode);
+ const ps=r.pool_sizes||{};
+ let mineHtml='';
+ if(mine&&mine.place!=null){
+  const size=mine.pool==='newbie'?ps.newbie:ps.experienced;
+  mineHtml=`<div class="sf-mine">📍 Твоё место: <b>#${mine.place}</b>${size?` из ${size}`:''} · ${SF_ZONE_LABEL[mine.zone]||''}${mine.pool==='newbie'?' · светофор новичков':''}</div>`;
+ } else if(mine){
+  mineHtml=`<div class="sf-mine muted">📍 Твоего места в пуле пока нет (нет позиции в светофоре)</div>`;
+ }
  body.innerHTML=`<div class="sf-team-chips" style="margin-bottom:8px">
    <button class="sf-chip ${pool==='experienced'?'on':''}" onclick="__sfPoolTab('experienced')">Опытные · ${exp.length}</button>
    <button class="sf-chip ${pool==='newbie'?'on':''}" onclick="__sfPoolTab('newbie')">Новички · ${nw.length}</button>
-  </div>
+  </div>${mineHtml}
   <div class="sf-rows">${arr.length?arr.map((m,i)=>sfTeamRow(m,i,m.code===myCode)).join(''):'<div class="muted" style="padding:var(--sp-3)">в этом пуле никого</div>'}</div>`;
 }
 
