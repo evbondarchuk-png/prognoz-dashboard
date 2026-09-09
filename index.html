@@ -1232,6 +1232,7 @@ const PRG_MODE_KEY = 'prognoz_mode_p';
 function _prgFmtK(n){ n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e4) return Math.round(n/1e3)+'к'; if(n>=1e3) return (n/1e3).toFixed(1).replace('.',',')+'к'; return String(Math.round(n)); }
 function _prgFmtFull(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
 function _monthShortRu(ym){ const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; return m[parseInt(ym.slice(5,7),10)-1]||ym; }
+function _monthFullRu(ym){ const m=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']; return (m[parseInt(ym.slice(5,7),10)-1]||'')+' '+ym.slice(0,4); }
 // ── «Ход цикла» (Егор 09.09): утилиты ленты месяцев + ИИ-разбор цикла ──
 function num0(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
 function _coachFmt(text){
@@ -1361,22 +1362,20 @@ function renderPrognoz(d){
   const cyc = d.cycle_progress;
   if (cyc && cyc.months && cyc.months.length) {
     const fmt = _prgFmtFull;
-    // строка этапа: имя / план / мини-полоса факт / факт / Δ
+    // строка этапа: имя / план / мини-полоса факт / факт / Δ (числа — ЦЕЛЫЕ, Егор 09.09)
     function _cycStage(label, f, p, isMoney){
       const fv = (f!=null?f:null), pv = num0(p);
       const barPct = (fv!=null && pv>0) ? Math.min(100, Math.round(fv/pv*100)) : (fv>0?100:0);
-      const gap = (fv!=null && pv>0) ? fv-pv : null;
+      const gap = (fv!=null && pv>0) ? Math.round(fv)-Math.round(pv) : null;
       const gapHtml = gap==null ? '' : (gap>=0
         ? `<span style="font-size:11px;font-weight:800;color:#0e7a4f;min-width:30px">${isMoney?'':'+'+gap}</span>`
         : `<span style="font-size:11px;font-weight:800;color:#dc2626;min-width:30px">${isMoney?'−'+fmt(Math.abs(gap))+' ₽':''+gap}</span>`);
-      const valHtml = fv==null
-        ? `<span style="font-size:12px;color:var(--muted);min-width:64px;text-align:right">план ${isMoney?fmt(pv)+' ₽':pv}</span>`
-        : `<span style="font-size:12px;color:var(--muted);min-width:64px;text-align:right">план ${isMoney?fmt(pv)+' ₽':pv}</span>`;
+      const valHtml = `<span style="font-size:12px;color:var(--muted);min-width:64px;text-align:right">план ${isMoney?fmt(pv)+' ₽':Math.round(pv)}</span>`;
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed rgba(148,163,184,.35)">
         <span style="flex:1;font-size:12px">${label}</span>
         ${valHtml}
         <span style="width:64px;height:5px;background:#e5e9f0;border-radius:3px;overflow:hidden;flex-shrink:0"><i style="display:block;height:100%;width:${barPct}%;background:${barPct>=100?'#16a34a':barPct>=80?'#f59e0b':'#ef4444'}"></i></span>
-        <b style="font-size:13px;min-width:34px;text-align:right">${fv==null?'—':(isMoney?fmt(fv):fv)}</b>
+        <b style="font-size:13px;min-width:34px;text-align:right">${fv==null?'—':(isMoney?fmt(fv):Math.round(fv))}</b>
         ${gapHtml}
       </div>`;
     }
@@ -1433,7 +1432,7 @@ function renderPrognoz(d){
       const clickable = m.status!=='future';
       return `<div style="border-bottom:1px solid rgba(148,163,184,.2)">
         <div ${clickable?`onclick="window.__cycToggle('${m.ym}')" style="cursor:pointer"`:'style="opacity:.55"'};display:flex;align-items:center;gap:10px;padding:9px 2px">
-          <span style="font-size:12px;font-weight:800;min-width:86px">М${m.n} · ${esc(_monthShortRu(m.ym))} ${m.ym.slice(2,4)}</span>
+          <span style="font-size:12px;font-weight:800;min-width:118px">${esc(_monthFullRu(m.ym))}</span>
           <span style="font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;background:${chipBg};color:${chipFg};white-space:nowrap">${chip}</span>
           <span style="flex:1;height:7px;background:#e5e9f0;border-radius:4px;overflow:hidden;display:flex;min-width:40px">
             <i style="display:block;height:100%;width:${factW}%;background:#16a34a"></i><i style="display:block;height:100%;width:${fcW}%;background:#f59e0b"></i>
