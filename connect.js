@@ -154,7 +154,6 @@ function refreshUI(){
   const unlinkBtn=document.getElementById('integMaxUnlink');
   if(unlinkBtn && !mb.linked) unlinkBtn.remove();
 }
-}
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
