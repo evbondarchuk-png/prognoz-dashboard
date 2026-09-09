@@ -408,6 +408,16 @@
 @media(min-width:860px){.funnel-grid-paired{grid-template-columns:1fr 1fr}}
 .funnel-grid-paired .row-stage{display:flex;flex-direction:column}
 .funnel-grid-paired .row-stage>.funnel-stage{flex:1;margin-bottom:0}
+/* Мобильная вёрстка (Егор 09.09): в одну колонку плашки группируются по стороне —
+   заголовок «Покупатель» + все его этапы, затем «Продавец» + все его
+   (раньше пары шли вперемешку: две «Горячие» подряд — непонятно чьи). */
+@media(max-width:859px){
+ .funnel-grid-paired .fs-side-buyer{order:0}
+ .funnel-grid-paired .row-buyer{order:1}
+ .funnel-grid-paired .fs-side-seller{order:2;margin-top:6px}
+ .funnel-grid-paired .row-seller{order:3}
+}
+.funnel-grid-paired .row-stage:empty{display:none}
 .funnel-stage.s-done{border-left-color:var(--ok)}
 .funnel-stage.s-forecast{border-left-color:var(--gold)}
 .funnel-stage.s-pending{border-left-color:var(--line-strong)}
@@ -1015,15 +1025,15 @@ function renderAggFunnelsPaired(buyer,seller,factLbl,partnersN,members){
    // Статус воронки по темпу месяца (_irMonthStatus), а не плоским 70/40.
    const ps=(fs.ir==null||fs.ir_status==='no_data')?'no_data':(_irMonthStatus(fs.ir)==='ok'?'green':_irMonthStatus(fs.ir)==='warn'?'yellow':'red');
    const pl=ps==='no_data'?(fs.ir_status_label||'нет данных'):({green:'в норме',yellow:'в риске',red:'провал'}[ps]);
-   return `<div><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[ps]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(pl)}</span></div><div class="fs-legend"><span><b>факт</b> ${factLbl}</span><span>/ <b>план</b> ${factLbl}</span><span>· % выполнения</span></div></div>`;
+   return `<div class="fs-side fs-side-${side}"><div class="fs-head"><div class="fs-title"><span class="fs-dot" style="background:${SIDE_COLOR[side]}"></span><div style="font-weight:var(--fw-b)">${icon} ${esc(fs.label)}</div></div><span class="status-badge ${SB[ps]||'sb-no_data'}">ИР ${fs.ir}% · ${esc(pl)}</span></div><div class="fs-legend"><span><b>факт</b> ${factLbl}</span><span>/ <b>план</b> ${factLbl}</span><span>· % выполнения</span></div></div>`;
  };
  const bs=(buyer.stages||[]).map(st=>aggStageCard('buyer',st,members));
  const ss=(seller.stages||[]).map(st=>aggStageCard('seller',st,members));
  const rows=Math.max(bs.length,ss.length);
  const cells=[head(buyer,'🛒','buyer'),head(seller,'🏠','seller')];
  for(let i=0;i<rows;i++){
-  cells.push(`<div class="row-stage">${bs[i]||''}</div>`);
-  cells.push(`<div class="row-stage">${ss[i]||''}</div>`);
+  cells.push(`<div class="row-stage row-buyer">${bs[i]||''}</div>`);
+  cells.push(`<div class="row-stage row-seller">${ss[i]||''}</div>`);
  }
  const sub=(partnersN!=null)?`<div class="funnel-subhead">Суммы по ${partnersN} партнёрам.</div>`:'';
  return `${sub}<div class="funnel-grid-paired">${cells.join('')}</div>`;
