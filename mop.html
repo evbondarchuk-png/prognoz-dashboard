@@ -1843,6 +1843,13 @@ function mpDirtyKey(ym,side,seg,metric){ return ym+'|'+side+'|'+seg+'|'+metric; 
 function mpCellVal(monthRow,side,seg,metric){
  const dk=mpDirtyKey(monthRow.ym,side,seg,metric);
  if(MP.dirty.hasOwnProperty(dk)) return MP.dirty[dk];
+ // Егор 09.09: набор продавца по сегменту — из раскладки бэка
+ // (нормы плана хранят только остатки objects, набор = дельта).
+ if(side==='seller'&&metric==='flow'){
+  const fs=monthRow.seller_flow_segments;
+  const v=fs?fs[seg]:null;
+  return v!=null?Math.round(v):0;
+ }
  const src=monthRow[side]&&monthRow[side][seg];
  const v=src&&src[metric];
  return v!=null?Math.round(v):0;
@@ -1924,9 +1931,13 @@ function renderMpPanel(){
  // подсказка по минимуму отдела (информационно, сервер — источник истины)
  let minHint='';
  if(side==='seller'){
-  // Егор 02.09: продавец — только общая цифра НАБОРА, остаток считается сам
+  // Егор 02.09 → 09.09: набор правится общей цифрой ИЛИ по сегментам (как поток покупателя)
   const mt=MP.deptMin&&MP.deptMin.seller&&MP.deptMin.seller.flow&&MP.deptMin.seller.flow.total;
-  minHint=`Правишь набор новых объектов за месяц — остаток на конец месяца пересчитается сам (прошлый остаток + набор).${mt?' Минимум отдела по набору: не менее '+mt+' объектов/мес.':''}`;
+  if(segKey==='all'){
+   minHint=`Правишь набор новых объектов за месяц — остаток на конец месяца пересчитается сам (прошлый остаток + набор).${mt?' Минимум отдела по набору: не менее '+mt+' объектов/мес.':''}`;
+  }else{
+   minHint=`Правишь набор по сегменту — остаток сегмента пересчитается сам (прошлый остаток + набор). Незаданные сегменты не меняются.${mt?' Общий минимум отдела по набору: не менее '+mt+' объектов/мес (на сумму сегментов).':''}`;
+  }
  } else if(segKey==='all'){
   minHint='Правишь общую цифру — она раскладывается по сегментам пропорционально их текущему весу. Чтобы задать конкретный сегмент точно — выбери его выше.';
  } else if(MP.deptMin){
@@ -1987,24 +1998,28 @@ function renderMpPanel(){
  }
 
  let editRowsHtml;
- if(side==='seller'){
+ if(side==='seller'&&segKey==='all'){
   // Егор 02.09: у продавца — набор (редактируемый), остаток справочно, горячие как было
   editRowsHtml=sellerFlowRow()+readonlySumRow('Остаток ОН на конец месяца (расчёт)','objects')+totalEditableRow('Горячих, сумма','hot');
+ } else if(side==='seller'){
+  // Егор 09.09: сегменты продавца — как у покупателя: набор и горячие правятся
+  // по сегменту, остаток справочно (он производный: прошлый остаток + набор)
+  editRowsHtml=metricRow('Набор новых объектов (шт/мес)','flow',segKey,true)+metricRow('Горячие','hot',segKey,true)+metricRow('Остаток ОН на конец месяца (расчёт)','objects',segKey,false);
  } else if(segKey==='all'){
   editRowsHtml=totalEditableRow('Поток (заявки), сумма', metric)+totalEditableRow('Горячих, сумма','hot');
  } else {
   editRowsHtml=metricRow('Поток (заявки)', metric, segKey, true)+metricRow('Горячих','hot', segKey, true);
  }
 
- // сегментные пилюли — только у покупателя (у продавца правится общая цифра набора)
- const segPills=side==='seller'?'':[{key:'all',label:'Все сегменты'}].concat(segs).map(s=>`<button class="mp-seg-pill ${s.key===segKey?'on':''}" onclick="mpPickSeg('${s.key}')">${esc(s.label)}</button>`).join('');
+ // сегментные пилюли — у обеих сторон (Егор 09.09: у продавца тоже — набор по сегментам)
+ const segPills=[{key:'all',label:'Все сегменты'}].concat(segs).map(s=>`<button class="mp-seg-pill ${s.key===segKey?'on':''}" onclick="mpPickSeg('${s.key}')">${esc(s.label)}</button>`).join('');
 
  panel.innerHTML=`
   <div class="mp-panel-head">
    <div class="mp-panel-name">${esc(r?r.name:MP.selCode)}</div>
    ${MP.plan.manual_adjustment?`<div class="mp-edit-badge">✏️ план скорректирован ${new Date(MP.plan.manual_adjustment.at).toLocaleDateString('ru-RU')} — ${esc(MP.plan.manual_adjustment.by)}</div>`:''}
   </div>
-  <div class="mp-source-note">План на 6 мес рассчитан системой из цели по доходу. У покупателя правишь поток/горячие, у продавца — набор новых объектов и горячие (остаток пересчитывается сам: прошлый остаток + набор). Задатки, сделки и вал не меняются.</div>
+  <div class="mp-source-note">План на 6 мес рассчитан системой из цели по доходу. У покупателя правишь поток/горячие, у продавца — набор новых объектов (общей цифрой или по сегментам) и горячие (остаток пересчитывается сам: прошлый остаток + набор). Задатки, сделки и вал не меняются.</div>
   ${mpIncomeBarHtml()}
   <div class="pl-side-switch">
    <button class="pl-side-btn ${side==='buyer'?'on-buyer':''}" onclick="mpPickSide('buyer')"><span class="pl-side-dot" style="background:var(--buyer)"></span>🛒 Покупатель</button>
