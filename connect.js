@@ -66,6 +66,9 @@ const CSS = `
 .integ-act.primary{background:var(--brand);color:#fff}
 .integ-act.primary:hover{background:var(--brand-hover)}
 .integ-act.ghost{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line)}
+.integ-act.danger{background:#fff;color:#dc2626;border:1px solid #fecaca}
+.integ-act.danger:hover{background:#fef2f2}
+.integ-act.danger:disabled{opacity:.6;cursor:default}
 .integ-act.ghost:hover{background:var(--surface-3)}
 @media(max-width:480px){
   .integ-pop{left:0;right:auto;width:min(310px,calc(100vw - 32px))}
@@ -107,11 +110,14 @@ function renderPop(){
         <div class="integ-name">MAX Бот</div>
         <div class="integ-status" id="integMaxStatus" style="color:var(--${mb.linked?'ok':'muted'})">${mb.linked?'Подключён':'Не подключён'}</div>
       </div>
-      <a class="integ-act ${mb.linked?'ghost':'primary'}" id="integMaxBtn"
-         href="${esc(maxUrl)}" target="_blank" rel="noopener"
-         style="text-decoration:none;display:inline-block">
-        ${mb.linked?'Открыть':'Подключить'}
-      </a>
+      <div style="display:flex;gap:6px;align-items:center">
+        <a class="integ-act ${mb.linked?'ghost':'primary'}" id="integMaxBtn"
+           href="${esc(maxUrl)}" target="_blank" rel="noopener"
+           style="text-decoration:none;display:inline-block">
+          ${mb.linked?'Открыть':'Подключить'}
+        </a>
+        ${mb.linked?`<button class="integ-act danger" id="integMaxUnlink" title="Отключить бота: брифы и напоминания приходить не будут" onclick="window.__integMaxUnlink()">Отключить</button>`:''}
+      </div>
     </div>
   </div>`;
 }
@@ -143,9 +149,30 @@ function refreshUI(){
     maxBtn.textContent=mb.linked?'Открыть':'Подключить';
     maxBtn.href=maxUrl;
   }
+  // Егор 09.09: кнопка «Отключить» для подключённого бота — рендерим заново
+  // (проще, чем мутировать): заменяем всю строку MAX в попапе.
+  const unlinkBtn=document.getElementById('integMaxUnlink');
+  if(unlinkBtn && !mb.linked) unlinkBtn.remove();
+}
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+/* Егор 09.09: самоотключение MAX-бота из попапа «Подключения» (maxUnlinkSelf). */
+window.__integMaxUnlink=async function(){
+  if(!confirm('Отключить MAX-бота? Брифы и напоминания приходить не будут.\nВернуться можно в любой момент — /start в боте.')) return;
+  const btn=document.getElementById('integMaxUnlink');
+  if(btn){ btn.disabled=true; btn.textContent='Отключаем…'; }
+  try{
+    const fns=getFunctions(getApp(),'europe-west1');
+    await httpsCallable(fns,'maxUnlinkSelf',{timeout:30000})({});
+    if(integData.max_bot) integData.max_bot.linked=false;
+    refreshUI();
+  }catch(e){
+    alert('Не получилось отключить: '+(e&&e.message||'повторите позже'));
+    if(btn){ btn.disabled=false; btn.textContent='Отключить'; }
+  }
+};
 
 /* --- Загрузить статус привязок для авторизованного пользователя --- */
 async function fetchIntegrations(){
