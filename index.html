@@ -1232,6 +1232,37 @@ const PRG_MODE_KEY = 'prognoz_mode_p';
 function _prgFmtK(n){ n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e4) return Math.round(n/1e3)+'к'; if(n>=1e3) return (n/1e3).toFixed(1).replace('.',',')+'к'; return String(Math.round(n)); }
 function _prgFmtFull(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
 function _monthShortRu(ym){ const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; return m[parseInt(ym.slice(5,7),10)-1]||ym; }
+// ── «Ход цикла» (Егор 09.09): утилиты ленты месяцев + ИИ-разбор цикла ──
+function num0(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
+function _coachFmt(text){
+  // текст LLM → параграфы; **жирный** → <b>
+  return String(text||'').split(/\n{2,}/).map(p=>{
+    const t=p.trim(); if(!t) return '';
+    return '<p style="margin:0 0 8px">'+esc(t).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')+'</p>';
+  }).join('');
+}
+window.__cycToggle=function(ym){
+  const el=document.getElementById('cyc-d-'+ym); if(!el) return;
+  const open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  const row=el.previousElementSibling;
+  const arrow=row&&row.querySelector('.cyc-arrow');
+  if(arrow) arrow.style.transform=open?'':'rotate(180deg)';
+};
+window.__cycleCoachRun=async function(force){
+  const btn=document.getElementById('cycleCoachBtn'); if(btn){btn.disabled=true;btn.textContent='⏳ ИИ разбирает цикл…';}
+  try{
+    const r=await httpsCallable(fns,'cycleCoach',{timeout:120000})({force:!!force});
+    const coach=r&&r.data&&r.data.coach;
+    const txt=document.getElementById('cycleCoachText');
+    if(txt&&coach&&coach.text) txt.innerHTML=_coachFmt(coach.text);
+    if(btn){btn.disabled=false;btn.textContent='Обновить разбор';btn.setAttribute('onclick','window.__cycleCoachRun(true)');}
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent=force?'Обновить разбор':'✨ Разобрать мой цикл';}
+    const txt=document.getElementById('cycleCoachText');
+    if(txt) txt.innerHTML='<div style="color:#fca5a5;font-size:12px">Не получилось: '+(e&&e.message?esc(e.message):'повторите позже')+'</div>';
+  }
+};
 
 function renderPrognoz(d){
   const pt = d.prognoz_tab;
@@ -1325,6 +1356,116 @@ function renderPrognoz(d){
       var v=el.querySelector('.prg-smv');if(v)v.style.display=isD?'none':'block';
     });
   };
+
+  // ── 2.5 «Ход цикла»: план vs факт помесячно, раскрытая воронка + ИИ-разбор (Егор 09.09) ──
+  const cyc = d.cycle_progress;
+  if (cyc && cyc.months && cyc.months.length) {
+    const fmt = _prgFmtFull;
+    // строка этапа: имя / план / мини-полоса факт / факт / Δ
+    function _cycStage(label, f, p, isMoney){
+      const fv = (f!=null?f:null), pv = num0(p);
+      const barPct = (fv!=null && pv>0) ? Math.min(100, Math.round(fv/pv*100)) : (fv>0?100:0);
+      const gap = (fv!=null && pv>0) ? fv-pv : null;
+      const gapHtml = gap==null ? '' : (gap>=0
+        ? `<span style="font-size:11px;font-weight:800;color:#0e7a4f;min-width:30px">${isMoney?'':'+'+gap}</span>`
+        : `<span style="font-size:11px;font-weight:800;color:#dc2626;min-width:30px">${isMoney?'−'+fmt(Math.abs(gap))+' ₽':''+gap}</span>`);
+      const valHtml = fv==null
+        ? `<span style="font-size:12px;color:var(--muted);min-width:64px;text-align:right">план ${isMoney?fmt(pv)+' ₽':pv}</span>`
+        : `<span style="font-size:12px;color:var(--muted);min-width:64px;text-align:right">план ${isMoney?fmt(pv)+' ₽':pv}</span>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed rgba(148,163,184,.35)">
+        <span style="flex:1;font-size:12px">${label}</span>
+        ${valHtml}
+        <span style="width:64px;height:5px;background:#e5e9f0;border-radius:3px;overflow:hidden;flex-shrink:0"><i style="display:block;height:100%;width:${barPct}%;background:${barPct>=100?'#16a34a':barPct>=80?'#f59e0b':'#ef4444'}"></i></span>
+        <b style="font-size:13px;min-width:34px;text-align:right">${fv==null?'—':(isMoney?fmt(fv):fv)}</b>
+        ${gapHtml}
+      </div>`;
+    }
+    function _cycSide(icon, title, rows){
+      return `<div style="min-width:0">
+        <div style="font-size:12px;font-weight:800;margin:10px 0 2px">${icon} ${title}</div>
+        ${rows.join('')}
+      </div>`;
+    }
+    // раскрытая воронка месяца
+    function _cycDetail(m){
+      const p = m.plan, f = m.fact;
+      const b = f?f.buyer:null, s = f?f.seller:null;
+      const buyer = _cycSide('🛒','Покупатель',[
+        _cycStage('Поток', b?b.flow:null, p.buyer.flow),
+        _cycStage('Горячие', b?b.hot:null, p.buyer.hot),
+        _cycStage('Задатки', b?b.deposits:null, p.buyer.deposits),
+        _cycStage('Сделки', b?b.deals:null, p.buyer.deals),
+      ]);
+      const seller = _cycSide('🏠','Продавец',[
+        _cycStage('Объекты в работе', s?s.objects:null, p.seller.objects),
+        _cycStage('Набор за месяц', s?s.objectsNew:null, null),
+        _cycStage('Горячие', s?s.hot:null, p.seller.hot),
+        _cycStage('Задатки', s?s.deposits:null, p.seller.deposits),
+        _cycStage('Сделки', s?s.deals:null, p.seller.deals),
+      ]);
+      const revRow = (f||m.forecast_revenue!=null) ? _cycStage('Вал (оборот ₽)', f?f.revenue:null, p.revenue, true)
+        + (m.status==='current'&&m.forecast_revenue!=null&&m.forecast_revenue>(f?f.revenue:0)
+          ? `<div style="font-size:11px;color:#b45309;padding:4px 0 0">прогноз к концу месяца: +${fmt(m.forecast_revenue-(f?f.revenue:0))} ₽ → итого ${fmt(m.forecast_revenue)} ₽</div>`:'')
+        : '';
+      return `<div id="cyc-d-${m.ym}" style="display:none;padding:6px 4px 10px;border-top:1px solid rgba(148,163,184,.25)">
+        <div style="font-size:11px;color:var(--muted);margin:8px 0 2px">${f?'факт на '+esc(m.fact_date||m.ym):'план системы на месяц'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 22px">${buyer}${seller}</div>
+        <div style="margin-top:10px;background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.18);border-radius:10px;padding:2px 12px">${revRow}</div>
+        ${m.ir!=null?`<div style="font-size:11px;color:var(--muted);margin-top:8px">ИР месяца: <b>${m.ir}%</b></div>`:''}
+      </div>`;
+    }
+    // строка месяца ленты
+    function _cycRow(m){
+      const f = m.fact, planRev = num0(m.plan.revenue);
+      const factRev = f?f.revenue:0;
+      const fc = m.forecast_revenue||null;
+      const eff = (m.status==='current' && fc!=null) ? Math.max(factRev, fc) : factRev;
+      const pct = planRev>0 ? Math.round(eff/planRev*100) : 0;
+      const factW = planRev>0 ? Math.min(100, Math.round(factRev/planRev*100)) : 0;
+      const fcW = (m.status==='current' && fc!=null && fc>factRev && planRev>0) ? Math.min(100-factW, Math.round((fc-factRev)/planRev*100)) : 0;
+      let chip, chipBg='#e5e9f0', chipFg='#475569';
+      if (m.status==='closed') {
+        if (pct>=100) { chip='✓ '+pct+'%'; chipBg='#d1f0df'; chipFg='#0b5236'; }
+        else if (pct>=80) { chip='⚠ '+pct+'%'; chipBg='#fef3c7'; chipFg='#92400e'; }
+        else { chip='✕ '+pct+'%'; chipBg='#fee2e2'; chipFg='#991b1b'; }
+      } else if (m.status==='current') { chip='идёт'; chipBg='#dbeafe'; chipFg='#1e40af'; }
+      else { chip='план'; }
+      const clickable = m.status!=='future';
+      return `<div style="border-bottom:1px solid rgba(148,163,184,.2)">
+        <div ${clickable?`onclick="window.__cycToggle('${m.ym}')" style="cursor:pointer"`:'style="opacity:.55"'};display:flex;align-items:center;gap:10px;padding:9px 2px">
+          <span style="font-size:12px;font-weight:800;min-width:86px">М${m.n} · ${esc(_monthShortRu(m.ym))} ${m.ym.slice(2,4)}</span>
+          <span style="font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;background:${chipBg};color:${chipFg};white-space:nowrap">${chip}</span>
+          <span style="flex:1;height:7px;background:#e5e9f0;border-radius:4px;overflow:hidden;display:flex;min-width:40px">
+            <i style="display:block;height:100%;width:${factW}%;background:#16a34a"></i><i style="display:block;height:100%;width:${fcW}%;background:#f59e0b"></i>
+          </span>
+          <span style="font-size:12px;white-space:nowrap"><b>${fmt(factRev)}</b><span style="color:var(--muted)"> / ${fmt(planRev)} ₽</span></span>
+          ${m.ir!=null?`<span style="font-size:11px;color:var(--muted);white-space:nowrap">ИР ${m.ir}</span>`:''}
+          ${clickable?'<span style="font-size:12px;color:var(--muted)" class="cyc-arrow">▾</span>':'<span style="font-size:11px;color:var(--muted)">—</span>'}
+        </div>
+        ${clickable?_cycDetail(m):''}
+      </div>`;
+    }
+    const t = cyc.totals||{};
+    const coach = d.cycle_coach;
+    const coachDate = coach&&coach.generated_at?new Date(coach.generated_at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    out.push(`<div class="card">
+      <div class="section-title">🧭 Ход цикла: план vs факт</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Как ты шёл с начала цикла — выполнение плана системы по каждому месяцу. Нажми на месяц — раскроется воронка: каждый этап, план против факта.</div>
+      ${cyc.months.map(_cycRow).join('')}
+      <div style="margin-top:10px;padding:10px 13px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <div style="font-size:11px;font-weight:800;color:#9f1239;text-transform:uppercase">Недобор за ${t.closed_months||0} закр. мес</div>
+        <div style="font-size:14px;font-weight:800;color:#9f1239">${fmt(t.lost_revenue||0)} ₽ вала <span style="font-weight:600;font-size:12px">≈ ${fmt(t.lost_income||0)} ₽ дохода</span></div>
+      </div>
+      <div class="ai-card" style="margin-top:10px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:6px">✨ ИИ-разбор: где эти деньги потерялись</div>
+        <div id="cycleCoachText" style="font-size:13px;line-height:1.55">${coach&&coach.text?_coachFmt(coach.text):'<div style="opacity:.75;font-size:12px">Разбор ещё не делали — ИИ посмотрит все месяцы цикла и покажет, на каких этапах воронки ты терял деньги, и что делать дальше.</div>'}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <button id="cycleCoachBtn" class="btn-primary" onclick="window.__cycleCoachRun(${coach?'true':'false'})" style="font-size:12px;padding:7px 14px">${coach?'Обновить разбор':'✨ Разобрать мой цикл'}</button>
+          ${coachDate?`<span style="font-size:11px;opacity:.7">разбор от ${coachDate}</span>`:''}
+        </div>
+      </div>
+    </div>`);
+  }
 
   // ── 3. Путь к цели по доходу ──
   out.push(`<div class="card">
