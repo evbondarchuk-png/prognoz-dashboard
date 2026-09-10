@@ -1252,8 +1252,12 @@ window.__cycToggle=function(ym){
 };
 window.__cycleCoachRun=async function(force){
   const btn=document.getElementById('cycleCoachBtn'); if(btn){btn.disabled=true;btn.textContent='⏳ ИИ разбирает цикл…';}
+  // Егор 10.09 «не работает кнопка»: разбираем цикл ПРОСМАТРИВАЕМОГО кабинета
+  // (CTX.target), а не авторизованного — иначе разбор писался смотрящему, а
+  // карточка читала кэш просматриваемого, и кнопка выглядела нерабочей.
+  const code=CTX&&CTX.target;
   try{
-    const r=await httpsCallable(fns,'cycleCoach',{timeout:120000})({force:!!force});
+    const r=await httpsCallable(fns,'cycleCoach',{timeout:120000})({code:code?String(code):null,force:!!force});
     const coach=r&&r.data&&r.data.coach;
     const txt=document.getElementById('cycleCoachText');
     if(txt&&coach&&coach.text) txt.innerHTML=_coachFmt(coach.text);
@@ -1459,7 +1463,7 @@ function renderPrognoz(d){
         <div style="font-size:13px;font-weight:800;margin-bottom:6px">✨ ИИ-разбор: где эти деньги потерялись</div>
         <div id="cycleCoachText" style="font-size:13px;line-height:1.55">${coach&&coach.text?_coachFmt(coach.text):'<div style="opacity:.75;font-size:12px">Разбор ещё не делали — ИИ посмотрит все месяцы цикла и покажет, на каких этапах воронки ты терял деньги, и что делать дальше.</div>'}</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
-          <button id="cycleCoachBtn" class="btn-primary" onclick="window.__cycleCoachRun(${coach?'true':'false'})" style="font-size:12px;padding:7px 14px">${coach?'Обновить разбор':'✨ Разобрать мой цикл'}</button>
+          <button id="cycleCoachBtn" class="btn-primary" onclick="window.__cycleCoachRun(${coach?'true':'false'})" style="font-size:12px;padding:7px 14px">${coach?'Обновить разбор':'✨ Разобрать цикл'}</button>
           ${coachDate?`<span style="font-size:11px;opacity:.7">разбор от ${coachDate}</span>`:''}
         </div>
       </div>
