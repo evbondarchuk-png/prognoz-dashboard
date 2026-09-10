@@ -926,6 +926,8 @@ function renderHero(d){
  // Показываем и без места (новичок) — тогда только целевая зона.
  const sfParts=[];
  if(sfPos!=null) sfParts.push(`<b>#${sfPos}</b>`);
+ // Егор 10.09: место новичка — в СВОЁМ пуле; без подписи «#1» читается как первый компании
+ if(u.svetofor_pool==='newbie') sfParts.push('<span class="sf-z" style="color:#15803d;background:#dcfce7;border-radius:999px;padding:1px 8px;font-weight:700">🌱 светофор новичков</span>');
  if(u.svetofor_month_note) sfParts.push(`<span class="sf-z muted" title="Позиции за текущий месяц ещё не выгружены — показываем последний закрытый месяц">${esc(u.svetofor_month_note)}</span>`);
  if(u.svetofor_zone_label) sfParts.push(`<span class="sf-z muted">${esc(u.svetofor_zone_label)}</span>`);
  if(tzLabel) sfParts.push(`<span class="sf-tz">${sfPos!=null?'':'🎯 '}цель → ${esc(tzLabel)}</span>`);
@@ -2495,9 +2497,12 @@ const POOL_CLR={newbie:'#16a34a',experienced:'#2b6cb0'};
 // ── TZ: таб «Светофор» — график движения (карточка 1) + калькулятор с пирамидой (карточка 2)
 function svetoforGraphCard(d){
  const u=d.user;
+ // Егор 10.09: у новичка места — в светофоре новичков; подписываем в заголовке,
+ // иначе «#1» на графике читается как первое место компании
+ const nbChip=u.svetofor_pool==='newbie'?' <span style="font-size:12px;font-weight:800;color:#15803d;background:#dcfce7;border-radius:999px;padding:2px 10px;vertical-align:middle">🌱 светофор новичков</span>':'';
  const h=(d.position_history||[]).filter(p=>p.position!=null);
  if(h.length<1){
-  return `<div class="card"><div class="section-title">📈 Как я двигался в светофоре</div>
+  return `<div class="card"><div class="section-title">📈 Как я двигался в светофоре${nbChip}</div>
   <div class="soon" style="margin-top:8px">История движения накапливается — график появится в ближайшие месяцы.</div></div>`;
  }
  const PT=poolTotals(d);
@@ -2580,7 +2585,7 @@ function svetoforGraphCard(d){
   <span><span style="display:inline-block;width:11px;height:3px;border-top:2px dashed #94a3b8;vertical-align:middle;margin-right:5px"></span> смена пула</span>
  </div>`;
  return `<div class="card">
-  <div class="section-title">📈 Как я двигался в светофоре</div>
+  <div class="section-title">📈 Как я двигался в светофоре${nbChip}</div>
   <div class="sv-svg-wrap">${svg}</div>
   ${legend}
   <div class="muted" style="font-size:12px;margin-top:10px;line-height:1.55">${reason}</div>
@@ -2648,10 +2653,10 @@ function svetoforCalculatorCard(d){
  if(isNewbie){
   var PT=poolTotals(d);
   var rank=(typeof u.position_in_pool==='number'&&u.position_in_pool>0)?u.position_in_pool:null;
-  rankNote=`<div class="muted" style="font-size:11.5px;line-height:1.45;margin:-4px 0 10px">Ты пока в светофоре новичков${rank?` — там ты <b>#${rank}</b> из ${PT.newbie}`:''}. Ниже показано, где ты был бы среди опытных по своему среднему доходу: от этого места и считаем.</div>`;
+  rankNote=`<div class="muted" style="font-size:11.5px;line-height:1.45;margin:-4px 0 10px">Твоё место — в <b style="color:#15803d">светофоре новичков</b>${rank?` — там ты <b>#${rank}</b> из ${PT.newbie}`:''}. Пирамида ниже — сравнение с опытными по твоему среднему доходу: от этого места считаем прогноз.</div>`;
  }
  return `<div class="card">
-  <div class="section-title">🧮 Куда попадёшь в светофоре</div>
+  <div class="section-title">🧮 Куда попадёшь${isNewbie?' <span style="font-size:12px;font-weight:800;color:#15803d;background:#dcfce7;border-radius:999px;padding:2px 10px;vertical-align:middle">🌱 светофор новичков</span>':' в светофоре'}</div>
   <div class="muted" style="font-size:12px;margin-bottom:10px">Введи вал на следующий месяц — покажу, как это сдвинет твоё место.</div>
   ${rankNote}
   <div class="sv-calc">
