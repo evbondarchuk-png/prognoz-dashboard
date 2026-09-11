@@ -1260,7 +1260,9 @@ window.__cycleCoachRun=async function(force){
   // Егор 11.09 «снова 500»: единичные сбои не доходят до кода функции (в её
   // логах вызова нет вовсе) — молча повторяем до 3 попыток с паузой.
   const code=CTX&&CTX.target;
-  const call=()=>httpsCallable(fns,'cycleCoach',{timeout:120000})({code:code?String(code):null,force:!!force});
+  // fns объявлен ниже по модулю в другой области (ReferenceError «fns is not defined»,
+  // Егор 11.09) — берём свой экземпляр: getFunctions кэшируется, это бесплатно
+  const call=()=>httpsCallable(getFunctions(getApp(),'europe-west1'),'cycleCoach',{timeout:120000})({code:code?String(code):null,force:!!force});
   let r=null,lastErr=null;
   for(let attempt=0;attempt<3&&!r;attempt++){
     try{ r=await call(); }
