@@ -1373,6 +1373,18 @@ function renderPrognoz(d){
     });
   };
 
+  // ── 2.6 Путь к цели по доходу (Егор 11.09: поднят сразу после «Цикла по месяцам») ──
+  out.push(`<div class="card">
+    <div class="section-title">🎯 Как я иду к цели по доходу</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Накопительный доход за цикл vs плановый темп.</div>
+    <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);margin-bottom:6px;flex-wrap:wrap">
+      <span><i style="display:inline-block;width:11px;height:3px;background:#16a34a;vertical-align:middle;margin-right:5px"></i>факт</span>
+      <span><i style="display:inline-block;width:11px;height:3px;background:#3b82f6;vertical-align:middle;margin-right:5px"></i>прогноз (тек. мес + след.)</span>
+      <span><i style="display:inline-block;width:11px;height:3px;background:#cbd5e1;vertical-align:middle;margin-right:5px"></i>план цикла</span>
+    </div>
+    <div id="prg-goal-svg"></div>
+  </div>`);
+
   // ── 2.5 «Ход цикла»: план vs факт помесячно, раскрытая воронка + ИИ-разбор (Егор 09.09) ──
   const cyc = d.cycle_progress;
   if (cyc && cyc.months && cyc.months.length) {
@@ -1475,23 +1487,12 @@ function renderPrognoz(d){
         <div id="cycleCoachText" style="font-size:13px;line-height:1.55">${coach&&coach.text?_coachFmt(coach.text):'<div style="opacity:.75;font-size:12px">Разбор ещё не делали — ИИ посмотрит все месяцы цикла и покажет, на каких этапах воронки ты терял деньги, и что делать дальше.</div>'}</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
           <button id="cycleCoachBtn" class="btn-primary" onclick="window.__cycleCoachRun(${coach?'true':'false'})" style="font-size:12px;padding:7px 14px">${coach?'Обновить разбор':'✨ Разобрать цикл'}</button>
+          <button class="btn-primary" onclick="goTab('coach')" style="font-size:12px;padding:7px 14px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-color:#7c3aed">🎓 К ИИ-тренеру — рекомендации и инструменты →</button>
           ${coachDate?`<span style="font-size:11px;opacity:.7">разбор от ${coachDate}</span>`:''}
         </div>
       </div>
     </div>`);
   }
-
-  // ── 3. Путь к цели по доходу ──
-  out.push(`<div class="card">
-    <div class="section-title">🎯 Как я иду к цели по доходу</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Накопительный доход за цикл vs плановый темп.</div>
-    <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);margin-bottom:6px;flex-wrap:wrap">
-      <span><i style="display:inline-block;width:11px;height:3px;background:#16a34a;vertical-align:middle;margin-right:5px"></i>факт</span>
-      <span><i style="display:inline-block;width:11px;height:3px;background:#3b82f6;vertical-align:middle;margin-right:5px"></i>прогноз (тек. мес + след.)</span>
-      <span><i style="display:inline-block;width:11px;height:3px;background:#cbd5e1;vertical-align:middle;margin-right:5px"></i>план цикла</span>
-    </div>
-    <div id="prg-goal-svg"></div>
-  </div>`);
 
   // ── 4. Цель по доходу ──
   if (goal) {
