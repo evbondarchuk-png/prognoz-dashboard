@@ -1257,17 +1257,24 @@ window.__cycleCoachRun=async function(force){
   // Егор 10.09 «не работает кнопка»: разбираем цикл ПРОСМАТРИВАЕМОГО кабинета
   // (CTX.target), а не авторизованного — иначе разбор писался смотрящему, а
   // карточка читала кэш просматриваемого, и кнопка выглядела нерабочей.
+  // Егор 11.09 «снова 500»: единичные сбои не доходят до кода функции (в её
+  // логах вызова нет вовсе) — молча повторяем до 3 попыток с паузой.
   const code=CTX&&CTX.target;
-  try{
-    const r=await httpsCallable(fns,'cycleCoach',{timeout:120000})({code:code?String(code):null,force:!!force});
+  const call=()=>httpsCallable(fns,'cycleCoach',{timeout:120000})({code:code?String(code):null,force:!!force});
+  let r=null,lastErr=null;
+  for(let attempt=0;attempt<3&&!r;attempt++){
+    try{ r=await call(); }
+    catch(e){ lastErr=e; if(attempt<2) await new Promise(res=>setTimeout(res,1500)); }
+  }
+  if(r){
     const coach=r&&r.data&&r.data.coach;
     const txt=document.getElementById('cycleCoachText');
     if(txt&&coach&&coach.text) txt.innerHTML=_coachFmt(coach.text);
     if(btn){btn.disabled=false;btn.textContent='Обновить разбор';btn.setAttribute('onclick','window.__cycleCoachRun(true)');}
-  }catch(e){
-    if(btn){btn.disabled=false;btn.textContent=force?'Обновить разбор':'✨ Разобрать мой цикл';}
+  }else{
+    if(btn){btn.disabled=false;btn.textContent=force?'Обновить разбор':'✨ Разобрать цикл';}
     const txt=document.getElementById('cycleCoachText');
-    if(txt) txt.innerHTML='<div style="color:#fca5a5;font-size:12px">Не получилось: '+(e&&e.message?esc(e.message):'повторите позже')+'</div>';
+    if(txt) txt.innerHTML='<div style="color:#fca5a5;font-size:12px">Не получилось: '+(lastErr&&lastErr.message?esc(lastErr.message):'повторите позже')+'</div>';
   }
 };
 
