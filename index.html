@@ -1235,6 +1235,16 @@ function _prgFmtK(n){ n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).repla
 function _prgFmtFull(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
 function _monthShortRu(ym){ const m=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; return m[parseInt(ym.slice(5,7),10)-1]||ym; }
 function _monthFullRu(ym){ const m=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']; return (m[parseInt(ym.slice(5,7),10)-1]||'')+' '+ym.slice(0,4); }
+// Егор 11.09: разбору больше месяца → жёлтая приписка «устарел, обновите»
+// (ИИ-разбор цикла и ИИ-тренер)
+function _staleNote(ts, what){
+  if(!ts) return '';
+  const days=(Date.now()-Number(ts))/86400000;
+  if(days<=30) return '';
+  const months=Math.floor(days/30);
+  const word=months===1?'месяц':(months<5?'месяца':'месяцев');
+  return `<div style="margin:8px 0 2px;padding:9px 13px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;line-height:1.5">⚠ Разбор устарел — ему ${months} ${word}. ${esc(what)} Нажми «Обновить разбор», чтобы ИИ разобрал свежие цифры.</div>`;
+}
 // ── «Ход цикла» (Егор 09.09): утилиты ленты месяцев + ИИ-разбор цикла ──
 function num0(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
 function _coachFmt(text){
@@ -1485,6 +1495,7 @@ function renderPrognoz(d){
       <div class="ai-card" style="margin-top:10px">
         <div style="font-size:13px;font-weight:800;margin-bottom:6px">✨ ИИ-разбор: где эти деньги потерялись</div>
         <div id="cycleCoachText" style="font-size:13px;line-height:1.55">${coach&&coach.text?_coachFmt(coach.text):'<div style="opacity:.75;font-size:12px">Разбор ещё не делали — ИИ посмотрит все месяцы цикла и покажет, на каких этапах воронки ты терял деньги, и что делать дальше.</div>'}</div>
+        ${_staleNote(coach&&coach.generated_at,'Цифры цикла с тех пор изменились.')}
         <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
           <button id="cycleCoachBtn" class="btn-primary" onclick="window.__cycleCoachRun(${coach?'true':'false'})" style="font-size:12px;padding:7px 14px">${coach?'Обновить разбор':'✨ Разобрать цикл'}</button>
           <button class="btn-primary" onclick="goTab('coach')" style="font-size:12px;padding:7px 14px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-color:#7c3aed">🎓 К ИИ-тренеру — рекомендации и инструменты →</button>
@@ -2318,7 +2329,7 @@ function crBlock(d){
     <button class="btn-secondary" onclick="crDownload()">Скачать в Word</button>
    </span>
   </div>
-  ${has?`<div class="cr-saved">Разбор от <b>${crEsc(crDateFmt(d.coach_report.generated_at))}</b> — открыт ниже и сохраняется. Показывается бесплатно всегда; «Обновить разбор» пересобирает его заново (платно) — только когда ты сам нажмёшь.</div>`:''}
+  ${has?`<div class="cr-saved">Разбор от <b>${crEsc(crDateFmt(d.coach_report.generated_at))}</b> — открыт ниже и сохраняется. Показывается бесплатно всегда; «Обновить разбор» пересобирает его заново (платно) — только когда ты сам нажмёшь.</div>${_staleNote(d.coach_report.generated_at,'Твоя воронка и ход цикла с тех пор изменились.')}`:''}
   <div id="crBox" style="background:#fff;border-radius:var(--r-lg);padding:2px 0;margin-top:6px">${has?crHtml(d.coach_report):''}</div>
   <div class="ai-note">цифры считает система — модель их объясняет и ничего не выдумывает</div></div>`;
 }
