@@ -1326,8 +1326,6 @@ function _weekDayNorm(){
 // Статус «ИР нед» (путь недели): ≥доли дней — зелёный, 80–99% — жёлтый, ниже — красный.
 function _weekPathStatus(v){ const n=_weekDayNorm(); if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
 function _weekPathColor(v){ const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
-// Егор 13.09: «ИР нед» — честный недельный ИР (среднее ir_v2_week), плоские пороги 70/50.
-function _irWeekStatus(v){ return v>=70?'ok':(v>=50?'warn':'bad'); }
 // Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа (недели 1–7/8–14/15–21/22–конец →
 // 25/50/75/100%, внутри недели пропорционально дню; от ДАТЫ ДАННЫХ). Цвет: ≥норматива —
 // зелёный, 80–99% норматива — жёлтый, <80% — красный. Недельный ИР (_irStatus) не трогаем.
@@ -1468,7 +1466,7 @@ function teamRowCommon(m,idx){
   // Егор 08.09: приоритет — ir_week_scale с бэка (готовая недельная шкала по
   // долевой норме дней), fallback — дельта ×4.
   const irW = (m.ir_week_scale!=null) ? Math.min(100,m.ir_week_scale) : ((typeof m.ir_week_delta==='number') ? Math.min(100, Math.round(m.ir_week_delta * 4)) : null); // недельная шкала 25%=100%
-  const irTip = irW!=null ? `недельный ИР: ${irW}%` : 'нет недельного ИР';
+  const irTip = irW!=null ? `прирост ИР за текущую неделю: ${irW}%` : 'нет недельного ИР';
   const wkData=(m.ir_weeks_month||[]).map(w=>w.weekN+':'+(w.ir_pct==null?'':w.ir_pct)).join('|')+(irW!=null?'|cur:'+irW:'');
   const plan=m.plan_month||0;
   const fact=m.fact_month||0;
@@ -1482,7 +1480,7 @@ function teamRowCommon(m,idx){
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}${_trafficBadge(m.traffic_position)}</div></div></div></td>
     <td><span class="t-ir ${_irMonthStatus(irM)}" data-weeks="${wkData}" onmouseenter="showIrWeeks(this)" onmouseleave="hideIrWeeks()" style="cursor:help" title="ИР по неделям месяца">${irM}%</span></td>
-    <td><span class="t-ir ${irW!=null?_irWeekStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
+    <td><span class="t-ir ${irW!=null?_weekPathStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
