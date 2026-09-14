@@ -1221,6 +1221,10 @@ function _weekDayNorm(){
   return Math.min(100, Math.round(Math.max(1,day-b)/Math.max(1,len)*100));
 }
 // Статус «ИР нед» (путь недели): ≥доли дней — зелёный, 80–99% — жёлтый, ниже — красный.
+
+// Егор 14.09: «ИР нед» = прирост месячного ИР за неделю; норма прироста на
+// сегодня = 25 п.п. × доля прошедшей недели. ≥нормы — зелёный, 80–99% — жёлтый.
+function _irWeekStatus(v){ const n=_weekDayNorm()*0.25; if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
 function _weekPathStatus(v){ const n=_weekDayNorm(); if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
 function _weekPathColor(v){ const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 // Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа (недели 1–7/8–14/15–21/22–конец →
@@ -1301,7 +1305,7 @@ function teamRowCommon(m){
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">${esc(m.meta||'')}</div></div></div></td>
     <td><span class="t-ir ${_irMonthStatus(irM)}" data-weeks="${wkData}" onmouseenter="showIrWeeks(this)" onmouseleave="hideIrWeeks()" style="cursor:help" title="ИР по неделям месяца">${irM}%</span></td>
-    <td><span class="t-ir ${irW!=null?_weekPathStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
+    <td><span class="t-ir ${irW!=null?_irWeekStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
