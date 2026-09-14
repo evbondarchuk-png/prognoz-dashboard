@@ -1754,7 +1754,9 @@ window.__loadPkgMini = async function(){
   const mount = document.getElementById('pkgMountPoint');
   if(!mount) return;
   try{
-    const r = await window.__call('taskPackageStatus', {mop_code: CTX.target});
+    const mopCode = (typeof CTX !== 'undefined' && CTX && CTX.target) || new URLSearchParams(location.search).get('mop') || (typeof CTX !== 'undefined' && CTX && CTX.me) || null;
+    if (!mopCode) { console.warn('[pkg] no mop code available'); mount.innerHTML = ''; return; }
+    const r = await window.__call('taskPackageStatus', {mop_code: String(mopCode)});
     PKG = r;
     const pkg = r && r.package;
     if(!pkg || !pkg.items || !pkg.items.length || pkg.accepted){
@@ -1855,7 +1857,7 @@ window.__genPkg = async function(){
   const btn = document.getElementById('pkgGenBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Собираем данные и пишем причины…'; }
   try{
-    await window.__call('generateTaskPackage', {mop_code: CTX.target});
+    await window.__call('generateTaskPackage', {mop_code: String(CTX && CTX.target || new URLSearchParams(location.search).get('mop') || '')});
     await window.__loadPkg();
   }catch(e){
     const root = document.getElementById('screen-pkg');
@@ -1870,7 +1872,7 @@ window.__acceptPkg = async function(){
   if(msg) msg.innerHTML = '';
   const decisions = PKG.package.items.map((it, idx) => ({ index: idx, status: it.status === 'removed' ? 'removed' : 'accepted' }));
   try{
-    const r = await window.__call('acceptTaskPackage', {mop_code: CTX.target, decisions});
+    const r = await window.__call('acceptTaskPackage', {mop_code: String(CTX && CTX.target || new URLSearchParams(location.search).get('mop') || ''), decisions});
     if(msg) msg.innerHTML = '<div class="pl-success" style="margin-top:10px">✅ Отправлено задач: ' + (r.sent || 0) + '. Риелторы увидят их в кабинете и чат-боте.</div>';
     setTimeout(()=>window.__loadPkg(), 1500);
   }catch(e){
