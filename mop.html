@@ -1764,17 +1764,22 @@ window.__loadPkgMini = async function(){
       return;
     }
     const pending = pkg.items.filter(it => it.status !== 'removed').length;
+    window.__pkgSortMode = window.__pkgSortMode || 'realtor';
     mount.innerHTML = `<div class="card" style="margin-bottom:12px;border:2px solid #7c3aed;border-radius:14px">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 0">
         <div style="font-size:15px;font-weight:800">📦 Задачи недели — ${pending} на акцепт</div>
         <span style="font-size:11px;color:var(--muted)">неделя с ${pkg.week_start}</span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button id="pkgSortRealtor" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid ${window.__pkgSortMode==='realtor'?'#7c3aed':'var(--line)'};background:${window.__pkgSortMode==='realtor'?'#ede7f6':'transparent'};color:${window.__pkgSortMode==='realtor'?'#7c3aed':'var(--muted)'};cursor:pointer;font-family:inherit" onclick="window.__pkgSort('realtor')">👥 По риэлторам</button>
+          <button id="pkgSortPrio" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid ${window.__pkgSortMode==='prio'?'#dc2626':'var(--line)'};background:${window.__pkgSortMode==='prio'?'#fee2e2':'transparent'};color:${window.__pkgSortMode==='prio'?'#dc2626':'var(--muted)'};cursor:pointer;font-family:inherit" onclick="window.__pkgSort('prio')">🔴 По критичности</button>
+        </div>
       </div>
-      <div style="padding:4px 16px 8px"><details id="pkgDetails">
-        <summary style="cursor:pointer;font-size:13px;color:var(--brand);font-weight:700;padding:6px 0">Развернуть пакет →</summary>
-        <div id="pkgItems">${pkg.items.map((it,i)=>__pkgRow(it,i,false)).join('')}</div>
+      <div style="padding:4px 16px 8px"><details id="pkgDetails" ${pending > 0 ? 'open' : ''}>
+        <summary style="cursor:pointer;font-size:13px;color:var(--brand);font-weight:700;padding:6px 0">${pending > 0 ? '▾ Свернуть' : '› Развернуть пакет'}</summary>
+        <div id="pkgItems">${__pkgSorted(pkg.items).map((it)=>__pkgRow(it,it._idx,false)).join('')}</div>
         <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
-          <button class="btn-primary" onclick="window.__acceptPkg()" id="pkgAcceptBtn" style="font-size:14px;padding:10px 24px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-color:#7c3aed">✅ Назначить (${pending})</button>
-          <span style="font-size:11px;color:var(--muted)">После нажатия задачи полетят риелторам</span>
+          <button class="btn-primary" onclick="window.__acceptPkg()" id="pkgAcceptBtn" style="font-size:14px;padding:10px 24px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-color:#7c3aed">✅ Назначить все (${pending})</button>
+          <span style="font-size:11px;color:var(--muted)">После нажатия задачи полетят риелторам в кабинет и чат-бот</span>
         </div>
         <div id="pkgMsg"></div>
       </details></div>
@@ -1821,18 +1826,57 @@ function __paintPkg(){
     <div id="pkgMsg"></div>
   </div>`;
 }
+// Сортировка пакета (Егор 14.09): по риэлторам (имя А-Я) или по критичности
+window.__pkgSort = function(mode){
+  window.__pkgSortMode = mode;
+  const pkg = PKG && PKG.package;
+  if (!pkg || !pkg.items) return;
+  const sorted = __pkgSorted(pkg.items);
+  const wrap = document.getElementById('pkgItems');
+  if (wrap) wrap.innerHTML = sorted.map(it => __pkgRow(it, it._idx, false)).join('');
+  // переключить кнопки
+  const br = document.getElementById('pkgSortRealtor');
+  const bp = document.getElementById('pkgSortPrio');
+  if (br) {
+    br.style.borderColor = mode === 'realtor' ? '#7c3aed' : 'var(--line)';
+    br.style.background = mode === 'realtor' ? '#ede7f6' : 'transparent';
+    br.style.color = mode === 'realtor' ? '#7c3aed' : 'var(--muted)';
+  }
+  if (bp) {
+    bp.style.borderColor = mode === 'prio' ? '#dc2626' : 'var(--line)';
+    bp.style.background = mode === 'prio' ? '#fee2e2' : 'transparent';
+    bp.style.color = mode === 'prio' ? '#dc2626' : 'var(--muted)';
+  }
+};
+function __pkgSorted(items) {
+  // индексы для отслеживания позиции в исходном массиве
+  const withIdx = items.map((it, i) => ({ ...it, _idx: i }));
+  const ord = { critical: 0, high: 1, support: 2 };
+  if (window.__pkgSortMode === 'prio') {
+    withIdx.sort((a, b) => (ord[a.priority] ?? 9) - (ord[b.priority] ?? 9));
+  } else {
+    withIdx.sort((a, b) => String(a.realtor_name || '').localeCompare(String(b.realtor_name || ''), 'ru'));
+  }
+  return withIdx;
+}
+
 function __pkgRow(it, i, readOnly){
   const st = it.status || 'pending';
   const removed = st === 'removed';
   const opacity = removed ? 'opacity:.4' : '';
   const actions = readOnly
     ? (st === 'accepted' || st === 'edited' ? '<span style="color:var(--ok);font-size:12px;font-weight:700">✅ отправлено</span>' : '<span style="color:var(--muted);font-size:12px">убрано</span>')
-    : `<button class="integ-act danger" style="font-size:11px;padding:4px 10px" onclick="window.__pkgRemove(${i})" title="Убрать из пакета">${removed ? '↩︎ Вернуть' : '✕ Убрать'}</button>`;
+    : `<div style="display:flex;gap:6px;align-items:center">
+        <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--brand);cursor:pointer;font-family:inherit" onclick="window.__pkgEdit(${i})" title="Редактировать текст">✏️</button>
+        <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ok);cursor:pointer;font-family:inherit" onclick="window.__pkgAssign(${i})" title="Назначить сразу (эту одну)">✅</button>
+        <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit" onclick="window.__pkgRemove(${i})" title="Убрать из пакета">${removed ? '↩︎' : '✕'}</button>
+      </div>`;
   return `<div class="pkg-item" data-idx="${i}" style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;${opacity}">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       ${__pkgPrioBadge(it.priority)}
       <b style="font-size:14px">${esc(it.realtor_name)}</b>
       <span style="font-size:11px;color:var(--muted)">ИР ${it.ir_month ?? '—'}%</span>
+      <button style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;border:1px dashed var(--line);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit" onclick="window.__pkgCustom('${esc(it.realtor_code)}','${esc(it.realtor_name)}')" title="Своя задача для этого риелтора">➕</button>
       <span style="margin-left:auto">${actions}</span>
     </div>
     <div style="font-size:13px;font-weight:700;margin-bottom:4px">${esc(it.title)}</div>
@@ -1853,6 +1897,84 @@ window.__pkgRemove = function(idx){
   const el = document.querySelector(`.pkg-item[data-idx="${idx}"]`);
   if(el) el.style.opacity = it.status === 'removed' ? '.4' : '';
 };
+// ✏️ Редактировать задачу — inline textarea
+window.__pkgEdit = function(idx){
+  if(!PKG || !PKG.package) return;
+  const it = PKG.package.items[idx];
+  if(!it) return;
+  const el = document.querySelector(`.pkg-item[data-idx="${idx}"]`);
+  if(!el) return;
+  el.innerHTML = `
+    <div style="padding:4px 0">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px">✏️ Редактирование: ${esc(it.realtor_name)} — ${esc(it.title)}</div>
+      ${it.reason ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">💡 ${esc(it.reason)}</div>` : ''}
+      <textarea id="pkgEditText" style="width:100%;min-height:60px;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px" placeholder="Текст задачи">${esc(it.text)}</textarea>
+      <textarea id="pkgEditAction" style="width:100%;min-height:60px;font-family:inherit;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px" placeholder="Действие">${esc(it.action)}</textarea>
+      <div style="display:flex;gap:8px">
+        <button style="font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;border:1px solid var(--brand);background:var(--brand);color:#fff;cursor:pointer;font-family:inherit" onclick="window.__pkgSaveEdit(${idx})">💾 Сохранить</button>
+        <button style="font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;font-family:inherit" onclick="window.__loadPkgMini()">✕ Отмена</button>
+      </div>
+    </div>`;
+};
+window.__pkgSaveEdit = function(idx){
+  if(!PKG || !PKG.package) return;
+  const it = PKG.package.items[idx];
+  if(!it) return;
+  const t = document.getElementById('pkgEditText');
+  const a = document.getElementById('pkgEditAction');
+  if(t) it.text = t.value;
+  if(a) it.action = a.value;
+  it.status = 'edited';
+  window.__loadPkgMini();
+};
+
+// ✅ Назначить одну задачу сразу
+window.__pkgAssign = async function(idx){
+  if(!PKG || !PKG.package) return;
+  const it = PKG.package.items[idx];
+  if(!it) return;
+  try{
+    const r = await window.__call('acceptTaskPackage', {
+      mop_code: String(CTX && CTX.target || new URLSearchParams(location.search).get('mop') || ''),
+      decisions: [{ index: idx, status: 'accepted' }]
+    });
+    it.status = 'accepted';
+    window.__loadPkgMini();
+  }catch(e){
+    alert('Не получилось: ' + (e && e.message || e));
+  }
+};
+
+// ➕ Своя задача по риелтору
+window.__pkgCustom = function(realtorCode, realtorName){
+  const d = prompt('Своя задача для ' + realtorName + ': что сделать?');
+  if(!d || !d.trim()) return;
+  const due = prompt('Срок (дней от сегодня, по умолчанию 5):', '5');
+  const days = parseInt(due) || 5;
+  const btn = document.getElementById('pkgAcceptBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Отправляем…'; }
+  (async()=>{
+    try{
+      const tid = 'task_' + Date.now();
+      const now = Date.now();
+      const dueAt = now + days * 86400000;
+      await window.__call('createTask', {
+        assignee_code: String(realtorCode),
+        title: d.trim().substring(0, 120),
+        description: 'Задача от старшего партнёра',
+        priority: 'normal',
+        type: 'team',
+        due_at: dueAt
+      });
+      alert('✅ Задача отправлена ' + realtorName);
+      if(btn){ btn.disabled = false; btn.textContent = '✅ Назначить все'; }
+    }catch(e){
+      alert('Ошибка: ' + (e && e.message || e));
+      if(btn){ btn.disabled = false; btn.textContent = '✅ Назначить все'; }
+    }
+  })();
+};
+
 window.__genPkg = async function(){
   const btn = document.getElementById('pkgGenBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Собираем данные и пишем причины…'; }
