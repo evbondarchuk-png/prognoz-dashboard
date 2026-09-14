@@ -1958,34 +1958,9 @@ window.__pkgAssign = async function(idx){
   }
 };
 
-// ➕ Своя задача по риелтору
+// ➕ Своя задача по риелтору — штатная модалка проекта с предвыбором (Егор 15.09)
 window.__pkgCustom = function(realtorCode, realtorName){
-  const d = prompt('Своя задача для ' + realtorName + ': что сделать?');
-  if(!d || !d.trim()) return;
-  const due = prompt('Срок (дней от сегодня, по умолчанию 5):', '5');
-  const days = parseInt(due) || 5;
-  const btn = document.getElementById('pkgAcceptBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ Отправляем…'; }
-  (async()=>{
-    try{
-      const tid = 'task_' + Date.now();
-      const now = Date.now();
-      const dueAt = now + days * 86400000;
-      await window.__call('createTask', {
-        assignee_code: String(realtorCode),
-        title: d.trim().substring(0, 120),
-        description: 'Задача от старшего партнёра',
-        priority: 'normal',
-        type: 'team',
-        due_at: dueAt
-      });
-      alert('✅ Задача отправлена ' + realtorName);
-      if(btn){ btn.disabled = false; btn.textContent = '✅ Назначить все'; }
-    }catch(e){
-      alert('Ошибка: ' + (e && e.message || e));
-      if(btn){ btn.disabled = false; btn.textContent = '✅ Назначить все'; }
-    }
-  })();
+  window.openCreateTaskFor(String(realtorCode));
 };
 
 window.__genPkg = async function(){
