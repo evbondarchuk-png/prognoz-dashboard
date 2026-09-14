@@ -1363,6 +1363,40 @@ function _irWeekRel(v){
   return 'bad';
 }
 
+// Егор 15.09: первый день недели — прирост 0% НОРМАЛЕН, красим зелёным.
+// Норма прироста на сегодня = 25 п.п. × (день недели / 7).
+// В день 1 недели (граница только что прошла) норма ≈ 3.5 п.п. → 0 не дотягивает,
+// но это не отставание, а старт недели. Поэтому: 0 в первые 2 дня = зелёный.
+function _irWeekStatusFixed(v){
+  if(v==null) return '';
+  if(v===0){
+    // День 1-2 недели (после границы): 0 — это норма, зелёный
+    const ds=window.__irDataDate; const d=(ds&&/^\d{4}-\d{2}-\d{2}$/.test(ds))?new Date(ds+'T00:00:00'):new Date();
+    const day=d.getDate();
+    const cw = day>21?3:day>14?2:day>7?1:0;
+    const b = cw===3?21:7*cw;
+    const dayInWeek = day - b; // 1 = первый день недели
+    if(dayInWeek <= 2) return 'ok'; // первые 2 дня недели 0% = зелёный
+    return 'warn'; // к 3+ дню 0% — уже жёлтый (не красный)
+  }
+  return _irWeekStatus(v);
+}
+function _irWeekRelFixed(v){
+  if(v==null) return '';
+  if(v===0){
+    const ds=window.__irDataDate; const d=(ds&&/^\d{4}-\d{2}-\d{2}$/.test(ds))?new Date(ds+'T00:00:00'):new Date();
+    const day=d.getDate();
+    const cw = day>21?3:day>14?2:day>7?1:0;
+    const b = cw===3?21:7*cw;
+    const dayInWeek = day - b;
+    if(dayInWeek <= 2) return 'ok';
+    return 'warn';
+  }
+  // Если медиана 0 и прирост > 0 — зелёный; прирост 0 — уже обработан выше
+  return _irWeekRel(v);
+}
+
+
 function _weekPathStatus(v){ const n=_weekDayNorm(); if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
 function _weekPathColor(v){ const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 // Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа (недели 1–7/8–14/15–21/22–конец →
@@ -1519,7 +1553,7 @@ function teamRowCommon(m,idx){
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}${_trafficBadge(m.traffic_position)}</div></div></div></td>
     <td><span class="t-ir ${_irMonthStatus(irM)}" data-weeks="${wkData}" onmouseenter="showIrWeeks(this)" onmouseleave="hideIrWeeks()" style="cursor:help" title="ИР по неделям месяца">${irM}%</span></td>
-    <td><span class="t-ir ${irW!=null?_irWeekRel(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
+    <td><span class="t-ir ${irW!=null?_irWeekRelFixed(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
@@ -1608,7 +1642,7 @@ function renderTeam(d){
      <div class="scroll-wrap"><table class="team-table">
        <thead><tr><th>Партнёр</th>
          <th class="t-sort" data-sort-key="ir" style="cursor:pointer">ИР мес${sortKey==='ir'?' ↓':''}</th>
-         <th>ИР нед</th>
+         <th>ИР прирост за нед</th>
          <th>План вала</th>
          <th class="t-sort" data-sort-key="fact" style="cursor:pointer">Факт вала${sortKey==='fact'?' ↓':''}</th>
          <th class="t-sort" data-sort-key="forecast" style="cursor:pointer">Прогноз${sortKey==='forecast'?' ↓':''}</th>
