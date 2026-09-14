@@ -1691,7 +1691,7 @@ function renderTasks(d){
    root.dataset.calMounted = '1';
    root.innerHTML = '<div id="pkgMountPoint"></div><div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
    // 📦 Пакет недели — на акцепт (Егор 14.09: показываем прямо в модуле задач)
-   window.__loadPkgMini();
+   console.log('[pkg] calling __loadPkgMini, CTX.target=', window.CTX && CTX.target); window.__loadPkgMini();
    (async () => {
      try {
        const db = getDatabase(getApp());
@@ -1778,7 +1778,8 @@ window.__loadPkgMini = async function(){
       </details></div>
     </div>`;
   }catch(e){
-    mount.innerHTML = '';
+    console.error('[pkg] load failed', e);
+    mount.innerHTML = '<div style="padding:8px 16px;font-size:12px;color:#dc2626">📦 Пакет: ошибка загрузки — ' + esc(e && e.message || String(e)) + '</div>';
   }
 };
 function __pkgPrioBadge(p){
