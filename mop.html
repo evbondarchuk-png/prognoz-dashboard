@@ -1328,6 +1328,28 @@ function _weekDayNorm(){
 // Егор 14.09: «ИР нед» = прирост месячного ИР за неделю; норма прироста на
 // сегодня = 25 п.п. × доля прошедшей недели. ≥нормы — зелёный, 80–99% — жёлтый.
 function _irWeekStatus(v){ const n=_weekDayNorm()*0.25; if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
+// Егор 14.09: окраска «ИР нед» ПО МЕДИАНЕ выборки того же уровня («на фоне
+// коллег»): ≥медианы — зелёный, ≥половины медианы — жёлтый, ниже — красный.
+// Медиана ≤0: двигался — зелёный, стоит — нейтральный жёлтый (не пугать).
+// Список для медианы кладётся в window.__wkRows перед построением таблицы.
+function _wkMedian(){
+  const arr=(window.__wkRows||[]).map(m=>(typeof m.ir_week_scale==='number')?m.ir_week_scale
+    :((typeof m.ir_week_delta==='number')?Math.max(0,Math.round(m.ir_week_delta)):null))
+    .filter(v=>v!=null).sort((a,b)=>a-b);
+  if(!arr.length) return null;
+  const mid=Math.floor(arr.length/2);
+  return arr.length%2?arr[mid]:Math.round((arr[mid-1]+arr[mid])/2);
+}
+function _irWeekRel(v){
+  if(v==null) return '';
+  const med=_wkMedian();
+  if(med==null) return _irWeekStatus(v);
+  if(med<=0) return v>0?'ok':'warn';
+  if(v>=med) return 'ok';
+  if(v>=med*0.5) return 'warn';
+  return 'bad';
+}
+
 function _weekPathStatus(v){ const n=_weekDayNorm(); if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
 function _weekPathColor(v){ const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 // Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа (недели 1–7/8–14/15–21/22–конец →
@@ -1469,7 +1491,7 @@ function teamRowCommon(m,idx){
   // Егор 04.09: старую темповую метрику не показываем — нет данных → «—».
   // Егор 08.09: приоритет — ir_week_scale с бэка (готовая недельная шкала по
   // долевой норме дней), fallback — дельта ×4.
-  const irW = (m.ir_week_scale!=null) ? Math.min(100,m.ir_week_scale) : ((typeof m.ir_week_delta==='number') ? Math.min(100, Math.round(m.ir_week_delta * 4)) : null); // недельная шкала 25%=100%
+  const irW = (m.ir_week_scale!=null) ? m.ir_week_scale : ((typeof m.ir_week_delta==='number') ? Math.max(0,Math.round(m.ir_week_delta)) : null); // прирост месячного ИР за неделю (Егор 14.09)
   const irTip = irW!=null ? `прирост ИР за текущую неделю: ${irW}%` : 'нет недельного ИР';
   const wkData=(m.ir_weeks_month||[]).map(w=>w.weekN+':'+(w.ir_pct==null?'':w.ir_pct)).join('|')+(irW!=null?'|cur:'+irW:'');
   const plan=m.plan_month||0;
@@ -1484,7 +1506,7 @@ function teamRowCommon(m,idx){
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}${_trafficBadge(m.traffic_position)}</div></div></div></td>
     <td><span class="t-ir ${_irMonthStatus(irM)}" data-weeks="${wkData}" onmouseenter="showIrWeeks(this)" onmouseleave="hideIrWeeks()" style="cursor:help" title="ИР по неделям месяца">${irM}%</span></td>
-    <td><span class="t-ir ${irW!=null?_irWeekStatus(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
+    <td><span class="t-ir ${irW!=null?_irWeekRel(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
@@ -1530,7 +1552,7 @@ function teamRowMonth(m, monthIdxs){
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
 }
 function renderTeam(d){
- const tc=d.team_cards; const members=(tc&&tc.members)||[];
+ const tc=d.team_cards; const members=(tc&&tc.members)||[]; window.__wkRows=members;
  if(!members.length){ document.getElementById('screen-team').innerHTML='<div class="banner">В группе нет активных партнёров.</div>'; return; }
  // TZ-A30 §4 + правило «Группа 0»: разделяем основную команду и блок «Группа 0»
  const main=members.filter(m=>!m.is_group_zero);
