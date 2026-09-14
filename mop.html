@@ -488,7 +488,6 @@
  <div class="rtab" data-tab="team" onclick="showTab('team',this)">👥 Команда</div>
  <div class="rtab" data-tab="tasks" onclick="showTab('tasks',this)">📋 Задачи и календарь<span id="taskDot"></span></div>
  <div class="rtab" data-tab="planning" onclick="showTab('planning',this)">🎯 Планирование</div>
-  <div class="rtab" data-tab="pkg" onclick="showTab('pkg',this)">📦 Задачи недели<span id="pkgDot"></span></div>
  <div class="rtab" data-tab="report" onclick="openGroupReport()">📄 Отчёт</div>
  <div class="rtab rtab-push" onclick="window.openHofDir&&window.openHofDir()">⭐ Звёзды</div>
  </div>
@@ -497,7 +496,6 @@
  <div class="screen" id="screen-team"></div>
  <div class="screen" id="screen-tasks"></div>
  <div class="screen" id="screen-planning"></div>
- <div class="screen" id="screen-pkg"><div class="card"><div class="muted">Загружаем пакет…</div></div></div>
 </div>
 
 <div class="modal-overlay" id="modalMgr"><div class="modal" id="modalMgrBody"></div></div>
@@ -650,7 +648,6 @@ window.showTab=(id,btn)=>{
  if(window.__markT){clearTimeout(window.__markT);window.__markT=null;}
  if(id==='tasks'){ window.__markT=setTimeout(()=>{ const u=CTX.data&&CTX.data.notifications&&CTX.data.notifications.unread_count; if(u>0) window.markAllRead(true); },2000); }
  if(id==='planning' && !window.__planningLoaded){ window.__planningLoaded=true; window.loadPlanning&&window.loadPlanning(); }
- if(id==='pkg'){ window.__loadPkg&&window.__loadPkg(); }
 };
 window.goTab=(id)=>{ const b=document.querySelector(`.rtab[data-tab="${id}"]`); if(b) window.showTab(id,b); };
 // Отчёт по группе — тот же отчёт, что видит РОП по своим менеджерам (session-report.html?level=mop),
@@ -1692,7 +1689,9 @@ function renderTasks(d){
  const root = document.getElementById('screen-tasks');
  if (root && !root.dataset.calMounted) {
    root.dataset.calMounted = '1';
-   root.innerHTML = '<div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
+   root.innerHTML = '<div id="pkgMountPoint"></div><div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
+   // 📦 Пакет недели — на акцепт (Егор 14.09: показываем прямо в модуле задач)
+   window.__loadPkgMini();
    (async () => {
      try {
        const db = getDatabase(getApp());
@@ -1750,16 +1749,36 @@ function maybeAwardToast(d){ const rw=d&&d.rewards; if(!rw||!rw.newly||!rw.newly
 }
 // ══════════ 📦 Задачи недели: пакет → акцепт → отправка (Егор 14.09) ══════════
 let PKG = null; // {package, ym}
-window.__loadPkg = async function(){
-  const root = document.getElementById('screen-pkg');
-  if(!root) return;
-  root.innerHTML = '<div class="card"><div class="muted">Загружаем пакет…</div></div>';
+// 📦 Мини-пакет в модуле задач: если есть непринятый пакет — показать
+window.__loadPkgMini = async function(){
+  const mount = document.getElementById('pkgMountPoint');
+  if(!mount) return;
   try{
     const r = await window.__call('taskPackageStatus', {mop_code: window.CTX.target});
     PKG = r;
-    __paintPkg();
+    const pkg = r && r.package;
+    if(!pkg || !pkg.items || !pkg.items.length || pkg.accepted){
+      mount.innerHTML = '';
+      return;
+    }
+    const pending = pkg.items.filter(it => it.status !== 'removed').length;
+    mount.innerHTML = `<div class="card" style="margin-bottom:12px;border:2px solid #7c3aed;border-radius:14px">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 0">
+        <div style="font-size:15px;font-weight:800">📦 Задачи недели — ${pending} на акцепт</div>
+        <span style="font-size:11px;color:var(--muted)">неделя с ${pkg.week_start}</span>
+      </div>
+      <div style="padding:4px 16px 8px"><details id="pkgDetails">
+        <summary style="cursor:pointer;font-size:13px;color:var(--brand);font-weight:700;padding:6px 0">Развернуть пакет →</summary>
+        <div id="pkgItems">${pkg.items.map((it,i)=>__pkgRow(it,i,false)).join('')}</div>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+          <button class="btn-primary" onclick="window.__acceptPkg()" id="pkgAcceptBtn" style="font-size:14px;padding:10px 24px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-color:#7c3aed">✅ Назначить (${pending})</button>
+          <span style="font-size:11px;color:var(--muted)">После нажатия задачи полетят риелторам</span>
+        </div>
+        <div id="pkgMsg"></div>
+      </details></div>
+    </div>`;
   }catch(e){
-    root.innerHTML = '<div class="card"><div class="pl-error">Не удалось загрузить: ' + esc(e && e.message || '') + '</div></div>';
+    mount.innerHTML = '';
   }
 };
 function __pkgPrioBadge(p){
