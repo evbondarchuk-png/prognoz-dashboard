@@ -1691,7 +1691,7 @@ function renderTasks(d){
    root.dataset.calMounted = '1';
    root.innerHTML = '<div id="pkgMountPoint"></div><div id="calMountPoint"><div class="muted" style="padding:20px;text-align:center">Загружаю календарь…</div></div>';
    // 📦 Пакет недели — на акцепт (Егор 14.09: показываем прямо в модуле задач)
-   console.log('[pkg] calling __loadPkgMini, CTX.target=', window.CTX && CTX.target); window.__loadPkgMini();
+   console.log('[pkg] calling __loadPkgMini, CTX.target=', CTX && CTX.target); window.__loadPkgMini();
    (async () => {
      try {
        const db = getDatabase(getApp());
@@ -1754,7 +1754,7 @@ window.__loadPkgMini = async function(){
   const mount = document.getElementById('pkgMountPoint');
   if(!mount) return;
   try{
-    const r = await window.__call('taskPackageStatus', {mop_code: window.CTX.target});
+    const r = await window.__call('taskPackageStatus', {mop_code: CTX.target});
     PKG = r;
     const pkg = r && r.package;
     if(!pkg || !pkg.items || !pkg.items.length || pkg.accepted){
@@ -1855,7 +1855,7 @@ window.__genPkg = async function(){
   const btn = document.getElementById('pkgGenBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Собираем данные и пишем причины…'; }
   try{
-    await window.__call('generateTaskPackage', {mop_code: window.CTX.target});
+    await window.__call('generateTaskPackage', {mop_code: CTX.target});
     await window.__loadPkg();
   }catch(e){
     const root = document.getElementById('screen-pkg');
@@ -1870,7 +1870,7 @@ window.__acceptPkg = async function(){
   if(msg) msg.innerHTML = '';
   const decisions = PKG.package.items.map((it, idx) => ({ index: idx, status: it.status === 'removed' ? 'removed' : 'accepted' }));
   try{
-    const r = await window.__call('acceptTaskPackage', {mop_code: window.CTX.target, decisions});
+    const r = await window.__call('acceptTaskPackage', {mop_code: CTX.target, decisions});
     if(msg) msg.innerHTML = '<div class="pl-success" style="margin-top:10px">✅ Отправлено задач: ' + (r.sent || 0) + '. Риелторы увидят их в кабинете и чат-боте.</div>';
     setTimeout(()=>window.__loadPkg(), 1500);
   }catch(e){
