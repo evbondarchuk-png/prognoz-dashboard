@@ -1132,6 +1132,26 @@ function _irSideBadge(fs){
   return '<span class="status-badge '+(SB[ps]||'sb-no_data')+'">ИР '+fs.ir+'% · '+esc(pl)+'</span>';
 }
 function _irMonthColor(p){ const s=_irMonthStatus(p); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
+// Егор 15.09: месячный ИР — окраска ПО МЕДИАНЕ коллег уровня (как недельный)
+// ≥медианы — зелёный, ≥половины медианы — жёлтый, ниже — красный
+function _irMonthMedian(){
+  const arr=(window.__moRows||[]).map(m=>(typeof m.ir_v2_month_total==='number')?m.ir_v2_month_total
+    :((typeof m.ir_month==='number')?m.ir_month:null))
+    .filter(v=>v!=null).sort((a,b)=>a-b);
+  if(!arr.length) return null;
+  const mid=Math.floor(arr.length/2);
+  return arr.length%2?arr[mid]:Math.round((arr[mid-1]+arr[mid])/2);
+}
+function _irMonthRel(v){
+  if(v==null) return '';
+  const med=_irMonthMedian();
+  if(med==null) return _irMonthStatus(v);
+  if(med<=0) return v>0?'ok':'warn';
+  if(v>=med) return 'ok';
+  if(v>=med*0.5) return 'warn';
+  return 'bad';
+}
+
 function _pctStatus(p){ return p>=100?'ok':p>=70?'warn':'bad'; }
 function _fmtK(n){ const a=Math.abs(n); if(a>=1000000)return (n/1000000).toFixed(1).replace('.',',')+' млн'; if(a>=1000)return Math.round(n/1000)+' тыс'; return String(Math.round(n||0)); }
 function _avatar(name){ const p=String(name||'').trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||'??'; }
@@ -1190,7 +1210,7 @@ function teamRowCommon(m){
       <div class="t-group-avatar">${esc(_avatar(m.name))}</div>
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')}</div>
         <div class="t-group-meta">${esc(m.meta||'')}</div></div></div></td>
-    <td><span class="t-ir ${_irMonthStatus(irM)}" data-weeks="${wkData}" onmouseenter="showIrWeeks(this)" onmouseleave="hideIrWeeks()" style="cursor:help" title="ИР по неделям месяца">${irM}%</span></td>
+    <td><span class="t-ir ${_irMonthRel(irM)}" data-weeks="${wkData}" onmouseenter="showIrWeeks(this)" onmouseleave="hideIrWeeks()" style="cursor:help" title="ИР по неделям месяца">${irM}%</span></td>
     <td><span class="t-ir ${irW!=null?_irWeekRelFixed(irW):''}"${irW==null?' style="color:var(--muted)"':''}>${irW!=null?irW+'%':'—'}</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${plan>0?_fmtK(plan)+' ₽':'—'}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span>${plan>0?`<span class="t-pair-sub">${factPct}%</span>`:''}</div></td>
@@ -1235,7 +1255,7 @@ function teamRowMonth(m){
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
 }
 function renderDepts(d){
- const tc=d.team_cards; const members=(tc&&tc.members)||[]; window.__wkRows=members;
+ const tc=d.team_cards; const members=(tc&&tc.members)||[]; window.__moRows=members; window.__wkRows=members;
  if(!members.length){ document.getElementById('screen-depts').innerHTML='<div class="banner">Нет активных отделов.</div>'; return; }
  // TZ-A32 §4
  const _SK = 'team_sort_aup';
