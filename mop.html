@@ -1666,7 +1666,7 @@ function teamRowCommon(m,idx){
   // долевой норме дней), fallback — дельта ×4.
   const irW = (m.ir_week_scale!=null) ? m.ir_week_scale : ((typeof m.ir_week_delta==='number') ? Math.max(0,Math.round(m.ir_week_delta)) : null); // прирост месячного ИР за неделю (Егор 14.09)
   const irTip = irW!=null ? `прирост ИР за текущую неделю: ${irW}%` : 'нет недельного ИР';
-  const wkData=(m.ir_weeks_month||[]).map(w=>w.weekN+':'+(w.ir_pct==null?'':w.ir_pct)).join('|')+(irW!=null?'|cur:'+irW:'');
+  const wkData=(m.ir_weeks_month||[]).map(w=>w.weekN+':'+(w.ir_pct==null?'':w.ir_pct)).join('|')+(irW!=null?'|cur:'+(typeof m.ir_v2_month_total==='number'?m.ir_v2_month_total:irW):'');
   const plan=m.plan_month||0;
   const fact=m.fact_month||0;
   const forecast=m.forecast_month||0;
@@ -2152,11 +2152,11 @@ window.__acceptPkg = async function(){
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Отправляем…'; }
   const msg = document.getElementById('pkgMsg');
   if(msg) msg.innerHTML = '';
-  const decisions = PKG.package.items.map((it, idx) => ({ index: idx, status: it.status === 'removed' ? 'removed' : 'accepted' }));
+  const decisions = PKG.package.items.map((it, idx) => { if (it.status === 'removed') return { index: idx, status: 'removed' }; if (it.status === 'edited') return { index: idx, status: 'edited', text: it.text, action: it.action }; return { index: idx, status: 'accepted' }; });
   try{
     const r = await window.__call('acceptTaskPackage', {mop_code: String(CTX && CTX.target || new URLSearchParams(location.search).get('mop') || ''), decisions});
     if(msg) msg.innerHTML = '<div class="pl-success" style="margin-top:10px">✅ Отправлено задач: ' + (r.sent || 0) + '. Риелторы увидят их в кабинете и чат-боте.</div>';
-    setTimeout(()=>window.__loadPkg(), 1500);
+    setTimeout(()=>window.__loadPkgMini(), 1500);
   }catch(e){
     if(btn){ btn.disabled = false; btn.textContent = '✅ Отправить'; }
     if(msg) msg.innerHTML = '<div class="pl-error" style="margin-top:10px">Не получилось: ' + esc(e && e.message || '') + '</div>';
