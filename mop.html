@@ -1518,13 +1518,21 @@ window.showIrWeeks=function(el){
   }
   var raw=el.getAttribute('data-weeks')||'',parts=raw.split('|').filter(Boolean),cur=null,weeks=[];
   parts.forEach(function(p){var kv=p.split(':');if(kv[0]==='cur')cur=kv[1];else weeks.push({n:kv[0],v:kv[1]});});
-  // Егор 03.09: недели = ПРИРОСТ месячного ИР (дельта от прошлой границы)
-  var _prev=0; weeks=weeks.map(function(w){var has=w.v!==''&&w.v!=null;var val=has?parseInt(w.v,10):null;var d=(has&&!isNaN(val))?val-_prev:null; if(has&&!isNaN(val))_prev=val; return {n:w.n,d:(d==null||isNaN(d))?null:Math.max(0,Math.min(100,Math.round(d*4)))};}); // нед.шкала 25%=100
-  function cellHtml(label,v,isCur){var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;var dn=_weekDayNorm();var c=!has?'#9ca3af':n===0?'#d97706':n>=(isCur?dn:70)?'#16a34a':n>=(isCur?dn*0.8:50)?'#d97706':'#dc2626'; return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div></div>';}
-  var cells=weeks.map(function(w){return cellHtml('Нед '+w.n,(w.d==null?'':String(w.d)),false);}).join('');
-  if(cur!=null)cells+=cellHtml('Тек.',cur,true);
+  // Егор 15.09: показываем МЕСЯЧНЫЙ ИР на конец каждой недели (не прирост!)
+  // Неделя 1 → ИР на 7-е, неделя 2 → на 14-е, и т.д. Норма: 25/50/75/100%
+  var norms=[25,50,75,100];
+  function cellHtml(label,v,norm,isCur){
+    var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;
+    var c=!has?'#9ca3af':(n>=norm?'#16a34a':n>=norm*0.8?'#d97706':'#dc2626');
+    return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div><div style="font-size:9px;color:#9ca3af;margin-top:1px">норма '+norm+'%</div></div>';
+  }
+  var cells=weeks.map(function(w,i){return cellHtml('Нед '+(i+1),w.v,norms[i]||100,false);}).join('');
+  if(cur!=null){
+    var curNorm=_irPaceNorm();
+    cells+=cellHtml('Сейчас',cur,curNorm,true);
+  }
   if(!cells)cells='<div class="iwp-empty">Завершённых недель ещё нет</div>';
-  pop.innerHTML='<div class="iwp-ttl">Прирост ИР по неделям месяца</div><div class="iwp-grid">'+cells+'</div>';
+  pop.innerHTML='<div class="iwp-ttl">ИР месяца по неделям (нарастающий итог)</div><div class="iwp-grid">'+cells+'</div>';
   var r=el.getBoundingClientRect();
   pop.style.display='block';
   pop.style.left=Math.max(8,r.left+window.scrollX)+'px';
