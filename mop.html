@@ -1170,7 +1170,7 @@ function _prgMonthlySummary(pt, mode, agentCycle) {
     // ── Детальный комментарий по агентам (Егор 15.09) ──
     // agentCycle[code].monthly[ym] = {revenue: {b_sec: X, ...}, deals: {...}}
     let detailLines = [];
-    if (agentCycle && !m.is_future) {
+    if (agentCycle && Object.keys(agentCycle).length > 0 && !m.is_future) {
       // Собрать валы агентов за этот месяц
       const agents = [];
       for (const [code, ad] of Object.entries(agentCycle)) {
@@ -1312,7 +1312,8 @@ function renderPrognoz(d){
       for(const[k,v]of Object.entries(ad.deals||{})){if(v)_agentCycle[code].d[k]=(_agentCycle[code].d[k]||0)+v;}
     }
   }
-  let _mopBdHtml=`<div style="margin-top:16px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div><div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#0e7a4f">${_prgFmtFull(tot.revenue||0)} ₽</div></div></div>`;
+  const _cycleFact=(pt.monthly||[]).reduce((s2,m)=>s2+((!m.is_future&&m.fact_revenue)||0),0); // сумма факта месяцев цикла (не только текущий)
+  let _mopBdHtml=`<div style="margin-top:16px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div><div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#0e7a4f">${_prgFmtFull(_cycleFact||tot.revenue||0)} ₽</div></div></div>`;
   const _agentEntries=Object.entries(_agentCycle).sort((a,b)=>{const aR=Object.values(a[1].r).reduce((s,v)=>s+v,0);const bR=Object.values(b[1].r).reduce((s,v)=>s+v,0);return bR-aR;});
   if(_agentEntries.length){
     _mopBdHtml+=`<div style="margin-top:12px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--brand);font-size:12px;font-weight:700"><span style="font-size:14px">›</span> Расшифровка по агентам</div><div style="display:none;padding:0 4px">`;
