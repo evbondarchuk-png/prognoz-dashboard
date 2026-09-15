@@ -472,7 +472,9 @@ function partitionTasks(state) {
   // С day → scheduled (включая done — они остаются с зачёркиванием)
   const scheduled = all.filter((t) => t.day);
   // TZ-A38: события Google Calendar — всегда с day, всегда в scheduled, никогда в inbox.
-  const gcal = Object.values(state.gcalEvents || {}).filter(Boolean);
+  // Егор 15.09: встречи Google Calendar скрываем по умолчанию (задачи Прогноза в приоритете).
+  // Кнопка «📅 Встречи» в тулбаре переключает видимость.
+  const gcal = window.__showGcal ? Object.values(state.gcalEvents || {}).filter(Boolean) : [];
   return { inbox, scheduled: scheduled.concat(gcal) };
 }
 
@@ -488,6 +490,7 @@ function render(state, mount) {
         <button class="vbtn ${state.view==='list'?'on':''}" data-v="list">📋 Список</button>
         <span class="views-sep"></span>
         <span class="views-anchor" title="Календарь">🗓</span>
+        <button class="vbtn ${window.__showGcal?'on':''}" data-action="toggle-gcal" title="Показать/скрыть встречи из Google Calendar" style="margin-left:6px">📅 Встречи</button>
         <button class="vbtn ${state.view==='day'?'on':''}" data-v="day">День</button>
         <button class="vbtn ${state.view==='3'?'on':''}" data-v="3">3 дня</button>
         <button class="vbtn ${state.view==='week'?'on':''}" data-v="week">Неделя</button>
