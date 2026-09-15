@@ -446,6 +446,7 @@
   </div>
 </div>
 
+<script type="module" src="/tutorial.js?v=1"></script>
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
@@ -1356,7 +1357,7 @@ function renderTasks(d){
  const dot = document.getElementById('taskDot'); if (dot) dot.textContent = cnt?' '+cnt:'';
 }
 
-function render(d){ window.__irDataDate=(d&&d.dataDate)||null; renderHero(d); renderMain(d); renderPrognoz(d); renderDepts(d); renderTasks(d); window.initIrCards&&window.initIrCards(); }
+function render(d){ if(!window.__tutInit){window.__tutInit=true;import("/tutorial.js").then(m=>m.initTutorial()).catch(()=>{});}  window.__irDataDate=(d&&d.dataDate)||null; renderHero(d); renderMain(d); renderPrognoz(d); renderDepts(d); renderTasks(d); window.initIrCards&&window.initIrCards(); }
 
 (async ()=>{
  const me=await requireAuth({ allowedRoles: ['aup','admin'] });

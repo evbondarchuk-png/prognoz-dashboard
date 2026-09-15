@@ -754,6 +754,7 @@
 .bd-desc{font-size:13.5px;color:var(--ink);line-height:1.55;max-width:46ch;margin:0 auto;text-align:left;opacity:.8}
 </style>
 
+<script type="module" src="/tutorial.js?v=1"></script>
 <script type="module">
 import { requireAuth, logout } from './auth-guard.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
@@ -3075,7 +3076,7 @@ function maybeShowCycleFinish(d){
  if(seen) return;
  setTimeout(()=>window.openCycleFinish(),450);
 }
-function render(d){ window.__irDataDate=(d&&d.dataDate)||null; renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); maybeShowCycleFinish(d); maybeAwardToast(d); }
+function render(d){ if(!window.__tutInit){window.__tutInit=true;import("/tutorial.js").then(m=>m.initTutorial()).catch(()=>{});}  window.__irDataDate=(d&&d.dataDate)||null; renderHero(d); renderMain(d); renderPrognoz(d); renderCoach(d); renderClients(); renderTasks(d); renderSvetofor(d); window.initIrCards&&window.initIrCards(); maybeShowCycleFinish(d); maybeAwardToast(d); }
 
 (async ()=>{
  const me=await requireAuth();
