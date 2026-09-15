@@ -1225,12 +1225,34 @@ function teamRowCommon(m){
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
     <td class="center"><a class="t-report" href="session-report.html?level=rop&code=${esc(m.code||'')}" target="_blank" style="color:var(--brand);font-size:var(--fs-12);font-weight:var(--fw-b);text-decoration:none;padding:4px 8px;border-radius:6px;background:var(--brand-soft);white-space:nowrap" title="Отчёт по отделу">📄 Отчёт</a></td></tr>`;
 }
+// Егор 15.09: помесячная динамика ИР — переключатель «ИР» / «% выполнения»
+window.__irDisplayMode = window.__irDisplayMode || 'ir';
+window.__irToggleMode = function(){
+  window.__irDisplayMode = window.__irDisplayMode === 'ir' ? 'exec' : 'ir';
+  const btn = document.getElementById('irModeBtn');
+  if (btn) btn.textContent = window.__irDisplayMode === 'ir' ? 'ИР' : '% выполнения';
+  // Перерисовать таблицу
+  const tab = document.querySelector('[data-team-panel="months"]');
+  if (tab) {
+    const rows = tab.querySelectorAll('[data-month-hist]');
+    rows.forEach(row => {
+      const hist = JSON.parse(row.dataset.monthHist || '[]');
+      const cells = row.querySelector('.month-cells');
+      if (cells) cells.innerHTML = _monthCells(hist);
+    });
+  }
+};
 function _monthCells(hist){
   if(!hist) return '<td colspan="6" class="center muted">—</td>';
   return hist.map(p=>{
     if(p.ir_pct==null) return `<td class="month-cell no_data">—</td>`;
     const cls=p.status==='ok'?'ok':p.status==='warn'?'warn':'bad';
-    return `<td class="month-cell ${cls}${p.is_current?' current':''}">${p.ir_pct}%</td>`;
+    let val = p.ir_pct;
+    if (window.__irDisplayMode === 'exec' && p.is_current && p.pace_norm) {
+      // % выполнения = ИР / норма темпа на дату × 100
+      val = Math.round(p.ir_pct / p.pace_norm * 100);
+    }
+    return `<td class="month-cell ${cls}${p.is_current?' current':''}" title="ИР: ${p.ir_pct}%">${val}%</td>`;
   }).join('');
 }
 function _trendSpark(hist){
@@ -1292,7 +1314,7 @@ function renderDepts(d){
    <div class="team-tabs" role="tablist">
      <button class="team-tab active" data-team-tab="common">📊 Общее</button>
      <button class="team-tab" data-team-tab="weeks">📅 В риске (неделя)</button>
-     <button class="team-tab" data-team-tab="months">📆 В риске (месяц)</button>
+     <button class="team-tab" data-team-tab="months">📆 Динамика ИР по месяцам</button>
    </div>
    <div class="team-panel active" data-team-panel="common">
      <div class="scroll-wrap"><table class="team-table">

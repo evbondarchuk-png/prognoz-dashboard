@@ -1568,14 +1568,26 @@ function teamRowCommon(m,idx){
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
     <td class="center"><a class="t-report" href="session-report.html?level=partner&code=${esc(m.code||'')}" target="_blank" style="color:var(--brand);font-size:var(--fs-12);font-weight:var(--fw-b);text-decoration:none;padding:4px 8px;border-radius:6px;background:var(--brand-soft);white-space:nowrap" title="Отчёт к наставнической сессии">📄 Отчёт</a></td></tr>`;
 }
+// Егор 15.09: помесячная динамика ИР — переключатель «ИР» / «% выполнения»
+window.__irDisplayMode = window.__irDisplayMode || 'ir';
+window.__irToggleMode = function(){
+  window.__irDisplayMode = window.__irDisplayMode === 'ir' ? 'exec' : 'ir';
+  const btn = document.getElementById('irModeBtn');
+  if (btn) btn.textContent = window.__irDisplayMode === 'ir' ? 'ИР' : '% вып.';
+  // Перерисовать таблицу
+  if (typeof renderTeam === 'function' && window.CTX && CTX.data) renderTeam(CTX.data);
+};
 function _monthCells(hist, idxs){
   if(!hist || !idxs || !idxs.length) return '<td colspan="1" class="center muted">—</td>';
-  // TZ-A30 правка Егора 18.06: рендерим только активные месяцы (idxs из renderTeam)
   return idxs.map(i=>hist[i]).map(p=>{
     if(!p || p.ir_pct==null) return `<td class="month-cell no_data">—</td>`;
     const cls=p.status==='ok'?'ok':p.status==='warn'?'warn':'bad';
     const cur=p.is_current?' current':'';
-    return `<td class="month-cell ${cls}${cur}">${p.ir_pct}%</td>`;
+    let val = p.ir_pct;
+    if (window.__irDisplayMode === 'exec' && p.is_current && p.pace_norm) {
+      val = Math.round(p.ir_pct / p.pace_norm * 100);
+    }
+    return `<td class="month-cell ${cls}${cur}" title="ИР: ${p.ir_pct}%">${val}%</td>`;
   }).join('');
 }
 function _trendSpark(hist){
