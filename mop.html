@@ -1154,11 +1154,12 @@ function _monthShortRu(ym){ const m=['янв','фев','мар','апр','май
 
 
 // 📋 Саммари месяца цикла (Егор 15.09): краткий отчёт по каждому месяцу — как шла группа
-function _prgMonthlySummary(pt, mode) {
+function _prgMonthlySummary(pt, mode, agentCycle) {
   const months = pt.monthly || [];
   if (!months.length) return '';
   const isVal = mode !== 'dohod';
   const fmt = _prgFmtFull;
+  const first = (n) => (n || '').split(' ')[1] || (n || '').split(' ')[0] || '?';
 
   const rows = months.map(m => {
     const fact = isVal ? (m.fact_revenue || 0) : (m.fact_income || 0);
@@ -1166,25 +1167,72 @@ function _prgMonthlySummary(pt, mode) {
     const fcst = isVal ? (m.forecast_revenue || 0) : (m.forecast_income || 0);
     const pct = plan > 0 ? Math.round((m.is_current ? Math.max(fact, fcst) : fact) / plan * 100) : 0;
 
-    // Комментарий
+    // ── Детальный комментарий по агентам (Егор 15.09) ──
+    // agentCycle[code].monthly[ym] = {revenue: {b_sec: X, ...}, deals: {...}}
+    let detailLines = [];
+    if (agentCycle && !m.is_future) {
+      // Собрать валы агентов за этот месяц
+      const agents = [];
+      for (const [code, ad] of Object.entries(agentCycle)) {
+        const md = ad.monthly && ad.monthly[m.ym];
+        if (!md) continue;
+        const rev = Object.values(md.revenue || {}).reduce((s, v) => s + (v || 0), 0);
+        const deals = Object.values(md.deals || {}).reduce((s, v) => s + (v || 0), 0);
+        agents.push({ code, name: ad.name || code, rev: Math.round(rev), deals });
+      }
+      agents.sort((a, b) => b.rev - a.rev);
+
+      const withRev = agents.filter(a => a.rev > 0);
+      const withoutRev = agents.filter(a => a.rev === 0);
+
+      // Топ-3 вытянувших
+      if (withRev.length > 0) {
+        const top3 = withRev.slice(0, 3);
+        const topTxt = top3.map(a => `${first(a.name)} — ${fmt(a.rev)} ₽${a.deals ? ` (${a.deals} сд.)` : ''}`).join(', ');
+        detailLines.push(`💪 Вытянули: ${topTxt}`);
+        if (withRev.length > 3) detailLines.push(`   и ещё ${withRev.length - 3} с валом`);
+      } else {
+        detailLines.push(m.is_current ? '⏳ Вал пока нулевой у всех' : '📉 Вал за месяц — 0 у всех');
+      }
+
+      // Кто не смог
+      if (withoutRev.length > 0 && !m.is_current) {
+        const names = withoutRev.slice(0, 4).map(a => first(a.name)).join(', ');
+        const suffix = withoutRev.length > 4 ? ` и ещё ${withoutRev.length - 4}` : '';
+        detailLines.push(`❌ Без вала: ${names}${suffix} (${withoutRev.length} чел)`);
+      } else if (withoutRev.length > 0 && m.is_current) {
+        const names = withoutRev.slice(0, 3).map(a => first(a.name)).join(', ');
+        detailLines.push(`⏳ Пока без вала: ${names}${withoutRev.length > 3 ? ` +${withoutRev.length - 3}` : ''}`);
+      }
+
+      // Разница лучший vs худший
+      if (withRev.length >= 2) {
+        const gap = withRev[0].rev - withRev[withRev.length - 1].rev;
+        if (gap > 0) detailLines.push(`📊 Разрыв ${first(withRev[0].name)} → ${first(withRev[withRev.length - 1].name)}: ${fmt(gap)} ₽`);
+      }
+    }
+
+    // Общий статус месяца
     let comment = '';
     let commentColor = 'var(--muted)';
     if (m.is_future) {
       comment = 'предстоящий месяц';
     } else if (m.is_current) {
       const total = Math.max(fact, fcst);
-      if (total >= plan) { comment = 'прогноз ≥ плана — идём в цель ✅'; commentColor = 'var(--ok)'; }
-      else if (pct >= 80) { comment = 'прогноз ' + pct + '% — почти в цели'; commentColor = 'var(--warn)'; }
+      if (total >= plan) { comment = 'прогноз ≥ плана ✅'; commentColor = 'var(--ok)'; }
+      else if (pct >= 80) { comment = 'прогноз ' + pct + '%'; commentColor = 'var(--warn)'; }
       else { comment = 'прогноз ' + pct + '% — темпа не хватает'; commentColor = 'var(--bad)'; }
     } else {
       if (fact >= plan) { comment = 'план выполнен ✅'; commentColor = 'var(--ok)'; }
-      else if (pct >= 80) { comment = 'почти (' + pct + '%) — чуть не хватило'; commentColor = 'var(--warn)'; }
+      else if (pct >= 80) { comment = 'почти (' + pct + '%)'; commentColor = 'var(--warn)'; }
       else if (pct >= 50) { comment = 'недобор ' + (100 - pct) + '%'; commentColor = 'var(--bad)'; }
       else { comment = 'сильный недобор (' + pct + '%)'; commentColor = 'var(--bad)'; }
     }
 
-    const status = m.is_current ? ' current' : (m.is_future ? ' future' : '');
     const fcstHtml = m.is_current && fcst > fact ? ` <span style="color:#3b82f6;font-size:11px">→ ${fmt(fcst)} ₽</span>` : '';
+    const detailHtml = detailLines.length
+      ? `<div style="margin-top:4px;font-size:11px;color:var(--ink);line-height:1.5">${detailLines.map(l => `<div>${l}</div>`).join('')}</div>`
+      : '';
 
     return `<tr style="border-bottom:1px solid var(--line)">
       <td style="padding:8px 10px;font-weight:700;font-size:13px;white-space:nowrap">${_monthShortRu(m.ym)} ${m.ym.slice(2,4)}${m.is_current ? ' <span style="font-size:10px;color:var(--brand)">●</span>' : ''}</td>
@@ -1195,7 +1243,10 @@ function _prgMonthlySummary(pt, mode) {
       <td style="padding:8px 10px;font-size:13px;font-weight:700;text-align:center;min-width:50px">
         ${plan > 0 ? `<span style="color:${pct >= 100 ? 'var(--ok)' : pct >= 80 ? 'var(--warn)' : 'var(--bad)'}">${pct}%</span>` : '—'}
       </td>
-      <td style="padding:8px 10px;font-size:12px;color:${commentColor};line-height:1.4">${comment}</td>
+      <td style="padding:8px 10px;font-size:12px;line-height:1.4;min-width:280px">
+        <div style="color:${commentColor};font-weight:700;margin-bottom:${detailLines.length ? '2px' : '0'}">${comment}</div>
+        ${detailHtml}
+      </td>
     </tr>`;
   }).join('');
 
@@ -1208,13 +1259,14 @@ function _prgMonthlySummary(pt, mode) {
           <th style="padding:6px 10px;text-align:right;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted)">${isVal ? 'Вал' : 'Доход'}</th>
           <th style="padding:6px 10px;text-align:right;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted)">План</th>
           <th style="padding:6px 10px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted)">%</th>
-          <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted)">Комментарий</th>
+          <th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted)">Как шла группа</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
   </div>`;
 }
+
 
 function renderPrognoz(d){
   const pt = d.prognoz_tab;
@@ -1287,7 +1339,7 @@ function renderPrognoz(d){
       <button onclick="prgSetMode('val')" style="border:none;background:${mode==='val'?'var(--surface,#fff)':'transparent'};font-family:inherit;font-size:12px;font-weight:700;color:${mode==='val'?'var(--brand)':'var(--muted)'};padding:6px 15px;border-radius:999px;cursor:pointer">Вал (оборот)</button>
     </div>
     <div id="prg-bars-wrap"></div>
-    ${_prgMonthlySummary(pt, mode)}
+    ${_prgMonthlySummary(pt, mode, _agentCycle)}
     ${_mopBdHtml}
   </div>`);
   root.innerHTML = out.join('');
