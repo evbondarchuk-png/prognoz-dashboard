@@ -735,11 +735,11 @@ function goalsMopHTML(g) {
 // плитки ИР месяца / недели
 function statTilesHTML(h) {
   const irM = h.ir_month, irW = h.ir_week, d = h.ir_week_delta;
-  const clr = (v) => v == null ? 'var(--muted)' : v >= 70 ? 'var(--ok)' : v >= 40 ? 'var(--warn)' : 'var(--bad)';
+  const clr = (v) => v == null ? 'var(--muted)' : v === 0 ? 'var(--warn)' : v === 0 ? 'var(--warn)' : v >= 70 ? 'var(--ok)' : v >= 40 ? 'var(--warn)' : 'var(--bad)';
   const deltaTxt = (d != null && Math.abs(d) >= 1) ? ` <span style="color:${d > 0 ? 'var(--ok)' : 'var(--bad)'};font-size:13px;font-weight:700">${d > 0 ? '▲+' : '▼'}${d}</span>` : '';
   return `<div class="ir-tiles">
     <div class="ir-tile"><div class="tk">ИР месяца</div><div class="tv" style="color:${clr(irM)}">${irM != null ? irM + '%' : '—'}</div><div class="tn">норма 70%</div></div>
-    <div class="ir-tile"><div class="tk">ИР недели</div><div class="tv" style="color:${clr(irW)}">${irW != null ? irW + '%' : '—'}${deltaTxt}</div><div class="tn">за неделю</div></div>
+    <div class="ir-tile"><div class="tk">ИР прирост за нед</div><div class="tv" style="color:${clr(irW)}">${irW != null ? irW + '%' : '—'}${deltaTxt}</div><div class="tn">за неделю</div></div>
   </div>`;
 }
 // человеческая выжимка по плану/прогнозу/цели (с эмодзи)
@@ -1001,7 +1001,7 @@ function groupsTableHTML(state) {
   return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr style="background:var(--surface-2)">
       <th style="padding:8px;text-align:left">Старший партнёр</th>
-      <th style="padding:8px;text-align:right">ИР неделя</th>
+      <th style="padding:8px;text-align:right">ИР прирост за нед</th>
       <th style="padding:8px;text-align:right">Партнёров</th>
       <th style="padding:8px;text-align:right">План</th>
       <th style="padding:8px;text-align:right">Факт</th>
@@ -1021,7 +1021,7 @@ function riskGroupsListHTML(risk) {
     <span class="tco">🔴</span>
     <div class="trc">
       <div class="trn">${esc(g.name)}</div>
-      <div class="trm">ИР нед ${g.ir_week != null ? g.ir_week + '%' : '—'} · ИР мес ${g.ir_month != null ? g.ir_month + '%' : '—'} · ${g.underperformers} из ${g.partners_count} партнёров в риске</div>
+      <div class="trm">ИР прирост за нед ${g.ir_week != null ? g.ir_week + '%' : '—'} · ИР мес ${g.ir_month != null ? g.ir_month + '%' : '—'} · ${g.underperformers} из ${g.partners_count} партнёров в риске</div>
     </div>
     <a href="session-report.html?level=mop&code=${esc(g.code)}" target="_blank" class="trst" style="background:var(--brand-soft);color:var(--brand);text-decoration:none">📄 Отчёт</a>
   </div>`).join('');
@@ -1073,7 +1073,7 @@ function renderRop(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">3</span> Какие группы в риске</div>
-      <div class="sec-sub">Группы с ИР нед &lt; 70%. Открой 📄 — увидишь поимённый разбор группы.</div>
+      <div class="sec-sub">Группы с ИР прирост за нед &lt; 70%. Открой 📄 — увидишь поимённый разбор группы.</div>
       ${riskGroupsListHTML(r.risk)}
     </div>
 
@@ -1116,7 +1116,7 @@ function coachCardHTML(text) {
   if (!text) return '';
   return `<div class="coach-card"><div class="fox">🦊</div><div><div class="cl">Наставник говорит</div><div class="ct">${esc(text)}</div></div></div>`;
 }
-// 📈 тренд ИР недели (спарклайн последних дней)
+// 📈 тренд ИР прирост за нед (спарклайн последних дней)
 function irTrendHTML(t) {
   if (!t || !t.points || t.points.length < 3) return '';
   const vals = t.points;
@@ -1129,7 +1129,7 @@ function irTrendHTML(t) {
   const dirTxt = t.dir === 'up' ? '<span class="trend-up">↗ растёт</span>' : t.dir === 'down' ? '<span class="trend-dn">↘ просел</span>' : '<span class="trend-fl">→ ровно</span>';
   return `<div class="trend-row" style="margin-bottom:16px">
     <div class="trend-spark">${bars}</div>
-    <div class="trend-meta"><div>📈 <b>Тренд ИР недели</b></div><div class="muted">последние ${vals.length} дней · сейчас <b>${t.now != null ? t.now + '%' : '—'}</b> · ${dirTxt}</div></div>
+    <div class="trend-meta"><div>📈 <b>Тренд ИР прирост за нед</b></div><div class="muted">последние ${vals.length} дней · сейчас <b>${t.now != null ? t.now + '%' : '—'}</b> · ${dirTxt}</div></div>
   </div>`;
 }
 // 📥 активность / застой
@@ -1205,15 +1205,15 @@ function peersHTML(p) {
   const fonHTML = cards.length ? `<div class="fon">${cards.join('')}</div>` : '';
   return fonHTML + groupLeaderboardHTML(p.leaderboard);
 }
-// 🏆 полный рейтинг группы по ИР недели, своя строка выделена (по образцу groupCompareHTML у МОПа)
+// 🏆 полный рейтинг группы по ИР прирост за нед, своя строка выделена (по образцу groupCompareHTML у МОПа)
 function groupLeaderboardHTML(lb) {
   if (!lb || !lb.length) return '';
   const rows = lb.map((g, i) => {
     const w = Math.max(2, Math.min(100, Math.round(g.ir_week)));
-    const clr = g.self ? '#16a34a' : (g.ir_week >= 70 ? '#16a34a' : g.ir_week >= 30 ? '#d97706' : '#dc2626');
+    const clr = g.self ? '#16a34a' : (g.ir_week === 0 ? '#d97706' : g.ir_week >= 70 ? '#16a34a' : g.ir_week >= 30 ? '#d97706' : '#dc2626');
     return `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${i + 1}. ${esc(g.name)}${g.self ? ' (ты)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%;background:${clr}"></span><span class="gnorm" title="норма 70%"></span></span><span class="gv">${Math.round(g.ir_week)}%</span></div>`;
   }).join('');
-  return `<div class="block-title" style="margin-top:14px">Рейтинг группы по ИР недели</div>${rows}`;
+  return `<div class="block-title" style="margin-top:14px">Рейтинг группы по ИР прирост за нед</div>${rows}`;
 }
 function awardChipsHTML(chips) {
   if (!chips || !chips.length) return '';

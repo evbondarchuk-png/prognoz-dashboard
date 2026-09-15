@@ -738,7 +738,7 @@ function renderTiles(o){
   // недель)/25%. Закрытые недели красим плоско 70/50; ТЕКУЩУЮ — соразмерно
   // прошедшим дням (путь ≥ доли дней → зелёный, 80–99% доли → жёлтый).
   const dn=_weekDayNorm();
-  const c = state==='current'
+  const c = v===0 ? 'var(--warn)' : state==='current'
     ? (v>=dn?'var(--ok)':(v>=dn*0.8?'var(--warn)':'var(--bad)'))
     : (v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)');
   const tip = state==='current' ? ` title="Текущая неделя: путь от 25%×закрытых недель до следующей границы (25% месячного ИР). Норма на сегодня — ${dn}% пути (по дням)"` : '';
@@ -1282,7 +1282,7 @@ function _irWeekRelFixed(v){
 
 
 function _weekPathStatus(v){ const n=_weekDayNorm(); if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
-function _weekPathColor(v){ const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
+function _weekPathColor(v){ if(v===0) return 'var(--warn)'; const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 // Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа (недели 1–7/8–14/15–21/22–конец →
 // 25/50/75/100%, внутри недели пропорционально дню; от ДАТЫ ДАННЫХ). Цвет: ≥норматива —
 // зелёный, 80–99% норматива — жёлтый, <80% — красный. Недельный ИР (_irStatus) не трогаем.
@@ -1331,7 +1331,7 @@ window.showIrWeeks=function(el){
   parts.forEach(function(p){var kv=p.split(':');if(kv[0]==='cur')cur=kv[1];else weeks.push({n:kv[0],v:kv[1]});});
   // Егор 03.09: недели = ПРИРОСТ месячного ИР (дельта от прошлой границы)
   var _prev=0; weeks=weeks.map(function(w){var has=w.v!==''&&w.v!=null;var val=has?parseInt(w.v,10):null;var d=(has&&!isNaN(val))?val-_prev:null; if(has&&!isNaN(val))_prev=val; return {n:w.n,d:(d==null||isNaN(d))?null:Math.max(0,Math.min(100,Math.round(d*4)))};}); // нед.шкала 25%=100
-  function cellHtml(label,v,isCur){var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;var dn=_weekDayNorm();var c=!has?'#9ca3af':n>=(isCur?dn:70)?'#16a34a':n>=(isCur?dn*0.8:50)?'#d97706':'#dc2626'; return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div></div>';}
+  function cellHtml(label,v,isCur){var has=v!==''&&v!=null;var n=has?parseInt(v,10):null;var dn=_weekDayNorm();var c=!has?'#9ca3af':n===0?'#d97706':n>=(isCur?dn:70)?'#16a34a':n>=(isCur?dn*0.8:50)?'#d97706':'#dc2626'; return '<div class="iwp-cell'+(isCur?' cur':'')+'"><div class="iwp-lbl">'+label+'</div><div class="iwp-val" style="color:'+c+'">'+(has?v+'%':'—')+'</div></div>';}
   var cells=weeks.map(function(w){return cellHtml('Нед '+w.n,(w.d==null?'':String(w.d)),false);}).join('');
   if(cur!=null)cells+=cellHtml('Тек.',cur,true);
   if(!cells)cells='<div class="iwp-empty">Завершённых недель ещё нет</div>';

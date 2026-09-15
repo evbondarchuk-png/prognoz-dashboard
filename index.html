@@ -781,7 +781,7 @@ function _weekDayNorm(){
 }
 // Статус «ИР нед» (путь недели): ≥доли дней — зелёный, 80–99% — жёлтый, ниже — красный.
 function _weekPathStatus(v){ const n=_weekDayNorm(); if(v>=n) return 'ok'; if(v>=n*0.8) return 'warn'; return 'bad'; }
-function _weekPathColor(v){ const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
+function _weekPathColor(v){ if(v===0) return 'var(--warn)'; const s=_weekPathStatus(v); return s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--bad)'; }
 function barColor(pct,isRev){ if(isRev) return 'var(--gold)'; if(pct>=70) return 'var(--ok)'; if(pct>=40) return 'var(--warn)'; return 'var(--bad)'; }
 // Егор 02.09: МЕСЯЧНЫЙ ИР красим по нормативу темпа. Норматив на дату данных:
 // недели 1–7/8–14/15–21/22–конец → 25/50/75/100%, внутри недели пропорционально
