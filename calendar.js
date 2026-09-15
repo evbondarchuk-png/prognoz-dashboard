@@ -528,6 +528,12 @@ function render(state, mount) {
       render(state, mount);
     };
   });
+  const gcalBtn = mount.querySelector('[data-action="toggle-gcal"]');
+  if (gcalBtn) gcalBtn.onclick = () => {
+    window.__showGcal = !window.__showGcal;
+    gcalBtn.classList.toggle('on', window.__showGcal);
+    render(state, mount);
+  };
   mount.querySelector('[data-nav="prev"]').onclick = () => navigate(state, mount, -1);
   mount.querySelector('[data-nav="next"]').onclick = () => navigate(state, mount, +1);
   mount.querySelector('[data-nav="today"]').onclick = () => navigate(state, mount, 0);
