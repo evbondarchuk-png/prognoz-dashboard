@@ -396,22 +396,56 @@ window.__tutAsk = async function() {
   if (!inp || !el || !inp.value.trim()) return;
   const q = inp.value.trim();
   inp.value = '';
+
+  // 1) Сначала — база знаний (мгновенно, без ИИ)
+  const role = detectRole();
+  const pool = [...(TOPICS[role] || []), ...COMMON].filter(Boolean);
+  const ql = q.toLowerCase();
+
+  // Поиск по заголовку и тексту
+  let best = null;
+  let bestScore = 0;
+  for (const t of pool) {
+    const titleL = t.title.toLowerCase();
+    const textL = t.text.toLowerCase();
+    let score = 0;
+    // Слова из вопроса
+    const words = ql.split(/[\s,?!]+/).filter(w => w.length > 2);
+    for (const w of words) {
+      if (titleL.includes(w)) score += 3;
+      if (textL.includes(w)) score += 1;
+    }
+    if (score > bestScore) { bestScore = score; best = t; }
+  }
+  if (best && bestScore >= 3) {
+    window.__tutShow(best.id);
+    return;
+  }
+
+  // 2) ИИ через Прогношу (отвечает о ДАННЫХ пользователя)
   el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px">⏳ Думаю…</div>';
   try {
     const r = await window.__call('askPrognosha', { question: q });
     const text = r && (r.answer || r.text) || '';
-    if (text) {
+    if (text && text.length > 5) {
       el.innerHTML = `<div style="white-space:pre-line">${text}</div>`;
-    } else {
-      throw new Error('empty');
+      return;
     }
+    throw new Error('empty');
   } catch (e) {
+    // 3) ИИ не ответил — показать ближайшие темы из KB
+    const related = pool.slice(0, 4).map(t =>
+      `<div style="padding:6px 0"><b onclick="window.__tutShow('${t.id}')" style="color:var(--brand);cursor:pointer">${t.icon} ${t.title}</b></div>`
+    ).join('');
     el.innerHTML = `
-      <div style="padding:20px;text-align:center">
-        <div style="font-size:28px;margin-bottom:8px">🤔</div>
-        <div style="font-size:14px;color:var(--ink);margin-bottom:6px">Не нашёл точный ответ</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Попробуй переформулировать или выбери тему слева</div>
-        <button style="font-size:12px;font-weight:700;padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-family:inherit" onclick="window.__tutEscalate('${encodeURIComponent(q)}')">📩 Спросить руководителя</button>
+      <div style="padding:16px">
+        <div style="font-size:14px;color:var(--ink);margin-bottom:6px">🤔 ИИ не нашёл ответ на этот вопрос</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Возможно, ты имел(а) в виду:</div>
+        ${related}
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+          <button style="font-size:12px;font-weight:700;padding:8px 16px;border-radius:8px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit" onclick="window.__tutEscalate('${encodeURIComponent(q)}')">📩 Спросить руководителя</button>
+          <span style="font-size:11px;color:var(--muted);margin-left:8px">Передадим твой вопрос — ответ придёт в чат-бот</span>
+        </div>
       </div>`;
   }
 };
