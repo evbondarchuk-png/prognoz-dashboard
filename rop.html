@@ -731,7 +731,7 @@ function renderTiles(o){
  // берём последние completedWeeks значений (это завершённые недели текущего месяца)
  // Егор 03.09: квадраты = прирост месячного ИР за неделю (дельты границ 7/14/21/конец)
  // недельная шкала: 25% месячного ИР = 100% недели (кап 100)
-  const wk=((o.weekDeltas&&o.weekDeltas.deltas)||[]).slice(0,completedWeeks).map(v=>v==null?null:Math.min(100,Math.round(v*4)));
+  const wk=((o.weekDeltas&&o.weekDeltas.deltas)||[]).slice(0,completedWeeks).map(v=>(v==null||isNaN(v))?null:Math.min(100,Math.round(v)));
  const irCurWeek = (o.weekDeltas && typeof o.weekDeltas.current === 'number') ? Math.min(100, o.weekDeltas.current) : null; // Егор 08.09: current с бэка уже в недельной шкале
  const cellW=(v,state)=>{
   if(state==='empty' || v==null) return `<div class="ir-wk-cell empty">—</div>`;
