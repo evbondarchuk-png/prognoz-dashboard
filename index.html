@@ -2614,51 +2614,6 @@ function svetoforGraphCard(d){
  </div>`;
 }
 
-function svetoforValIncomeCard(d){
- const u=d.user||{};
- const inc=u.income_month||0, stz=u.stazh_months||0;
- const fc=d.forecast||{};
- const cm=fc.current_month||{}, nm=fc.next_month||{};
- const factRev=Number(cm.fact_revenue)||0;
- const fcstRev=Number(cm.forecast_revenue)||0;
- const totRev=Number(cm.revenue_total)||0;
- const nmTot=Number(nm.revenue_total)||0;
- const fmt=n=>{n=Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' млн'; if(n>=1e3) return Math.round(n/1e3)+'к'; return String(Math.round(n));};
- // Средние за стаж (archive.income — средний доход, вал = доход/0.48)
- const avgInc=inc, avgVal=inc>0?Math.round(inc/0.48):0;
- const rows=[];
- if(factRev>0 || totRev>0){
-  rows.push({mo:'июл · факт', val:factRev, doch:Math.round(factRev*0.48), cls:'fact'});
- }
- if(totRev>factRev && totRev>0){
-  rows.push({mo:'июл · прогноз', val:totRev, doch:Math.round(totRev*0.48), cls:'fc'});
- }
- if(nmTot>0){
-  rows.push({mo:'авг · прогноз', val:nmTot, doch:Math.round(nmTot*0.48), cls:'fc'});
- }
- const rowsHtml=rows.map(r=>{
-  const pct=r.val>0?Math.min(100,Math.round(r.val/Math.max(avgVal*1.5, r.val)*100)):0;
-  const fillW=Math.min(100, pct);
-  const bar=r.cls==='fact'?'background:var(--ok)':'background:var(--buyer)';
-  return `<tr class="${r.cls}"><td>${r.mo}</td><td>${fmt(r.val)}</td><td>${fmt(r.doch)}</td><td><div class="sv-bar"><div class="sv-bar-fill" style="width:${fillW}%;${bar}"></div></div></td></tr>`;
- }).join('');
- if(!rows.length){
-  return `<div class="card"><div class="section-title">📊 На чём основан прогноз — вал и доход</div>
-  <div class="soon">Прогноз вала появится, как только будут данные.</div></div>`;
- }
- return `<div class="card">
-  <div class="section-title">📊 На чём основан прогноз — вал и доход</div>
-  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-   <div class="sv-stat"><div class="sv-stat-cap">средний вал</div><div class="sv-stat-val">${fmt(avgVal)} ₽</div><div class="sv-stat-sub">за ${stz||'?'} мес стажа</div></div>
-   <div class="sv-stat"><div class="sv-stat-cap">средний доход</div><div class="sv-stat-val">${fmt(avgInc)} ₽</div><div class="sv-stat-sub">вал × 0,48</div></div>
-  </div>
-  <table class="sv-tbl"><thead><tr><th>месяц</th><th>вал</th><th>доход</th><th style="width:35%"></th></tr></thead><tbody>${rowsHtml}</tbody></table>
-  <div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">
-   Место в светофоре = <b>средний доход за окно min(стаж, 12) мес</b>. Прогноз считает new_avg = (income × период + вал×0,48) / (период+1).
-  </div>
- </div>`;
-}
-
 function svetoforCalculatorCard(d){
  var u=(d&&d.user)||{};
  var inc=u.income_month||0, stz=u.stazh_months||0;
@@ -2696,7 +2651,7 @@ function svetoforCalculatorCard(d){
 }
 
 function svetoforForecastCard(d){
- return svetoforGraphCard(d) + svetoforValIncomeCard(d) + svetoforCalculatorCard(d);
+ return svetoforGraphCard(d) + svetoforCalculatorCard(d);
 }
 
 function renderSvetofor(d){
