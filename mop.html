@@ -397,6 +397,20 @@
 .month-cell.bad{background:var(--bad-bg);color:var(--bad)}
 .month-cell.current{outline:2px solid var(--brand);outline-offset:-2px}
 .month-cell.no_data{color:var(--muted-2,var(--muted));font-weight:var(--fw-r)}
+/* Егор 16.09: остатки ИР на границах недель (динамика ИР по месяцам) */
+.ck-legend{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3);flex-wrap:wrap}
+.ck-mode-btn{border:1px solid var(--line);background:var(--brand-soft);color:var(--brand);font-weight:var(--fw-b);font-size:var(--fs-12);padding:4px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.ck-month{min-width:136px}
+.ck-month.current{outline:2px solid var(--brand);outline-offset:-2px;border-radius:var(--r-sm)}
+.ck-row{display:flex;gap:3px;justify-content:center;align-items:stretch}
+.ck-chip{flex:1;min-width:29px;text-align:center;border-radius:6px;padding:2px 1px;display:flex;flex-direction:column;align-items:center;line-height:1.15}
+.ck-chip .ck-lbl{font-size:8.5px;font-weight:600;opacity:.62;text-transform:uppercase}
+.ck-chip .ck-val{font-size:11.5px;font-weight:var(--fw-b)}
+.ck-chip.ok{background:var(--ok-bg);color:var(--ok)}
+.ck-chip.warn{background:#fef9c3;color:#854d0e}
+.ck-chip.bad{background:var(--bad-bg);color:var(--bad)}
+.ck-chip.no_data{color:var(--muted-2,var(--muted));font-weight:var(--fw-r);justify-content:center}
+.ck-chip.cur{border-left:2px solid var(--brand);border-radius:0 6px 6px 0}
 .month-spark{height:30px;display:block;margin:0 auto}
 .month-trend{font-size:var(--fs-11);color:var(--muted);margin-top:2px;text-align:center}
 .month-trend.ok{color:var(--ok)} .month-trend.warn{color:var(--warn)} .month-trend.bad{color:var(--bad)} .month-trend.flat{color:var(--muted)}
@@ -1686,26 +1700,48 @@ function teamRowCommon(m,idx){
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span>${plan>0?`<span class="t-pct ${_pctStatus(fcPct)}">${fcPct}%</span>`:''}</div></td>
     <td class="center"><a class="t-report" href="session-report.html?level=partner&code=${esc(m.code||'')}" target="_blank" style="color:var(--brand);font-size:var(--fs-12);font-weight:var(--fw-b);text-decoration:none;padding:4px 8px;border-radius:6px;background:var(--brand-soft);white-space:nowrap" title="Отчёт к наставнической сессии">📄 Отчёт</a></td></tr>`;
 }
-// Егор 15.09: помесячная динамика ИР — переключатель «ИР» / «% выполнения»
+// Егор 16.09: «Динамика ИР по месяцам» — остатки месячного ИР на границах недель:
+// Н1 — на 8-е за 7-е, Н2 — на 15-е за 14-е, Н3 — на 22-е за 21-е, ИТ — на 1-е
+// следующего месяца за последний день. Нормы темпа: 25/50/75/100% (как в попапе
+// «ИР месяца по неделям»). Переключатель «ИР» ↔ «% выполнения» (ИР/норма×100).
 window.__irDisplayMode = window.__irDisplayMode || 'ir';
 window.__irToggleMode = function(){
   window.__irDisplayMode = window.__irDisplayMode === 'ir' ? 'exec' : 'ir';
   const btn = document.getElementById('irModeBtn');
   if (btn) btn.textContent = window.__irDisplayMode === 'ir' ? 'ИР' : '% вып.';
-  // Перерисовать таблицу
   if (typeof renderTeam === 'function' && window.CTX && CTX.data) renderTeam(CTX.data);
 };
+function _ckDDMM(s){ const p=String(s||'').split('-'); return p.length===3 ? p[2]+'.'+p[1] : (s||''); }
+function _ckChip(ck){
+  if (!ck || ck.ir_pct == null) return `<div class="ck-chip no_data" title="${esc(ck ? ck.label : '')}">—</div>`;
+  const exec = window.__irDisplayMode === 'exec';
+  const val = exec ? Math.round(ck.ir_pct / ck.norm * 100) : ck.ir_pct;
+  const cls = ck.ir_pct >= ck.norm ? 'ok' : ck.ir_pct >= ck.norm * 0.8 ? 'warn' : 'bad';
+  const title = `${ck.label} · остаток на ${_ckDDMM(ck.on)} за ${_ckDDMM(ck.through)}: ${ck.ir_pct}% (норма ${ck.norm}%)`;
+  return `<div class="ck-chip ${cls}" title="${esc(title)}"><span class="ck-lbl">${esc(ck.label)}</span><span class="ck-val">${val}%</span></div>`;
+}
 function _monthCells(hist, idxs){
   if(!hist || !idxs || !idxs.length) return '<td colspan="1" class="center muted">—</td>';
   return idxs.map(i=>hist[i]).map(p=>{
-    if(!p || p.ir_pct==null) return `<td class="month-cell no_data">—</td>`;
-    const cls=p.status==='ok'?'ok':p.status==='warn'?'warn':'bad';
-    const cur=p.is_current?' current':'';
-    let val = p.ir_pct;
-    if (window.__irDisplayMode === 'exec' && p.is_current && p.pace_norm) {
-      val = Math.round(p.ir_pct / p.pace_norm * 100);
+    // Фолбэк: ответ бэка из кэша без checkpoints (первые ~45 мин после деплоя)
+    if(!p || !p.checkpoints){
+      if(!p || p.ir_pct==null) return `<td class="month-cell no_data">—</td>`;
+      const cls=p.status==='ok'?'ok':p.status==='warn'?'warn':'bad';
+      const cur=p.is_current?' current':'';
+      let val = p.ir_pct;
+      if (window.__irDisplayMode === 'exec' && p.is_current && p.pace_norm) val = Math.round(p.ir_pct / p.pace_norm * 100);
+      return `<td class="month-cell ${cls}${cur}" title="ИР: ${p.ir_pct}%">${val}%</td>`;
     }
-    return `<td class="month-cell ${cls}${cur}" title="ИР: ${p.ir_pct}%">${val}%</td>`;
+    // Текущий месяц: живой ИР отдельным чипом «сейчас» (как в попапе недель)
+    let live = '';
+    if (p.is_current && p.ir_pct != null) {
+      const norm = p.pace_norm || 100;
+      const exec = window.__irDisplayMode === 'exec';
+      const val = exec ? Math.round(p.ir_pct / norm * 100) : p.ir_pct;
+      const cls = p.ir_pct >= norm ? 'ok' : p.ir_pct >= norm * 0.8 ? 'warn' : 'bad';
+      live = `<div class="ck-chip cur ${cls}" title="Сейчас: ${p.ir_pct}% (норма темпа на сегодня ${norm}%)"><span class="ck-lbl">сейчас</span><span class="ck-val">${val}%</span></div>`;
+    }
+    return `<td class="ck-month${p.is_current ? ' current' : ''}"><div class="ck-row">${p.checkpoints.map(_ckChip).join('')}${live}</div></td>`;
   }).join('');
 }
 function _trendSpark(hist){
@@ -1762,7 +1798,7 @@ function renderTeam(d){
  const allHdrs=[];
  for(let i=5;i>=1;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); allHdrs.push({label:mn[d.getMonth()],idx:5-i}); }
  allHdrs.push({label:mn[now.getMonth()],idx:5});
- const hasData=i=>sorted.some(m=>m.ir_history && m.ir_history[i] && m.ir_history[i].ir_pct!=null);
+ const hasData=i=>sorted.some(m=>m.ir_history && m.ir_history[i] && (m.ir_history[i].ir_pct!=null || Array.isArray(m.ir_history[i].checkpoints) && m.ir_history[i].checkpoints.some(c=>c && c.ir_pct!=null)));
  const activeMonths=allHdrs.filter(h=>hasData(h.idx));
  const monthHdrs=activeMonths.map(h=>h.label);
  const monthIdxs=activeMonths.map(h=>h.idx);
@@ -1775,7 +1811,7 @@ function renderTeam(d){
    <div class="team-tabs" role="tablist">
      <button class="team-tab active" data-team-tab="common">📊 Общее</button>
      <button class="team-tab" data-team-tab="weeks">📅 В риске (неделя)</button>
-     <button class="team-tab" data-team-tab="months">📆 В риске (месяц)</button>
+     <button class="team-tab" data-team-tab="months">📆 Динамика ИР по месяцам</button>
    </div>
    <div class="team-panel active" data-team-panel="common">
      <div class="scroll-wrap"><table class="team-table">
@@ -1814,12 +1850,15 @@ function renderTeam(d){
    </div>
    <div class="team-panel" data-team-panel="months">
      ${monthHdrs.length?`
-     <div class="muted" style="margin-bottom:var(--sp-3)">Выполнение ИР по месяцам для каждого партнёра. Показаны только месяцы с накопленными данными.</div>
+     <div class="ck-legend">
+       <div class="muted">Н1 — остаток на 8-е за 7-е · Н2 — на 15-е за 14-е · Н3 — на 22-е за 21-е · ИТ — на 1-е след. месяца за последний день · нормы 25/50/75/100%</div>
+       <button id="irModeBtn" class="ck-mode-btn" onclick="window.__irToggleMode()">ИР</button>
+     </div>
      <div class="scroll-wrap"><table class="team-table">
        <thead><tr><th>Партнёр</th>${monthHdrs.map((m,i)=>`<th class="center">${m}${i===monthHdrs.length-1&&monthIdxs[i]===5?'<br><span style="font-weight:var(--fw-r);text-transform:none">текущий</span>':''}</th>`).join('')}<th class="center">Тренд</th><th></th></tr></thead>
        <tbody>${sorted.map(m=>teamRowMonth(m,monthIdxs)).join('')}</tbody>
      </table></div>`:`
-     <div class="muted" style="padding:var(--sp-5);text-align:center">Месячных снимков ИР ещё нет. Появятся 1-го числа каждого месяца.</div>`}
+     <div class="muted" style="padding:var(--sp-5);text-align:center">Месячных снимков ИР ещё нет. Появятся 8-го числа (остаток первой недели).</div>`}
    </div>
  </div>`;
  document.getElementById('screen-team').innerHTML=html;
