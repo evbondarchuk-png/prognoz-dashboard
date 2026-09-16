@@ -796,34 +796,28 @@ function renderTiles(o){
  const completedWeeks = dayN >= lastDay ? 4 : dayN > 21 ? 3 : dayN > 14 ? 2 : dayN > 7 ? 1 : 0;
  // Текущая (незакрытая) неделя = следующая после завершённых. 4 = месяц закрыт (нет текущей).
  const currentWeekIdx = completedWeeks < 4 ? completedWeeks : -1;
- // Завершённые: берём последние completedWeeks значений из истории (это точки -21,-14,-7,today).
- // Егор 03.09: квадраты = прирост месячного ИР за неделю (дельты границ 7/14/21/конец)
- // недельная шкала: 25% месячного ИР = 100% недели (кап 100)
-  const wk=((o.weekDeltas&&o.weekDeltas.deltas)||[]).slice(0,completedWeeks).map(v=>(v==null||isNaN(v))?null:Math.min(100,Math.round(v)));
- // Текущий динамический недельный ИР — с бэка уже в недельной шкале (Егор 08.09:
- // долевая норма недели по дням; месячный покрывает норму на сегодня → 100%).
- const irCurWeek = (o.weekDeltas && typeof o.weekDeltas.current === 'number') ? Math.min(100, o.weekDeltas.current) : null;
- const cellW=(v,state)=>{
+ // Егор 16.09: клетки = ОСТАТКИ месячного ИР (не дельты!): на 8-е за 7-е,
+ // на 15-е за 14-е, на 22-е за 21-е, на 1-е след. месяца за последний день.
+ // Нормы темпа 25/50/75/100%. Клетка текущей недели — живой месячный ИР («сейчас»).
+ const cks=(o.monthCheckpoints||[]);
+ const _ddmm=(s)=>{const p=String(s||'').split('-');return p.length===3?p[2]+'.'+p[1]:'';};
+ const irMonth=typeof o.irMonth==='number'?o.irMonth:o.irValue;
+ const cellW=(v,state,norm,tip)=>{
   // state: 'closed' | 'current' | 'empty'
   if(state==='empty' || v==null) return `<div class="ir-wk-cell empty">—</div>`;
-  // Егор 03.09 (вечер): значения приходят в НЕДЕЛЬНОЙ шкале (25% месячного ИР
-  // = 100% недели, кап), красим плоско 70/50 — без внутринедельного темпа.
-  // Егор 08.09: ТЕКУЩУЮ неделю красим по доле прошедших дней, закрытые — плоско 70/50.
-  const dn=_weekDayNorm();
-  const c = v===0 ? 'var(--warn)' : state==='current'
-    ? (v>=dn?'var(--ok)':(v>=dn*0.8?'var(--warn)':'var(--bad)'))
-    : (v>=70?'var(--ok)':v>=50?'var(--warn)':'var(--bad)');
-  const tip = state==='current' ? ` title="Текущая неделя: путь от 25%×закрытых недель до следующей границы. Норма на сегодня — ${dn}% пути (по дням)"` : '';
+  const dn = state==='current' ? _irPaceNorm() : norm;
+  const c = v===0 ? 'var(--warn)' : (v>=dn?'var(--ok)':(v>=dn*0.8?'var(--warn)':'var(--bad)'));
+  const tipAttr = tip || `Сейчас: ${v}% · норма темпа на сегодня ${dn}%`;
   const badge = state==='current' ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.05em">СЕЙЧАС</div>` : '';
-  return `<div class="ir-wk-cell"${tip} style="color:${c}">${v}%${badge}</div>`;
+  return `<div class="ir-wk-cell" title="${esc(tipAttr)}" style="color:${c}">${v}%${badge}</div>`;
  };
  let weekRow='';
  for(let i=0;i<4;i++){
-  if(i<completedWeeks)      weekRow+=cellW(wk[i], 'closed');
-  else if(i===currentWeekIdx) weekRow+=cellW(irCurWeek, irCurWeek==null?'empty':'current');
-  else                      weekRow+=cellW(null, 'empty');
+  const ck=cks[i];
+  if(i===currentWeekIdx) weekRow+=cellW(irMonth, 'current');
+  else if(ck && ck.ir_pct!=null) weekRow+=cellW(ck.ir_pct, 'closed', ck.norm, `${ck.label} · остаток на ${_ddmm(ck.on)} за ${_ddmm(ck.through)}: ${ck.ir_pct}% (норма ${ck.norm}%)`);
+  else weekRow+=cellW(null, 'empty');
  }
- const irMonth=typeof o.irMonth==='number'?o.irMonth:o.irValue;
  const irMonthClr=_irMonthColor(irMonth);
 
  // ── ПЛИТКА 2 (Егор 07.09): «Выполняют ИР» — зелёные по МЕСЯЧНОМУ ИР на сегодня
@@ -850,7 +844,7 @@ function renderTiles(o){
    <div class="tile-cap">ИР ${esc(o.scope)} · ${esc(_monthShort(dataDate))}</div>
    <div class="ir-tile-split">
     <div class="ir-tile-weeks">
-     <div class="ir-tile-weeks-cap">недели (движение за неделю)</div>
+     <div class="ir-tile-weeks-cap">остатки ИР по неделям месяца</div>
      <div class="ir-tile-weeks-row">${weekRow}</div>
     </div>
     <div class="ir-tile-month">
@@ -956,6 +950,7 @@ function renderHero(d){
    irValue: irGroup,
    irMonth: (typeof a.ir_v2_month_total === 'number') ? a.ir_v2_month_total : irGroup,
    weekDeltas: (d&&d.ir_history&&d.ir_history.week_deltas)||null,
+   monthCheckpoints: (d&&d.ir_history&&d.ir_history.month_checkpoints)||null,
    irCurrentWeek: (typeof a.ir_v2_week_total === 'number') ? a.ir_v2_week_total : null,
    perf, perfTotal: inIRcnt, newbies, g0,
    // Егор 07.09: «Выполняют ИР» — зелёные по месячному ИР (по темпу на дату данных)
