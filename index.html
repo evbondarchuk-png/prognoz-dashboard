@@ -1359,6 +1359,11 @@ function renderPrognoz(d){
     return segs.filter(seg=>(sd['b_'+seg]||0)+(sd['s_'+seg]||0)>0).map(seg=>{const b=sd['b_'+seg]||0,s=sd['s_'+seg]||0;const lb=_segL['b_'+seg]||_segL['s_'+seg]||seg;const p=[];if(b>0)p.push(`🛒 ${_prgFmtFull(b)} ₽`);if(s>0)p.push(`🏠 ${_prgFmtFull(s)} ₽`);return`<div style="display:flex;gap:8px;padding:3px 0;font-size:11px"><span style="flex:1;color:var(--muted)">${esc(lb)}</span><span>${p.join(' | ')}</span></div>`;}).join('');
   }
   const _hasBd=_monthBd.length>0;
+  // Егор 16.09: «непонятно как считается сумма за цикл и что это — вал или доход?»
+  // ИТОГО = сумма ФАКТА месяцев цикла (тот же источник, что у графика и строки
+  // «За цикл» выше), а не реконструкция по сегментам (tot = сделки × средний чек).
+  const _cycleFactRev=(pt.monthly||[]).reduce((s,m)=>s+((!m.is_future&&m.fact_revenue)||0),0);
+  const _cycleFactInc=(pt.monthly||[]).reduce((s,m)=>s+((!m.is_future&&m.fact_income)||0),0);
   out.push(`<div class="card">
     <div class="section-title">📊 Цикл по месяцам</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Переключи: <b>доход</b> (к нему цель) или <b>вал</b> (оборот, план). Зелёное — факт, синее — прогноз, штриховка — план.</div>
@@ -1368,8 +1373,8 @@ function renderPrognoz(d){
     </div>
     <div id="prg-bars-wrap"></div>
     <div style="margin-top:16px;padding:11px 13px;background:#e7f7ef;border:1px solid #b9e6cd;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">ИТОГО за цикл</div>
-      <div style="text-align:right"><div class="prg-tot-rev" style="font-size:18px;font-weight:800;color:#0e7a4f;display:${mode==='val'?'':'none'}">${_prgFmtFull(tot.revenue||0)} ₽</div><div class="prg-tot-inc" style="font-size:18px;font-weight:800;color:#0e7a4f;display:${mode==='dohod'?'':'none'}">${_prgFmtFull(tot.income||0)} ₽</div></div>
+      <div><div style="font-size:11px;color:#0b5236;font-weight:800;text-transform:uppercase">Итого за цикл · факт</div><div style="font-size:10px;color:#3d8a63;margin-top:2px">сумма факта месяцев · ${mode==='val'?'вал — оборот':'доход = 48% от вала'}</div></div>
+      <div style="text-align:right"><div class="prg-tot-rev" style="font-size:18px;font-weight:800;color:#0e7a4f;display:${mode==='val'?'':'none'}">${_prgFmtFull(_cycleFactRev||tot.revenue||0)} ₽</div><div class="prg-tot-inc" style="font-size:18px;font-weight:800;color:#0e7a4f;display:${mode==='dohod'?'':'none'}">${_prgFmtFull(_cycleFactInc||tot.income||0)} ₽</div></div>
     </div>
     ${_hasBd?`<div style="margin-top:12px"><div onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--brand);font-size:12px;font-weight:700"><span style="font-size:14px">›</span> Расшифровка по месяцам</div><div id="prg-seg-breakdown" style="display:none;padding:0 4px">${_monthBd.map(m=>`<div class="prg-sm" data-rv="${m.fact_rev}" data-ic="${m.fact_inc}" style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer" onclick="var el=this.nextElementSibling;el.style.display=el.style.display==='block'?'none':'block';this.querySelector('span').textContent=el.style.display==='block'?'▾':'›'"><span style="font-size:12px;color:var(--muted)">›</span><div style="flex:1;font-size:13px;font-weight:700">${_monthShortRu(m.ym)}</div><div class="prg-smt" style="font-size:13px;font-weight:700;color:#0e7a4f">${_prgFmtFull(mode==='dohod'?m.fact_inc:m.fact_rev)} ₽</div></div><div style="display:none;padding:2px 0 4px 20px"><div class="prg-smd" style="display:${mode==='dohod'?'block':'none'}">${_rSeg(m.inc)||'<div style="color:var(--muted);font-size:11px">нет данных</div>'}</div><div class="prg-smv" style="display:${mode==='val'?'block':'none'}">${_rSeg(m.rev)||'<div style="color:var(--muted);font-size:11px">нет данных</div>'}</div></div></div>`).join('')}</div></div>`:''}
   </div>`);
