@@ -828,8 +828,34 @@ function renderTiles(o){
  let prevWk = 0;
  for (const ck of cks) { if (ck && ck.ir_pct != null && ck.on) { const onD = parseInt(String(ck.on).slice(8, 10), 10); if (onD < dayN) prevWk = ck.ir_pct; } }
  const irWeekDelta = (typeof irMonth === 'number') ? Math.max(0, Math.round(irMonth - prevWk)) : null;
- const _wkClrMap = { ok: 'var(--ok)', warn: 'var(--warn)', bad: 'var(--bad)' };
- const irWeekClr = irWeekDelta != null ? (_wkClrMap[_irWeekStatusFixed(irWeekDelta)] || 'var(--muted-2,#a8aebd)') : 'var(--muted-2,#a8aebd)';
+ // Егор 17.09 (уточнение): окраска «прирост за нед» — как в табе Команда,
+ // ПО МЕДИАНЕ выборки того же уровня (у АУПа — РОПы, у РОПа — МОПы, у МОПа —
+ // партнёры: team_cards.members — те же строки, что в таблице команды).
+ // Плитка рендерится раньше таблицы, поэтому медиану считаем здесь самими.
+ // ≥медианы — зелёный, ≥половины — жёлтый, ниже — красный; 0 в первые 2 дня
+ // недели = норма (зелёный); медианы нет — фолбэк на норму прироста.
+ const _wkVal = (m) => (typeof m.ir_week_scale === 'number') ? m.ir_week_scale
+   : ((typeof m.ir_week_delta === 'number') ? Math.max(0, Math.round(m.ir_week_delta)) : null);
+ const _wkArr = ((((typeof CTX !== 'undefined') && CTX && CTX.data && CTX.data.team_cards) || {}).members || [])
+   .map(_wkVal).filter((v) => v != null).sort((a, b) => a - b);
+ let _wkMed = null;
+ if (_wkArr.length) { const mid = Math.floor(_wkArr.length / 2); _wkMed = _wkArr.length % 2 ? _wkArr[mid] : Math.round((_wkArr[mid - 1] + _wkArr[mid]) / 2); }
+ const _wkRelClr = (v) => {
+   if (v == null) return 'var(--muted-2,#a8aebd)';
+   if (v === 0) {
+     const ds = window.__irDataDate; const dd = (ds && /^\d{4}-\d{2}-\d{2}$/.test(ds)) ? new Date(ds + 'T00:00:00') : new Date();
+     const dnum = dd.getDate();
+     const cw = dnum > 21 ? 3 : dnum > 14 ? 2 : dnum > 7 ? 1 : 0;
+     const dayInWeek = dnum - (cw === 3 ? 21 : 7 * cw);
+     return dayInWeek <= 2 ? 'var(--ok)' : 'var(--warn)';
+   }
+   if (_wkMed == null) { const st = _irWeekStatusFixed(v); return ({ ok: 'var(--ok)', warn: 'var(--warn)', bad: 'var(--bad)' })[st] || 'var(--muted-2,#a8aebd)'; }
+   if (_wkMed <= 0) return v > 0 ? 'var(--ok)' : 'var(--warn)';
+   if (v >= _wkMed) return 'var(--ok)';
+   if (v >= _wkMed * 0.5) return 'var(--warn)';
+   return 'var(--bad)';
+ };
+ const irWeekClr = _wkRelClr(irWeekDelta);
  const irWeekTip = `прирост месячного ИР за текущую неделю: ${irWeekDelta != null ? irWeekDelta : '—'}% (месяц ${irMonth != null ? irMonth : '—'}% − остаток на прошлой границе ${prevWk}%)`;
 
  // ── ПЛИТКА 2 (Егор 07.09): «Выполняют ИР» — зелёные по МЕСЯЧНОМУ ИР на сегодня
