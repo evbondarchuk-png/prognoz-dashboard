@@ -2466,8 +2466,8 @@ function taskItem(t){
  const reason = t.author_reason ? `<span>· ${esc(t.author_reason)}</span>` : '';
  const progress = t.progress_label ? `<span>· ${esc(t.progress_label)}</span>` : '';
  const priBadge = priority === 'high' ? '<span style="color:#dc2626;font-weight:800">⚠</span> ' : '';
- const actions = t.can_complete
-   ? `<button class="task-skip" onclick="skipTask('${esc(t.id)}',event)" title="Отказаться">🚫</button><button class="lr-done" onclick="completeTask('${esc(t.id)}',event)" title="Выполнено">✓</button>`
+ const actions = (t.can_complete || t.can_skip)
+   ? `${t.can_skip ? `<button class="task-skip" onclick="skipTask('${esc(t.id)}',event)" title="Отказаться">🚫</button>` : ''}${t.can_complete ? `<button class="lr-done" onclick="completeTask('${esc(t.id)}',event)" title="Выполнено">✓</button>` : ''}`
    : (t.status === 'done' ? '<span class="task-done">✓</span>' : '');
  return `<div class="list-row" onclick="openTaskDetailForMe('${esc(t.id)}',event)">
    <span class="lr-dot" style="background:${dotColor}"></span>
