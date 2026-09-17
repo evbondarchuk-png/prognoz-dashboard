@@ -307,6 +307,37 @@ function humanizeLede(s) {
   if (!s) return s;
   return s.replace(/\b([kp]_[a-z_]+)\b/g, (m) => (BIT_LABELS[m] || m).toLowerCase());
 }
+// ── Единый ИР (Егор 17.09): месячный остаток + ступенчатая норма темпа ──
+// Норма по текущей дате: нед.1 (1–7) = 25%, нед.2 (8–14) = 50%,
+// нед.3 (15–21) = 75%, нед.4 (22–конец) = 100%. Как в табе «Команда» кабинета МОП.
+// Цвет: ≥нормы — зелёный, ≥80% нормы — жёлтый, ниже — красный.
+function irPaceNorm(d) {
+  d = d || new Date();
+  const day = d.getDate(), last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  if (day <= 7) return 25;
+  if (day <= 14) return 50;
+  if (day <= 21) return 75;
+  return 100;
+}
+function irMonthStatus(p, norm) {
+  const n = (norm != null) ? norm : irPaceNorm();
+  if (p >= n) return 'ok';
+  if (p >= n * 0.8) return 'warn';
+  return 'bad';
+}
+function irMonthColor(p, norm) {
+  const s = irMonthStatus(p, norm);
+  return s === 'ok' ? 'var(--ok)' : s === 'warn' ? 'var(--warn)' : 'var(--bad)';
+}
+// Единое значение месячного ИР: цепочка полей бэка (v2_total → v2 → legacy → чип)
+function irMonthOf(m) {
+  if (!m) return null;
+  if (typeof m.ir_v2_month_total === 'number') return m.ir_v2_month_total;
+  if (typeof m.ir_v2_month === 'number') return m.ir_v2_month;
+  if (typeof m.ir_month === 'number') return m.ir_month;
+  if (typeof m.ir_pct === 'number') return m.ir_pct;
+  return null;
+}
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 const fmtK = (n) => { n = Number(n) || 0; if (n >= 1e6) return (n/1e6).toFixed(1).replace('.', ',')+' млн'; if (n >= 1e4) return Math.round(n/1e3)+'к'; if (n >= 1e3) return (n/1e3).toFixed(1).replace('.', ',')+'к'; return String(Math.round(n)); };
 const monthShort = (ym) => { const m = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; const idx = parseInt(ym.slice(5, 7), 10) - 1; return m[idx] || ym; };
@@ -334,10 +365,8 @@ window.refreshForce = () => load(true);
 
 function chipsHTML(c) {
   const h = [];
-  if (c.ir_pct != null) {
-    const cls = c.ir_status === 'green' ? 'ok' : c.ir_status === 'red' ? 'bad' : '';
-    h.push(`<div class="chip ir ${cls}">ИР ${c.ir_pct}% · норма ${c.ir_norm}%</div>`);
-  }
+  // Егор 17.09: чип «ИР N% · норма N%» убран — расходился с кабинетом
+  // (бэк шлёт недельный ir_pct, в кабинете месячный остаток); месяц виден ниже.
   if (c.risk_streak >= 1) {
     const lvl = Math.min(4, c.risk_streak);
     h.push(`<div class="chip risk">🔴 в риске · Н${lvl} (${c.risk_streak}-я неделя)</div>`);
@@ -613,16 +642,14 @@ function tasksHTML(t) {
 
 function chipsMopHTML(c) {
   const h = [];
-  if (c.ir_pct != null) {
-    const cls = c.ir_status === 'green' ? 'ok' : c.ir_status === 'red' ? 'bad' : '';
-    h.push(`<div class="chip ir ${cls}">📊 ИР группы ${c.ir_pct}% · норма ${c.ir_norm}%</div>`);
-  }
+  // Егор 17.09: чип «ИР группы» убран — расходился с кабинетом
+  // (бэк шлёт недельный ir_pct, в кабинете месячный остаток); месяц виден ниже.
   if (c.in_risk != null && c.total != null) {
     const cls = c.in_risk === 0 ? 'up' : c.in_risk <= 2 ? 'ir' : 'down';
     h.push(`<div class="chip ${cls}">⚠️ в риске ${c.in_risk} из ${c.total}</div>`);
   }
   if (c.performers != null && c.total != null) {
-    h.push(`<div class="chip up">✅ выполняют ≥70% — ${c.performers}</div>`);
+    h.push(`<div class="chip up">✅ в норме на сегодня — ${c.performers}</div>`);
   }
   if (c.ir_delta != null && Math.abs(c.ir_delta) >= 1) {
     const cls = c.ir_delta > 0 ? 'up' : 'down';
@@ -638,18 +665,12 @@ function chipsMopHTML(c) {
 function membersTableHTML(state) {
   const members = state.members || [];
   if (!members.length) return '<div class="muted">В группе нет партнёров.</div>';
-  // Егор 02.09: норматив темпа ИР месяца (недели 25/50/75/100%, внутри пропорционально дню)
-  const irMonthPaceColor = (p) => {
-    const d = new Date(), day = d.getDate(), last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    const B = [0, 7, 14, 21, last], T = [0, 25, 50, 75, 100];
-    let n = 100;
-    for (let i = 1; i < B.length; i++) { if (day <= B[i]) { n = T[i - 1] + (T[i] - T[i - 1]) * (day - B[i - 1]) / (B[i] - B[i - 1]); break; } }
-    return p >= n ? 'var(--ok)' : p >= n * 0.8 ? 'var(--warn)' : 'var(--bad)';
-  };
+  // Егор 17.09: единый ИР — irMonthOf + ступенчатая норма irPaceNorm (как таб «Команда» МОП)
+  const norm = irPaceNorm();
   const row = (m) => {
-    const irM = m.ir_v2_month != null ? m.ir_v2_month : '—';
-    // Егор 02.09: месячный ИР — по нормативу темпа (≥норматива зелёный, 80–99% жёлтый, <80% красный)
-    const irClr = m.ir_v2_month == null ? 'var(--muted)' : irMonthPaceColor(m.ir_v2_month);
+    const irV = irMonthOf(m);
+    const irM = irV != null ? irV : '—';
+    const irClr = irV == null ? 'var(--muted)' : irMonthColor(irV, norm);
     const status = m.is_group_zero ? '🛌 группа 0' : m.is_newbie ? '🌱 новичок' : m.risk_level >= 1 ? `🔴 Н${Math.min(4, m.risk_level)}` : '✅';
     const plan = m.plan_month > 0 ? fmtK(m.plan_month) : '—';
     const fact = fmtK(m.fact_month);
@@ -658,7 +679,7 @@ function membersTableHTML(state) {
     const planPctClr = planPct == null ? 'var(--muted)' : planPct >= 100 ? 'var(--ok)' : planPct >= 70 ? 'var(--warn)' : 'var(--bad)';
     return `<tr>
       <td style="padding:8px;border-bottom:1px solid var(--line)">${esc(m.name)}</td>
-      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700">${irM}${m.ir_v2_month != null ? '%' : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700" title="Норма темпа на сегодня ${norm}%">${irM}${irV != null ? '%' : ''}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${plan}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fact}${planPct != null ? ` <span style="color:${planPctClr};font-size:11px">(${planPct}%)</span>` : ''}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fc}</td>
@@ -684,14 +705,14 @@ function riskListHTML(risk) {
   if (!risk.list || !risk.list.length) {
     return '<div class="tagline tag-ok">✅ Никто из команды не в риске.</div>';
   }
-  const items = risk.list.map((r) => `<div class="trow over">
+  const items = risk.list.map((r) => { const rIr = irMonthOf(r); return `<div class="trow over">
     <span class="tco">🔴</span>
     <div class="trc">
       <div class="trn">${esc(r.name)}</div>
-      <div class="trm">Н${r.level} · ${r.streak}-я неделя в риске · ИР мес ${r.ir_month != null ? r.ir_month + '%' : '—'}${r.reason ? ` · <span class="cm">${esc(r.reason)}</span>` : ''}</div>
+      <div class="trm">Н${r.level} · ${r.streak}-я неделя в риске · ИР мес ${rIr != null ? rIr + '%' : '—'}${r.reason ? ` · <span class="cm">${esc(r.reason)}</span>` : ''}</div>
     </div>
     <a href="session-report.html?level=partner&code=${esc(r.code)}" target="_blank" class="trst" style="background:var(--brand-soft);color:var(--brand);text-decoration:none">📄 Отчёт</a>
-  </div>`).join('');
+  </div>`; }).join('');
   return `<div class="block-title">${risk.in_risk_count} ${risk.in_risk_count === 1 ? 'партнёр' : 'партнёров'} в риске из ${risk.total_qualified}</div>${items}`;
 }
 
@@ -732,14 +753,17 @@ function goalsMopHTML(g) {
   return rows.join('') || '<div class="muted">Цели не настроены.</div>';
 }
 
-// плитки ИР месяца / недели
+// плитки ИР месяца / недели (Егор 17.09: месяц — irMonthOf + норма темпа, как в кабинете)
 function statTilesHTML(h) {
-  const irM = h.ir_month, irW = h.ir_week, d = h.ir_week_delta;
-  const clr = (v) => v == null ? 'var(--muted)' : v === 0 ? 'var(--warn)' : v === 0 ? 'var(--warn)' : v >= 70 ? 'var(--ok)' : v >= 40 ? 'var(--warn)' : 'var(--bad)';
+  const irM = (typeof h.ir_v2_month_total === 'number') ? h.ir_v2_month_total : irMonthOf(h);
+  const irW = h.ir_week, d = h.ir_week_delta;
+  const norm = irPaceNorm();
+  const clrM = (v) => v == null ? 'var(--muted)' : irMonthColor(v, norm);
+  const clrW = (v) => v == null ? 'var(--muted)' : v === 0 ? 'var(--warn)' : v >= 70 ? 'var(--ok)' : v >= 40 ? 'var(--warn)' : 'var(--bad)';
   const deltaTxt = (d != null && Math.abs(d) >= 1) ? ` <span style="color:${d > 0 ? 'var(--ok)' : 'var(--bad)'};font-size:13px;font-weight:700">${d > 0 ? '▲+' : '▼'}${d}</span>` : '';
   return `<div class="ir-tiles">
-    <div class="ir-tile"><div class="tk">ИР месяца</div><div class="tv" style="color:${clr(irM)}">${irM != null ? irM + '%' : '—'}</div><div class="tn">норма 70%</div></div>
-    <div class="ir-tile"><div class="tk">ИР прирост за нед</div><div class="tv" style="color:${clr(irW)}">${irW != null ? irW + '%' : '—'}${deltaTxt}</div><div class="tn">за неделю</div></div>
+    <div class="ir-tile"><div class="tk">ИР месяца</div><div class="tv" style="color:${clrM(irM)}" title="Норма темпа на сегодня ${norm}%">${irM != null ? irM + '%' : '—'}</div><div class="tn">норма ${norm}% на сегодня</div></div>
+    <div class="ir-tile"><div class="tk">ИР прирост за нед</div><div class="tv" style="color:${clrW(irW)}">${irW != null ? irW + '%' : '—'}${deltaTxt}</div><div class="tn">недельная шкала</div></div>
   </div>`;
 }
 // человеческая выжимка по плану/прогнозу/цели (с эмодзи)
@@ -818,7 +842,8 @@ function stalledDaysHTML(list) {
   if (!list || !list.length) return '<div class="tagline tag-ok">✅ Никто не застрял — все шевелятся.</div>';
   return list.slice(0, 12).map((m) => {
     const word = m.days === 1 ? 'день' : (m.days >= 2 && m.days <= 4 ? 'дня' : 'дней');
-    const ir = m.ir_month != null ? ` · ИР мес ${m.ir_month}%` : '';
+    const sIr = irMonthOf(m);
+    const ir = sIr != null ? ` · ИР мес ${sIr}%` : '';
     return `<div class="stall-row${m.days >= 4 ? ' hot' : ''}"><div class="sn">${esc(m.name)}${m.newbie ? ' <span class="muted" style="font-size:11px">(нов)</span>' : ''}<small>${esc(m.reason || '')}${ir}</small></div><div class="sd">${m.days} ${word}</div></div>`;
   }).join('');
 }
@@ -918,7 +943,7 @@ function renderMop(r, fromCache) {
       <div class="sec-sub">Вал каждого (факт + прогноз), состояние по ИР и активность за неделю.</div>
       ${ptabsHTML([
         { label: '💵 Вал', html: valByPartnerHTML(r.val_by_partner || {}) },
-        { label: '📊 Состояние', html: membersTableHTML(r.state) + (r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 по ИР</div>${r.state.top.map(m => `<div class="tagline tag-ok">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : '') + (r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 по ИР</div>${r.state.lowest.map(m => `<div class="tagline tag-bad">${esc(m.name)} — ${m.ir_v2_month}%</div>`).join('')}` : '') },
+        { label: '📊 Состояние', html: membersTableHTML(r.state) + (r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 по ИР</div>${r.state.top.map(m => { const v = irMonthOf(m); return `<div class="tagline tag-ok">${esc(m.name)} — ${v != null ? v + '%' : '—'}</div>`; }).join('')}` : '') + (r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 по ИР</div>${r.state.lowest.map(m => { const v = irMonthOf(m); return `<div class="tagline tag-bad">${esc(m.name)} — ${v != null ? v + '%' : '—'}</div>`; }).join('')}` : '') },
         { label: '📆 Активность за неделю', html: `<div class="sec-sub" style="margin-bottom:10px">За 7 дней. В каждой ячейке: <b style="color:var(--buyer)">покупатель</b> \\ <b style="color:var(--seller)">продавец</b>. Нули видно сразу.</div>${weekCombinedHTML(r.week_combined)}` },
       ])}
     </div>
@@ -955,10 +980,8 @@ function renderMop(r, fromCache) {
 
 function chipsRopHTML(c) {
   const h = [];
-  if (c.ir_pct != null) {
-    const cls = c.ir_status === 'green' ? 'ok' : c.ir_status === 'red' ? 'bad' : '';
-    h.push(`<div class="chip ir ${cls}">ИР отдела ${c.ir_pct}% · норма ${c.ir_norm}%</div>`);
-  }
+  // Егор 17.09: чип «ИР отдела» убран — расходился с кабинетом
+  // (бэк шлёт недельный ir_pct, в кабинете месячный остаток); месяц виден ниже.
   if (c.in_risk_groups != null && c.total_groups != null) {
     const cls = c.in_risk_groups === 0 ? 'up' : c.in_risk_groups <= 1 ? 'ir' : 'down';
     h.push(`<div class="chip ${cls}">⚠️ групп в риске ${c.in_risk_groups} из ${c.total_groups}</div>`);
@@ -977,10 +1000,13 @@ function chipsRopHTML(c) {
 function groupsTableHTML(state) {
   const groups = state.groups || [];
   if (!groups.length) return '<div class="muted">В отделе нет групп.</div>';
+  // Егор 17.09: главное — месячный ИР (irMonthOf + норма темпа), недельный — мелкой строкой
+  const norm = irPaceNorm();
   const row = (g) => {
-    const irW = g.ir_v2_week != null ? g.ir_v2_week : '—';
-    const irM = g.ir_v2_month != null ? g.ir_v2_month : '—';
-    const irClr = g.ir_v2_week == null ? 'var(--muted)' : g.ir_v2_week >= 70 ? 'var(--ok)' : g.ir_v2_week >= 40 ? 'var(--warn)' : 'var(--bad)';
+    const irMv = irMonthOf(g);
+    const irM = irMv != null ? irMv : '—';
+    const irW = g.ir_v2_week != null ? g.ir_v2_week : null;
+    const irClr = irMv == null ? 'var(--muted)' : irMonthColor(irMv, norm);
     const plan = g.plan_month > 0 ? fmtK(g.plan_month) : '—';
     const fact = fmtK(g.fact_month);
     const fc = fmtK(g.forecast_month);
@@ -989,8 +1015,8 @@ function groupsTableHTML(state) {
     const riskPart = g.underperformers_v2 > 0 ? `<span style="color:var(--bad);font-size:11px">⚠️ ${g.underperformers_v2}</span>` : `<span style="color:var(--ok);font-size:11px">✅</span>`;
     return `<tr>
       <td style="padding:8px;border-bottom:1px solid var(--line)">${esc(g.name)}</td>
-      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700">${irW}${g.ir_v2_week != null ? '%' : ''}<div style="font-size:10px;color:var(--muted);font-weight:400">мес ${irM}${g.ir_v2_month != null ? '%' : ''}</div></td>
-      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${g.members_count}<div style="font-size:10px;color:var(--muted)">${g.performers_v2} ≥70%</div></td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700" title="Норма темпа на сегодня ${norm}%">${irM}${irMv != null ? '%' : ''}${irW != null ? `<div style="font-size:10px;color:var(--muted);font-weight:400">нед ${irW}%</div>` : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${g.members_count}<div style="font-size:10px;color:var(--muted)">${g.performers_v2} в норме</div></td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${plan}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fact}${planPct != null ? ` <span style="color:${planPctClr};font-size:11px">(${planPct}%)</span>` : ''}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fc}</td>
@@ -1001,7 +1027,7 @@ function groupsTableHTML(state) {
   return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr style="background:var(--surface-2)">
       <th style="padding:8px;text-align:left">Старший партнёр</th>
-      <th style="padding:8px;text-align:right">ИР прирост за нед</th>
+      <th style="padding:8px;text-align:right">ИР мес</th>
       <th style="padding:8px;text-align:right">Партнёров</th>
       <th style="padding:8px;text-align:right">План</th>
       <th style="padding:8px;text-align:right">Факт</th>
@@ -1017,14 +1043,14 @@ function riskGroupsListHTML(risk) {
   if (!risk.list || !risk.list.length) {
     return '<div class="tagline tag-ok">✅ Все группы в норме.</div>';
   }
-  const items = risk.list.map((g) => `<div class="trow over">
+  const items = risk.list.map((g) => { const gIr = irMonthOf(g); return `<div class="trow over">
     <span class="tco">🔴</span>
     <div class="trc">
       <div class="trn">${esc(g.name)}</div>
-      <div class="trm">ИР прирост за нед ${g.ir_week != null ? g.ir_week + '%' : '—'} · ИР мес ${g.ir_month != null ? g.ir_month + '%' : '—'} · ${g.underperformers} из ${g.partners_count} партнёров в риске</div>
+      <div class="trm">ИР мес ${gIr != null ? gIr + '%' : '—'} · ${g.underperformers} из ${g.partners_count} партнёров в риске</div>
     </div>
     <a href="session-report.html?level=mop&code=${esc(g.code)}" target="_blank" class="trst" style="background:var(--brand-soft);color:var(--brand);text-decoration:none">📄 Отчёт</a>
-  </div>`).join('');
+  </div>`; }).join('');
   return `<div class="block-title">${risk.in_risk_count} ${risk.in_risk_count === 1 ? 'группа' : 'групп'} в риске из ${risk.total}</div>${items}`;
 }
 
@@ -1081,8 +1107,8 @@ function renderRop(r, fromCache) {
       <div class="sec-h"><span class="n">4</span> Состояние отдела</div>
       <div class="sec-sub">По группам — ИР, кол-во партнёров, план/факт/прогноз вала, риск.</div>
       ${groupsTableHTML(r.state)}
-      ${r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 группы по ИР</div>${r.state.top.map(g => `<div class="tagline tag-ok">${esc(g.name)} — ${g.ir_v2_week}%</div>`).join('')}` : ''}
-      ${r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 группы</div>${r.state.lowest.map(g => `<div class="tagline tag-bad">${esc(g.name)} — ${g.ir_v2_week}%</div>`).join('')}` : ''}
+      ${r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 группы по ИР</div>${r.state.top.map(g => { const v = irMonthOf(g); return `<div class="tagline tag-ok">${esc(g.name)} — ${v != null ? v + '%' : '—'}</div>`; }).join('')}` : ''}
+      ${r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 группы</div>${r.state.lowest.map(g => { const v = irMonthOf(g); return `<div class="tagline tag-bad">${esc(g.name)} — ${v != null ? v + '%' : '—'}</div>`; }).join('')}` : ''}
     </div>
 
     <div class="sec">
