@@ -819,6 +819,18 @@ function renderTiles(o){
   else weekRow+=cellW(null, 'empty');
  }
  const irMonthClr=_irMonthColor(irMonth);
+ // Егор 17.09: нижняя плашка плитки = «прирост за нед» вместо «месяц» — та же
+ // логика, что колонка «ИР прирост за нед» в табе Команда: живой месячный ИР
+ // минус остаток на последней ПРОШЕДШЕЙ границе недели (строго раньше даты
+ // данных); прошедших границ ещё нет → прирост = месячному ИР (неделя 1).
+ // Окраска по норме прироста на сегодня (_irWeekStatusFixed: 0 в первые
+ // 2 дня недели = норма). Месячный ИР по-прежнему виден в клетке «СЕЙЧАС».
+ let prevWk = 0;
+ for (const ck of cks) { if (ck && ck.ir_pct != null && ck.on) { const onD = parseInt(String(ck.on).slice(8, 10), 10); if (onD < dayN) prevWk = ck.ir_pct; } }
+ const irWeekDelta = (typeof irMonth === 'number') ? Math.max(0, Math.round(irMonth - prevWk)) : null;
+ const _wkClrMap = { ok: 'var(--ok)', warn: 'var(--warn)', bad: 'var(--bad)' };
+ const irWeekClr = irWeekDelta != null ? (_wkClrMap[_irWeekStatusFixed(irWeekDelta)] || 'var(--muted-2,#a8aebd)') : 'var(--muted-2,#a8aebd)';
+ const irWeekTip = `прирост месячного ИР за текущую неделю: ${irWeekDelta != null ? irWeekDelta : '—'}% (месяц ${irMonth != null ? irMonth : '—'}% − остаток на прошлой границе ${prevWk}%)`;
 
  // ── ПЛИТКА 2 (Егор 07.09): «Выполняют ИР» — зелёные по МЕСЯЧНОМУ ИР на сегодня
  // (норматив темпа), по партнёрам группы; ниже — «план по валу (с прогнозом)»
@@ -848,8 +860,8 @@ function renderTiles(o){
      <div class="ir-tile-weeks-row">${weekRow}</div>
     </div>
     <div class="ir-tile-month">
-     <div class="ir-tile-month-cap">месяц</div>
-     <div class="ir-tile-month-val" style="color:${irMonthClr}">${irMonth}%</div>
+     <div class="ir-tile-month-cap">прирост за нед</div>
+     <div class="ir-tile-month-val" style="color:${irWeekClr}" title="${irWeekTip}">${irWeekDelta != null ? irWeekDelta + '%' : '—'}</div>
     </div>
    </div></div>
   <div class="tile" onclick="openTileModal('perf')"><span class="chev">›</span>
