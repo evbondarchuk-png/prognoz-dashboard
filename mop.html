@@ -2092,14 +2092,25 @@ function __pkgSorted(items) {
 function __pkgRow(it, i, readOnly){
   const st = it.status || 'pending';
   const removed = st === 'removed';
+  const sent = __pkgSent(st);
+  const doneAuto = st === 'done';
   const opacity = removed ? 'opacity:.4' : '';
-  const actions = readOnly
-    ? (st === 'accepted' || st === 'edited' ? '<span style="color:var(--ok);font-size:12px;font-weight:700">✅ отправлено</span>' : '<span style="color:var(--muted);font-size:12px">убрано</span>')
-    : `<div style="display:flex;gap:6px;align-items:center">
-        <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--brand);cursor:pointer;font-family:inherit" onclick="window.__pkgEdit(${i})" title="Редактировать текст">✏️</button>
-        <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ok);cursor:pointer;font-family:inherit" onclick="window.__pkgAssign(${i})" title="Назначить сразу (эту одну)">✅</button>
-        <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit" onclick="window.__pkgRemove(${i})" title="Убрать из пакета">${removed ? '↩︎' : '✕'}</button>
-      </div>`;
+  // кнопки — по статусу (Егор 17.09): черновик = ✏️✅✕; отправлена = «отправлено»+✏️
+  // (правка уходит и в задачу риэлтора, причина не правится); авто-закрыта = 🎯
+  const actions = doneAuto
+    ? '<span style="color:var(--ok);font-size:12px;font-weight:700" title="Цифры дотянуты — задача закрылась автоматически">🎯 закрыта автоматически</span>'
+    : sent
+      ? `<div style="display:flex;gap:6px;align-items:center">
+          <span style="color:var(--ok);font-size:12px;font-weight:700">✅ отправлено</span>
+          <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--brand);cursor:pointer;font-family:inherit" onclick="window.__pkgEdit(${i})" title="Править задачу (кроме причины постановки)">✏️</button>
+        </div>`
+      : removed
+        ? '<span style="color:var(--muted);font-size:12px">убрано</span>'
+        : `<div style="display:flex;gap:6px;align-items:center">
+            <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--brand);cursor:pointer;font-family:inherit" onclick="window.__pkgEdit(${i})" title="Редактировать текст">✏️</button>
+            <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ok);cursor:pointer;font-family:inherit" onclick="window.__pkgAssign(${i})" title="Назначить сразу (эту одну)">✅</button>
+            <button style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit" onclick="window.__pkgRemove(${i})" title="Убрать из пакета">✕</button>
+          </div>`;
   return `<div class="pkg-item" data-idx="${i}" style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;${opacity}">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       ${__pkgPrioBadge(it.priority)}
@@ -2128,17 +2139,21 @@ window.__pkgRemove = async function(idx){
     alert('Не получилось: ' + (e && e.message || e));
   }
 };
-// ✏️ Редактировать задачу — inline textarea
+// ✏️ Редактировать задачу — inline форма. Для ЧЕРНОВИКА правится текст+действие,
+// для ОТПРАВЛЕННОЙ (Егор 17.09 «менеджер редактирует полностью») — ещё и заголовок;
+// правки синхронно уходят в задачу риэлтора. ПРИЧИНА постановки — только просмотр.
 window.__pkgEdit = function(idx){
   if(!PKG || !PKG.package) return;
   const it = PKG.package.items[idx];
-  if(!it || __pkgSent(it.status)) return; // отправленное не редактируем
+  if(!it || it.status === 'done' || it.status === 'removed') return;
+  const sent = __pkgSent(it.status);
   const el = document.querySelector(`.pkg-item[data-idx="${idx}"]`);
   if(!el) return;
   el.innerHTML = `
     <div style="padding:4px 0">
-      <div style="font-size:12px;font-weight:700;margin-bottom:6px">✏️ Редактирование: ${esc(it.realtor_name)} — ${esc(it.title)}</div>
-      ${it.reason ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">💡 ${esc(it.reason)}</div>` : ''}
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px">✏️ Редактирование: ${esc(it.realtor_name)}${sent ? ' <span style="color:var(--ok);font-weight:700">· задача уже у риэлтора — правка уйдёт и туда</span>' : ''}</div>
+      ${it.reason ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">💡 ${esc(it.reason)} <span style="white-space:nowrap" title="Причину ставит система по цифрам — менеджер её не меняет">🔒 причина не редактируется</span></div>` : ''}
+      <input id="pkgEditTitle" value="${esc(it.title)}" style="width:100%;font-family:inherit;font-size:13px;font-weight:700;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px" placeholder="Заголовок">
       <textarea id="pkgEditText" style="width:100%;min-height:60px;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px" placeholder="Текст задачи">${esc(it.text)}</textarea>
       <textarea id="pkgEditAction" style="width:100%;min-height:60px;font-family:inherit;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px" placeholder="Действие">${esc(it.action)}</textarea>
       <div style="display:flex;gap:8px">
@@ -2150,17 +2165,20 @@ window.__pkgEdit = function(idx){
 window.__pkgSaveEdit = async function(idx){
   if(!PKG || !PKG.package) return;
   const it = PKG.package.items[idx];
-  if(!it) return;
+  if(!it || it.status === 'done' || it.status === 'removed') return;
+  const ti = document.getElementById('pkgEditTitle');
   const t = document.getElementById('pkgEditText');
   const a = document.getElementById('pkgEditAction');
   try{
-    // Егор 17.09: правка сохраняется НА СЕРВЕР сразу — раньше жила только в
-    // памяти и откатывалась перезагрузкой пакета («результат не сохраняется»)
-    await window.__call('updateTaskPackageItem', {
+    // Егор 17.09: правка сохраняется НА СЕРВЕР сразу; у отправленной статус
+    // не трогаем (правится только содержимое, причина — никогда)
+    const patch = {
       mop_code: __pkgMopCode(), index: idx,
-      status: it.status === 'removed' ? 'removed' : 'pending',
+      title: ti ? ti.value : undefined,
       text: t ? t.value : it.text, action: a ? a.value : it.action
-    });
+    };
+    if (!__pkgSent(it.status)) patch.status = 'pending';
+    await window.__call('updateTaskPackageItem', patch);
     window.__loadPkgMini();
   }catch(e){
     alert('Не получилось сохранить: ' + (e && e.message || e));
