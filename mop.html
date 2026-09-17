@@ -1969,6 +1969,13 @@ function maybeAwardToast(d){ const rw=d&&d.rewards; if(!rw||!rw.newly||!rw.newly
 }
 // ══════════ 📦 Задачи недели: пакет → акцепт → отправка (Егор 14.09) ══════════
 let PKG = null; // {package, ym}
+// код МОПа для callable пакета (Егор 17.09: единый хелпер — раньше загрузка
+// пакета и отправка считали код по-разному)
+function __pkgMopCode(){
+  return String((typeof CTX !== 'undefined' && CTX && CTX.target) || new URLSearchParams(location.search).get('mop') || (typeof CTX !== 'undefined' && CTX && CTX.me) || '');
+}
+// финальные статусы — задача уже ушла риэлтору, кнопки для неё больше не действуют
+function __pkgSent(st){ return st === 'accepted' || st === 'edited'; }
 // 📦 Мини-пакет в модуле задач: если есть непринятый пакет — показать
 window.__loadPkgMini = async function(){
   const mount = document.getElementById('pkgMountPoint');
@@ -1976,14 +1983,16 @@ window.__loadPkgMini = async function(){
   try{
     const mopCode = (typeof CTX !== 'undefined' && CTX && CTX.target) || new URLSearchParams(location.search).get('mop') || (typeof CTX !== 'undefined' && CTX && CTX.me) || null;
     if (!mopCode) { console.warn('[pkg] no mop code available'); mount.innerHTML = ''; return; }
-    const r = await window.__call('taskPackageStatus', {mop_code: String(mopCode)});
+    const r = await window.__call('taskPackageStatus', {mop_code: __pkgMopCode()});
     PKG = r;
     const pkg = r && r.package;
     if(!pkg || !pkg.items || !pkg.items.length || pkg.accepted){
       mount.innerHTML = '';
       return;
     }
-    const pending = pkg.items.filter(it => it.status !== 'removed').length;
+    // Егор 17.09: «на акцепт» = только ещё НЕ отправленные (accepted/edited уже у риэлтора,
+    // раньше они сидели в счётчике — клики по «✅» выглядели впустую, кнопка «не работала»)
+    const pending = pkg.items.filter(it => (it.status || 'pending') === 'pending').length;
     window.__pkgSortMode = window.__pkgSortMode || 'realtor';
     mount.innerHTML = `<div class="card" style="margin-bottom:12px;border:2px solid #7c3aed;border-radius:14px">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 0">
@@ -1996,11 +2005,11 @@ window.__loadPkgMini = async function(){
       </div>
       <div style="padding:4px 16px 8px"><details id="pkgDetails" ${pending > 0 ? 'open' : ''}>
         <summary style="cursor:pointer;font-size:13px;color:var(--brand);font-weight:700;padding:6px 0">${pending > 0 ? '▾ Свернуть' : '› Развернуть пакет'}</summary>
-        <div id="pkgItems">${__pkgSorted(pkg.items).map((it)=>__pkgRow(it,it._idx,false)).join('')}</div>
-        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+        <div id="pkgItems">${__pkgSorted(pkg.items).map((it)=>__pkgRow(it,it._idx,__pkgSent(it.status))).join('')}</div>
+        ${pending > 0 ? `<div style="margin-top:12px;display:flex;gap:10px;align-items:center">
           <button class="btn-primary" onclick="window.__acceptPkg()" id="pkgAcceptBtn" style="font-size:14px;padding:10px 24px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-color:#7c3aed">✅ Назначить все (${pending})</button>
           <span style="font-size:11px;color:var(--muted)">После нажатия задачи полетят риелторам в кабинет и чат-бот</span>
-        </div>
+        </div>` : ''}
         <div id="pkgMsg"></div>
       </details></div>
     </div>`;
@@ -2053,7 +2062,7 @@ window.__pkgSort = function(mode){
   if (!pkg || !pkg.items) return;
   const sorted = __pkgSorted(pkg.items);
   const wrap = document.getElementById('pkgItems');
-  if (wrap) wrap.innerHTML = sorted.map(it => __pkgRow(it, it._idx, false)).join('');
+  if (wrap) wrap.innerHTML = sorted.map(it => __pkgRow(it, it._idx, __pkgSent(it.status))).join('');
   // переключить кнопки
   const br = document.getElementById('pkgSortRealtor');
   const bp = document.getElementById('pkgSortPrio');
@@ -2105,23 +2114,25 @@ function __pkgRow(it, i, readOnly){
     <div style="font-size:12px;color:var(--brand);margin-top:6px">📋 ${esc(it.action)}</div>
   </div>`;
 }
-window.__pkgRemove = function(idx){
+window.__pkgRemove = async function(idx){
   if(!PKG || !PKG.package) return;
   const it = PKG.package.items[idx];
-  it.status = it.status === 'removed' ? 'pending' : 'removed';
-  const n = PKG.package.items.filter(x=>x.status !== 'removed').length;
-  const cnt = document.getElementById('pkgCount');
-  if(cnt) cnt.textContent = n;
-  const btn = document.getElementById('pkgAcceptBtn');
-  if(btn) btn.textContent = `✅ Отправить (${n})`;
-  const el = document.querySelector(`.pkg-item[data-idx="${idx}"]`);
-  if(el) el.style.opacity = it.status === 'removed' ? '.4' : '';
+  if(!it || __pkgSent(it.status)) return; // отправленное не убираем
+  const next = it.status === 'removed' ? 'pending' : 'removed';
+  try{
+    // Егор 17.09: убирание теперь сразу на сервере (раньше было локальным и
+    // возвращалось после любой перезагрузки пакета)
+    await window.__call('updateTaskPackageItem', {mop_code: __pkgMopCode(), index: idx, status: next});
+    window.__loadPkgMini();
+  }catch(e){
+    alert('Не получилось: ' + (e && e.message || e));
+  }
 };
 // ✏️ Редактировать задачу — inline textarea
 window.__pkgEdit = function(idx){
   if(!PKG || !PKG.package) return;
   const it = PKG.package.items[idx];
-  if(!it) return;
+  if(!it || __pkgSent(it.status)) return; // отправленное не редактируем
   const el = document.querySelector(`.pkg-item[data-idx="${idx}"]`);
   if(!el) return;
   el.innerHTML = `
@@ -2136,16 +2147,24 @@ window.__pkgEdit = function(idx){
       </div>
     </div>`;
 };
-window.__pkgSaveEdit = function(idx){
+window.__pkgSaveEdit = async function(idx){
   if(!PKG || !PKG.package) return;
   const it = PKG.package.items[idx];
   if(!it) return;
   const t = document.getElementById('pkgEditText');
   const a = document.getElementById('pkgEditAction');
-  if(t) it.text = t.value;
-  if(a) it.action = a.value;
-  it.status = 'edited';
-  window.__loadPkgMini();
+  try{
+    // Егор 17.09: правка сохраняется НА СЕРВЕР сразу — раньше жила только в
+    // памяти и откатывалась перезагрузкой пакета («результат не сохраняется»)
+    await window.__call('updateTaskPackageItem', {
+      mop_code: __pkgMopCode(), index: idx,
+      status: it.status === 'removed' ? 'removed' : 'pending',
+      text: t ? t.value : it.text, action: a ? a.value : it.action
+    });
+    window.__loadPkgMini();
+  }catch(e){
+    alert('Не получилось сохранить: ' + (e && e.message || e));
+  }
 };
 
 // ✅ Назначить одну задачу сразу
@@ -2153,9 +2172,10 @@ window.__pkgAssign = async function(idx){
   if(!PKG || !PKG.package) return;
   const it = PKG.package.items[idx];
   if(!it) return;
+  if(__pkgSent(it.status)){ window.__loadPkgMini(); return; } // уже у риэлтора — не дублируем
   try{
-    const r = await window.__call('acceptTaskPackage', {
-      mop_code: String(CTX && CTX.target || new URLSearchParams(location.search).get('mop') || ''),
+    await window.__call('acceptTaskPackage', {
+      mop_code: __pkgMopCode(),
       decisions: [{ index: idx, status: 'accepted' }]
     });
     it.status = 'accepted';
@@ -2187,7 +2207,14 @@ window.__acceptPkg = async function(){
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Отправляем…'; }
   const msg = document.getElementById('pkgMsg');
   if(msg) msg.innerHTML = '';
-  const decisions = PKG.package.items.map((it, idx) => { if (it.status === 'removed') return { index: idx, status: 'removed' }; if (it.status === 'edited') return { index: idx, status: 'edited', text: it.text, action: it.action }; return { index: idx, status: 'accepted' }; });
+  // Егор 17.09: отправляем только то, что ещё НЕ отправлено (accepted/edited
+  // уже у риэлтора — раньше «Назначить все» после одиночных ✅ создавало дубли)
+  const decisions = [];
+  PKG.package.items.forEach((it, idx) => {
+    if (__pkgSent(it.status)) return;
+    if (it.status === 'removed') decisions.push({ index: idx, status: 'removed' });
+    else decisions.push({ index: idx, status: 'accepted', text: it.text, action: it.action });
+  });
   try{
     const r = await window.__call('acceptTaskPackage', {mop_code: String(CTX && CTX.target || new URLSearchParams(location.search).get('mop') || ''), decisions});
     if(msg) msg.innerHTML = '<div class="pl-success" style="margin-top:10px">✅ Отправлено задач: ' + (r.sent || 0) + '. Риелторы увидят их в кабинете и чат-боте.</div>';
