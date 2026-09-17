@@ -852,7 +852,7 @@ function renderTiles(o){
  const tasksS=_tasksStat(o.tasks);
  const taskDonePct=tasksS.total?Math.round((tasksS.done/tasksS.total)*100):0;
  return `<div class="tiles">
-  <div class="tile" onclick="openTileModal('ir')"><span class="chev">›</span>
+  <div class="tile"><span class="chev" style="visibility:hidden">›</span>
    <div class="tile-cap">ИР ${esc(o.scope)} · ${esc(_monthShort(dataDate))}</div>
    <div class="ir-tile-split">
     <div class="ir-tile-weeks">
