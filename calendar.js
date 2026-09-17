@@ -401,13 +401,30 @@ function adaptTaskFromRtdb(id, t) {
     if (startMin >= 23 * 60 + 50) startMin = null;
   }
   const title = String(t.title || '').trim();
+  // 📦 Задача недели (пакет МОПа): описание = «💡 причина / текст / 📋 действие».
+  // Причину вытаскиваем в отдельное поле (Егор 17.09: в карточке дублировался
+  // весь текст — «Почему задача» показывала описание целиком, и 📝 его же ещё раз),
+  // остальное — в bodyText. Свой source у пакетных нет — подписываем честно.
+  const isPkg = typeof t.related_scenario_id === 'string' && t.related_scenario_id.startsWith('weekly_pkg_');
+  let reason = ''; let bodyText = t.description || '';
+  if (isPkg && t.description) {
+    const rest = [];
+    for (const ln of String(t.description).split('\n')) {
+      if (!reason && ln.startsWith('💡')) { reason = ln.replace(/^💡\s*/, ''); continue; }
+      rest.push(ln);
+    }
+    bodyText = rest.join('\n').replace(/\n{2,}/g, '\n').trim();
+  }
   return {
     id,
     title,
     short: title.length > 22 ? title.slice(0, 21) + '…' : title,
     horizon: t.horizon || 'week',
-    src: t.source || 'моя задача',
-    srcLabel: t.coach_bit ? `${t.coach_bit.side === 'buyer' ? 'покупатель' : 'продавец'}: ${t.coach_bit.bit_key}` : (t.description || ''),
+    src: isPkg ? 'задача недели' : (t.source || 'моя задача'),
+    srcLabel: t.coach_bit ? `${t.coach_bit.side === 'buyer' ? 'покупатель' : 'продавец'}: ${t.coach_bit.bit_key}` : '',
+    reason,
+    bodyText,
+    isPkg,
     description: t.description || '',
     tool: t.tool || null,
     cls: clsFor(t),
@@ -1144,13 +1161,23 @@ function openDetail(state, mount, id) {
     </div>`;
   }
   if (t.event) rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">📌</div><div><b>Мероприятие</b><br><span class="cal-muted">${escHtml(t.recur || 'разовое')}</span></div></div>`;
-  else rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">⚠️</div><div><b>Почему задача</b><br><span class="cal-muted">${escHtml(t.src || '')} · ${escHtml(t.srcLabel || '')}</span></div></div>`;
+  else {
+    // Егор 17.09: «Почему задача» = источник + причина постановки (💡-строка
+    // пакетной задачи), НЕ всё описание — иначе 📝 ниже дублирует текст
+    const why = t.reason || t.srcLabel || '';
+    rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">⚠️</div><div><b>Почему задача</b><br><span class="cal-muted">${escHtml(t.src || '')}${why ? ' · ' + escHtml(why) : ''}</span></div></div>`;
+  }
+  if (t.isPkg && t.day) {
+    const dd = parseYMD(t.day);
+    rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">⏳</div><div><b>Срок</b><br><span class="cal-muted">до ${DOW[dowIdx(dd)]}, ${dd.getDate()} ${MON_RU[dd.getMonth()]}</span></div></div>`;
+  }
   if (t.group) rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">👥</div><div><b>Массовая</b><br><span class="cal-muted">для всей группы</span></div></div>`;
   if (isLocked(t)) rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">🔒</div><div>Перенести может только ${t.event ? 'организатор' : 'менеджер / РОП'} — вы не можете двигать</div></div>`;
   if (tool && !t.event) {
     rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">📋</div><div style="flex:1"><b>${escHtml(tool.type || '')}: ${escHtml(tool.title || '')}</b>${(tool.steps || []).map((s, i) => `<div class="cal-dm-step"><span class="cal-dm-n">${i + 1}</span><span>${escHtml(s)}</span></div>`).join('')}</div></div>`;
   }
-  if (t.description && !tool) rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">📝</div><div>${escHtml(t.description)}</div></div>`;
+  // 📝 показываем текст+действие; причина уже выведена в «Почему задача» (без дубля)
+  if ((t.bodyText || t.description) && !tool) rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">📝</div><div>${escHtml(t.bodyText || t.description)}</div></div>`;
   rows += `<div class="cal-dm-row"><div class="cal-dm-ricon">👤</div><div>${escHtml(authorOf(t))}</div></div>`;
 
   const verb = t.event ? 'Проведено' : 'Выполнено';
