@@ -946,6 +946,7 @@ function renderMop(r, fromCache) {
         { label: '💵 Вал', html: valByPartnerHTML(r.val_by_partner || {}) },
         { label: '📊 Состояние', html: membersTableHTML(r.state) + (r.state.top && r.state.top.length ? `<div class="block-title" style="margin-top:14px">🏆 Топ-3 по ИР</div>${r.state.top.map(m => { const v = irMonthOf(m); return `<div class="tagline tag-ok">${esc(m.name)} — ${v != null ? v + '%' : '—'}</div>`; }).join('')}` : '') + (r.state.lowest && r.state.lowest.length ? `<div class="block-title" style="margin-top:14px">🎯 Нижние 3 по ИР</div>${r.state.lowest.map(m => { const v = irMonthOf(m); return `<div class="tagline tag-bad">${esc(m.name)} — ${v != null ? v + '%' : '—'}</div>`; }).join('')}` : '') },
         { label: '📆 Активность за неделю', html: `<div class="sec-sub" style="margin-bottom:10px">За 7 дней. В каждой ячейке: <b style="color:var(--buyer)">покупатель</b> \\ <b style="color:var(--seller)">продавец</b>. Нули видно сразу.</div>${weekCombinedHTML(r.week_combined)}` },
+        { label: '🗓 Активность за месяц', html: `<div class="sec-sub" style="margin-bottom:10px">С начала месяца${r.month_base_date ? ` (с ${esc(String(r.month_base_date).slice(8, 10))}.${esc(String(r.month_base_date).slice(5, 7))})` : ''}. Та же таблица: <b style="color:var(--buyer)">покупатель</b> \\ <b style="color:var(--seller)">продавец</b>. Нули видно сразу.</div>${r.month_combined ? weekCombinedHTML(r.month_combined) : '<div class="muted">Нет данных с начала месяца.</div>'}` },
       ])}
     </div>
 
