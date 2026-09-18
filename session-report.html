@@ -491,13 +491,14 @@ function sparkIr(history) {
       <div class="l">${monthShort(ym)}</div>
     </div>`;
   });
-  const normLine = `<div class="norm" style="top:calc(20px + (100% - 44px) * 0.3)"><span>норма 70%</span></div>`;
+  const paceN = irPaceNorm();
+  const normLine = `<div class="norm" style="top:calc(20px + (100% - 44px) * ${(1 - paceN / 100).toFixed(3)})"><span>норма ${paceN}%</span></div>`;
   const deptLine = deptAvg != null ? `<div class="norm" style="top:calc(20px + (100% - 44px) * ${(1 - deptAvg / 100).toFixed(3)});border-top-color:#2b6cb0"><span style="color:#2b6cb0;left:0;right:auto">ср. отдел ${deptAvg}%</span></div>` : '';
   return `<div class="spark">${normLine}${deptLine}${bars.join('')}</div>
     <div class="plegend">
-      <span><i style="background:linear-gradient(180deg,#16a34a,#16a34a)"></i>≥70% — норма</span>
-      <span><i style="background:linear-gradient(180deg,#d97706,#d97706)"></i>50-70% — риск</span>
-      <span><i style="background:linear-gradient(180deg,#dc2626,#dc2626)"></i>&lt;50% — провал</span>
+      <span><i style="background:linear-gradient(180deg,#16a34a,#16a34a)"></i>≥нормы — норма</span>
+      <span><i style="background:linear-gradient(180deg,#d97706,#d97706)"></i>80–99% — риск</span>
+      <span><i style="background:linear-gradient(180deg,#dc2626,#dc2626)"></i>&lt;80% — провал</span>
       ${deptAvg != null ? '<span><i style="border-top:3px dashed #2b6cb0;height:0;background:none;width:18px"></i>средний ИР отдела</span>' : ''}
     </div>`;
 }
@@ -679,7 +680,7 @@ function membersTableHTML(state) {
     const planPctClr = planPct == null ? 'var(--muted)' : planPct >= 100 ? 'var(--ok)' : planPct >= 70 ? 'var(--warn)' : 'var(--bad)';
     return `<tr>
       <td style="padding:8px;border-bottom:1px solid var(--line)">${esc(m.name)}</td>
-      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700" title="Норма темпа на сегодня ${norm}%">${irM}${irV != null ? '%' : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700" title="Норма темпа к концу недели ${norm}%">${irM}${irV != null ? '%' : ''}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${plan}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fact}${planPct != null ? ` <span style="color:${planPctClr};font-size:11px">(${planPct}%)</span>` : ''}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fc}</td>
@@ -762,7 +763,7 @@ function statTilesHTML(h) {
   const clrW = (v) => v == null ? 'var(--muted)' : v === 0 ? 'var(--warn)' : v >= 70 ? 'var(--ok)' : v >= 40 ? 'var(--warn)' : 'var(--bad)';
   const deltaTxt = (d != null && Math.abs(d) >= 1) ? ` <span style="color:${d > 0 ? 'var(--ok)' : 'var(--bad)'};font-size:13px;font-weight:700">${d > 0 ? '▲+' : '▼'}${d}</span>` : '';
   return `<div class="ir-tiles">
-    <div class="ir-tile"><div class="tk">ИР месяца</div><div class="tv" style="color:${clrM(irM)}" title="Норма темпа на сегодня ${norm}%">${irM != null ? irM + '%' : '—'}</div><div class="tn">норма ${norm}% на сегодня</div></div>
+    <div class="ir-tile"><div class="tk">ИР месяца</div><div class="tv" style="color:${clrM(irM)}" title="Норма темпа к концу недели ${norm}%">${irM != null ? irM + '%' : '—'}</div><div class="tn">норма ${norm}% к концу недели</div></div>
     <div class="ir-tile"><div class="tk">ИР прирост за нед</div><div class="tv" style="color:${clrW(irW)}">${irW != null ? irW + '%' : '—'}${deltaTxt}</div><div class="tn">недельная шкала</div></div>
   </div>`;
 }
@@ -804,12 +805,12 @@ function groupCompareHTML(gc) {
     prev = i;
     const w = Math.max(2, Math.min(100, Math.round(g.ir))); // ширина = значение ИР (0..100%)
     const clr = g.self ? '#16a34a' : (g.ir >= 70 ? '#16a34a' : g.ir >= gc.avg ? '#2b6cb0' : g.ir >= 30 ? '#d97706' : '#dc2626');
-    return gap + `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${i + 1}. ${esc(g.name)}${g.self ? ' (вы)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%;background:${clr}"></span><span class="gnorm" title="норма 70%"></span></span><span class="gv">${g.ir}%</span></div>`;
+    return gap + `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${i + 1}. ${esc(g.name)}${g.self ? ' (вы)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%;background:${clr}"></span><span class="gnorm" title="норма ${irPaceNorm()}%"></span></span><span class="gv">${g.ir}%</span></div>`;
   }).join('');
   const me = all[meIdx];
   const diff = me ? me.ir - gc.avg : 0;
   const pos = diff >= 0 ? `<b style="color:var(--ok)">выше среднего отдела на ${diff} п.п.</b> 👍` : `<b style="color:var(--bad)">ниже среднего на ${-diff} п.п.</b>`;
-  return `<div class="block-title" style="margin-top:6px">Место в отделе <b style="color:var(--ink)">${gc.rank} из ${gc.total}</b> — ${pos} <span class="muted">(средний ИР отдела ${gc.avg}%, норма 70%)</span></div>${rows}`;
+  return `<div class="block-title" style="margin-top:6px">Место в отделе <b style="color:var(--ink)">${gc.rank} из ${gc.total}</b> — ${pos} <span class="muted">(средний ИР отдела ${gc.avg}%, норма ${irPaceNorm()}%)</span></div>${rows}`;
 }
 // 💵 вал по партнёрам: факт (зел.) + прогноз (оранж.) + план-метка
 function valByPartnerHTML(v) {
@@ -1015,7 +1016,7 @@ function groupsTableHTML(state) {
     const riskPart = g.underperformers_v2 > 0 ? `<span style="color:var(--bad);font-size:11px">⚠️ ${g.underperformers_v2}</span>` : `<span style="color:var(--ok);font-size:11px">✅</span>`;
     return `<tr>
       <td style="padding:8px;border-bottom:1px solid var(--line)">${esc(g.name)}</td>
-      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700" title="Норма темпа на сегодня ${norm}%">${irM}${irMv != null ? '%' : ''}${irW != null ? `<div style="font-size:10px;color:var(--muted);font-weight:400">нед ${irW}%</div>` : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right;color:${irClr};font-weight:700" title="Норма темпа к концу недели ${norm}%">${irM}${irMv != null ? '%' : ''}${irW != null ? `<div style="font-size:10px;color:var(--muted);font-weight:400">нед ${irW}%</div>` : ''}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${g.members_count}<div style="font-size:10px;color:var(--muted)">${g.performers_v2} в норме</div></td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${plan}</td>
       <td style="padding:8px;border-bottom:1px solid var(--line);text-align:right">${fact}${planPct != null ? ` <span style="color:${planPctClr};font-size:11px">(${planPct}%)</span>` : ''}</td>
@@ -1099,7 +1100,7 @@ function renderRop(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">3</span> Какие группы в риске</div>
-      <div class="sec-sub">Группы с ИР прирост за нед &lt; 70%. Открой 📄 — увидишь поимённый разбор группы.</div>
+      <div class="sec-sub">Группы ниже нормы темпа. Открой 📄 — увидишь поимённый разбор группы.</div>
       ${riskGroupsListHTML(r.risk)}
     </div>
 
@@ -1237,7 +1238,7 @@ function groupLeaderboardHTML(lb) {
   const rows = lb.map((g, i) => {
     const w = Math.max(2, Math.min(100, Math.round(g.ir_week)));
     const clr = g.self ? '#16a34a' : (g.ir_week === 0 ? '#d97706' : g.ir_week >= 70 ? '#16a34a' : g.ir_week >= 30 ? '#d97706' : '#dc2626');
-    return `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${i + 1}. ${esc(g.name)}${g.self ? ' (ты)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%;background:${clr}"></span><span class="gnorm" title="норма 70%"></span></span><span class="gv">${Math.round(g.ir_week)}%</span></div>`;
+    return `<div class="gc-row${g.self ? ' self' : ''}"><span class="gn">${i + 1}. ${esc(g.name)}${g.self ? ' (ты)' : ''}</span><span class="gt"><span class="gf" style="width:${w}%;background:${clr}"></span><span class="gnorm" title="норма ${irPaceNorm()}%"></span></span><span class="gv">${Math.round(g.ir_week)}%</span></div>`;
   }).join('');
   return `<div class="block-title" style="margin-top:14px">Рейтинг группы по ИР прирост за нед</div>${rows}`;
 }
@@ -1282,7 +1283,7 @@ function render(r, fromCache) {
 
     <div class="sec">
       <div class="sec-h"><span class="n">3</span> Из чего собран ИР</div>
-      <div class="sec-sub">ИР v2 — четыре составляющих по 25%. Чёрная метка — норматив 70%.</div>
+      <div class="sec-sub">ИР v2 — четыре составляющих по 25%. Чёрная метка — норматив.</div>
       ${compsHTML(r.ir_breakdown, r.head)}
     </div>
 
