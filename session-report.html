@@ -588,9 +588,10 @@ function goalsHTML(g) {
     rows.push(`<div class="goal-row"><div class="gi">💰</div><div class="gt"><b>План вала на месяц</b><small>факт ${fmtK(g.fact_revenue_month)} ₽ · прогноз ${fmtK(g.forecast_revenue_month)} ₽ · план ${fmtK(g.plan_revenue_month)} ₽</small></div><div class="gv" style="color:${clr}">${pct}%${g.gap_to_plan > 0 ? ` · +${fmtK(g.gap_to_plan)}` : ''}</div></div>`);
   }
   if (g.ir_current != null) {
-    const cur = g.ir_current; const tgt = g.ir_target_pct;
-    const clr = cur >= tgt ? 'var(--ok)' : 'var(--bad)';
-    rows.push(`<div class="goal-row"><div class="gi">🎯</div><div class="gt"><b>Цель ИР</b><small>сейчас ${cur}%, цель ${tgt}%</small></div><div class="gv" style="color:${clr}">${cur >= tgt ? 'в норме' : `+${tgt - cur} п.п.`}</div></div>`);
+    // Егор 18.09: норма темпа (ступень) в приоритете, цель руководителя — фолбэк
+    const cur = g.ir_current; const norm = (typeof g.ir_norm === 'number') ? g.ir_norm : g.ir_target_pct;
+    const clr = cur >= norm ? 'var(--ok)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">🎯</div><div class="gt"><b>ИР</b><small>сейчас ${cur}%, норма ${norm}% к концу недели</small></div><div class="gv" style="color:${clr}">${cur >= norm ? 'в норме' : `+${norm - cur} п.п.`}</div></div>`);
   }
   return rows.join('') || '<div class="muted">Цели не настроены.</div>';
 }
@@ -748,8 +749,10 @@ function goalsMopHTML(g) {
     rows.push(`<div class="goal-row"><div class="gi">📅</div><div class="gt"><b>Прогноз на следующий месяц</b><small>прогноз ${fmtK(g.next_month_forecast)} ₽ · план ${fmtK(g.next_month_plan)} ₽</small></div><div class="gv" style="color:${clr}">${pct}%</div></div>`);
   }
   if (g.ir_current != null) {
-    const clr = g.ir_current >= g.ir_target_pct ? 'var(--ok)' : 'var(--bad)';
-    rows.push(`<div class="goal-row"><div class="gi">🎯</div><div class="gt"><b>Цель ИР группы</b><small>сейчас ${g.ir_current}%, цель ${g.ir_target_pct}%</small></div><div class="gv" style="color:${clr}">${g.ir_current >= g.ir_target_pct ? 'в норме' : `+${g.ir_target_pct - g.ir_current} п.п.`}</div></div>`);
+    // Егор 18.09: норма темпа (ступень) в приоритете, цель руководителя — фолбэк
+    const norm = (typeof g.ir_norm === 'number') ? g.ir_norm : g.ir_target_pct;
+    const clr = g.ir_current >= norm ? 'var(--ok)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">🎯</div><div class="gt"><b>ИР группы</b><small>сейчас ${g.ir_current}%, норма ${norm}% к концу недели</small></div><div class="gv" style="color:${clr}">${g.ir_current >= norm ? 'в норме' : `+${norm - g.ir_current} п.п.`}</div></div>`);
   }
   return rows.join('') || '<div class="muted">Цели не настроены.</div>';
 }
@@ -782,8 +785,10 @@ function planSummaryHTML(g) {
     parts.push(`📅 <b>Следующий месяц</b> — план ${fmtK(g.next_month_plan)} ₽, прогноз пока ${fmtK(g.next_month_forecast)} ₽ (${p}%). ${p < 70 ? 'Стоит заранее наполнять воронку.' : 'Задел неплохой.'}`);
   }
   if (g.ir_current != null) {
-    const d = g.ir_target_pct - g.ir_current;
-    parts.push(`🎯 <b>ИР группы</b> сейчас ${g.ir_current}% при норме ${g.ir_target_pct}%. ${d <= 0 ? 'Норма взята — держим! ✅' : `До нормы ${d} п.п. — подтянуть отстающих.`}`);
+    // Егор 18.09: норма темпа (ступень) в приоритете, цель руководителя — фолбэк
+    const norm = (typeof g.ir_norm === 'number') ? g.ir_norm : g.ir_target_pct;
+    const d = norm - g.ir_current;
+    parts.push(`🎯 <b>ИР группы</b> сейчас ${g.ir_current}% при норме ${norm}% к концу недели. ${d <= 0 ? 'Норма взята — держим! ✅' : `До нормы ${d} п.п. — подтянуть отстающих.`}`);
   }
   if (!parts.length) return '<div class="muted">Цели не настроены.</div>';
   return `<div style="font-size:14px;line-height:1.6">${parts.map((p) => `<p style="margin-bottom:8px">${p}</p>`).join('')}</div>`;
@@ -1069,8 +1074,10 @@ function goalsRopHTML(g) {
     rows.push(`<div class="goal-row"><div class="gi">📅</div><div class="gt"><b>Прогноз на следующий месяц</b><small>прогноз ${fmtK(g.next_month_forecast)} ₽ · план ${fmtK(g.next_month_plan)} ₽</small></div><div class="gv" style="color:${clr}">${pct}%</div></div>`);
   }
   if (g.ir_current != null) {
-    const clr = g.ir_current >= g.ir_target_pct ? 'var(--ok)' : 'var(--bad)';
-    rows.push(`<div class="goal-row"><div class="gi">🎯</div><div class="gt"><b>Цель ИР отдела</b><small>сейчас ${g.ir_current}%, цель ${g.ir_target_pct}%</small></div><div class="gv" style="color:${clr}">${g.ir_current >= g.ir_target_pct ? 'в норме' : `+${g.ir_target_pct - g.ir_current} п.п.`}</div></div>`);
+    // Егор 18.09: норма темпа (ступень) в приоритете, цель руководителя — фолбэк
+    const norm = (typeof g.ir_norm === 'number') ? g.ir_norm : g.ir_target_pct;
+    const clr = g.ir_current >= norm ? 'var(--ok)' : 'var(--bad)';
+    rows.push(`<div class="goal-row"><div class="gi">🎯</div><div class="gt"><b>ИР отдела</b><small>сейчас ${g.ir_current}%, норма ${norm}% к концу недели</small></div><div class="gv" style="color:${clr}">${g.ir_current >= norm ? 'в норме' : `+${norm - g.ir_current} п.п.`}</div></div>`);
   }
   return rows.join('') || '<div class="muted">Цели не настроены.</div>';
 }
