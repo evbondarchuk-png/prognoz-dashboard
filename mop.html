@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script src="/metrika.js" defer></script>
 <script src="/analytics.js" defer></script>
-  <script src="/hof.js?v=13" defer></script>
+  <script src="/hof.js?v=14" defer></script>
 <script type="importmap">
 { "imports": { "https://www.gstatic.com/firebasejs/10.7.0/": "/libs/firebase/10.7.0/" } }
 </script>
@@ -928,8 +928,9 @@ window.openTileModal=function(kind){
   // Егор 07.09: список по МЕСЯЧНОМУ ИР — зелёные = ≥норматива темпа на дату
   // данных (как колонка «ИР мес»), не плоские 70%.
   const irMof=(m)=>(typeof m.ir_v2_month_total==='number')?(m.ir_v2_month_total):(m.ir_month||0);
-  const ok=members.filter(m=>_irMonthStatus(irMof(m))==='ok');
-  const bad=members.filter(m=>_irMonthStatus(irMof(m))!=='ok');
+  const irMembers=members.filter(m=>!m.is_group_zero);
+  const ok=irMembers.filter(m=>_irMonthStatus(irMof(m))==='ok');
+  const bad=irMembers.filter(m=>_irMonthStatus(irMof(m))!=='ok');
   title='Выполняют ИР — список';
   body=`<p class="muted" style="margin-bottom:10px">Зелёные = месячный ИР не ниже нормы на сегодня (темп недель: 25/50/75/100%).</p>
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -1659,15 +1660,16 @@ function weekRiskRow(m){
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
 }
 function g0Row(m){
-  // Строка для блока «Группа 0»: ИР, факт-вал, прогноз. Без плана/статуса — их у g0 нет.
-  const ir=m.ir_month||0; const fact=m.fact_month||0; const forecast=m.forecast_month||0;
+  // Строка для блока «Группа 0»: ИР НЕ считается (болезнь/декрет/отпуск) — прочерк.
+  // Только факт-вал и прогноз. Без плана/статуса — их у g0 нет.
+  const fact=m.fact_month||0; const forecast=m.forecast_month||0;
   return `<tr class="t-row" onclick="location.href='${esc(m.drill_url||'#')}'">
     <td><div class="t-group-cell">
       <span class="t-status-bar" style="background:#cbd5e1"></span>
       <div class="t-group-avatar">${esc(_avatar(m.name))}</div>
       <div class="t-group-info"><div class="t-group-name">${esc(m.name||'')} <span class="g0-pill" title="Не учитывается в ИР и плане группы (болезнь / декрет / длительный отпуск). Факт-вал суммируется.">🛌 группа 0</span></div>
         <div class="t-group-meta">стаж ${esc(_stazhText(m.stazh_months))}</div></div></div></td>
-    <td><span class="t-ir ${_irStatus(ir)}">${ir}%</span></td>
+    <td><span class="t-ir" style="color:var(--muted)" title="Группа 0 — ИР не считается">—</span></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(fact)}</span></div></td>
     <td><div class="t-pair"><span class="t-pair-main">${_fmtK(forecast)}</span></div></td>
     <td class="center"><span class="t-arrow">›</span></td></tr>`;
@@ -2153,7 +2155,7 @@ function __pkgRow(it, i, readOnly){
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       ${__pkgPrioBadge(it.priority)}
       <b style="font-size:14px">${esc(it.realtor_name)}</b>
-      <span style="font-size:11px;color:var(--muted)">ИР ${it.ir_month ?? '—'}%</span>
+      ${it.is_group_zero ? '<span style="font-size:11px;color:var(--muted)" title="Группа 0 — ИР не считается">ИР —</span>' : `<span style="font-size:11px;color:var(--muted)">ИР ${it.ir_month ?? '—'}%</span>`}
       <button style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;border:1px dashed var(--line);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit" onclick="window.__pkgCustom('${esc(it.realtor_code)}','${esc(it.realtor_name)}')" title="Своя задача для этого риелтора">➕</button>
       <span style="margin-left:auto">${actions}</span>
     </div>

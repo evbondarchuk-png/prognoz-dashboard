@@ -1,5 +1,5 @@
 /**
- * hof.js v13 — витрина «⭐ Звёзды» (общая для всех кабинетов).
+ * hof.js v14 — витрина «⭐ Звёзды» (общая для всех кабинетов).
  *
  * Переделка по решению Егора 01.09.2026: витрина «Награды коллег» убрана —
  * теперь только Звёзды с ТАБАМИ-МЕТРИКАМИ: Задатки · Сделки · Валовка ·
@@ -8,7 +8,10 @@
  * Клик по карточке → все медали человека (hofDirectory, без списка-рейтинга).
  * Данные: callable starsData (/stars, крон 04:40 UTC; метрики из архива
  * накопительно: месяц = последний день, день/неделя = дельты срезов).
- * Медали star_* и /stars/top считаются по задаткам+сделкам — не менялись.
+ * Медали star_* и /stars/top — по задаткам (при равенстве сделки): строгая
+ * восьмёрка + все с равным результатом на границе (v14, 18.09.2026).
+ * Места плотные (dense rank) по выбранной метрике: равные делят место.
+ * Для АУП — селекты РОП→МОП (зависимые); остальные роли без изменений.
  */
 (function () {
   'use strict';
@@ -22,6 +25,7 @@
   var SS = 'group';         // срез: group | dept | company
   var PAGE = 1;             // страница (по 8 карточек)
   var METRIC = 'dep';       // выбранная метрика (ключ в entries[i][period])
+  var FAUP_ROP = '', FAUP_MOP = '';  // фильтры АУП (селекты РОП→МОП)
   var RU_M = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
   var RU_M_NOM = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
   var MEDAL = ['🥇', '🥈', '🥉'];
@@ -61,6 +65,10 @@
     var v = STARS && STARS.viewer || {};
     if (SS === 'group' && v.mop) arr = arr.filter(function (x) { return String(x.mop) === String(v.mop); });
     if (SS === 'dept' && v.rop) arr = arr.filter(function (x) { return String(x.rop) === String(v.rop); });
+    if (isAup()) {
+      if (FAUP_ROP) arr = arr.filter(function (x) { return String(x.rop) === String(FAUP_ROP); });
+      if (FAUP_MOP) arr = arr.filter(function (x) { return String(x.mop) === String(FAUP_MOP); });
+    }
     var def = metricDef();
     arr = arr.filter(function (x) { var m = x[PERIOD] || {}; return (m[def.k] || 0) > 0; });
     arr.sort(function (a, b) {
@@ -73,6 +81,62 @@
       return a.name < b.name ? -1 : 1;
     });
     return arr;
+  }
+
+  // ── плотные места (dense rank) по выбранной метрике ──
+  // Равные значения делят место: 5,4,4,3,3 → места 1,2,2,3,3.
+  // Tiebreaker (сделки/задатки) влияет только на порядок внутри места.
+  function starRowsRanked() {
+    var arr = starRows();
+    var def = metricDef(), prev = null, rank = 0;
+    return arr.map(function (x) {
+      var v = ((x[PERIOD] || {})[def.k] || 0);
+      if (prev === null || v !== prev) { rank++; prev = v; }
+      return { x: x, rank: rank };
+    });
+  }
+
+  // ── фильтры АУП: селекты РОП→МОП (зависимые) ──
+  function isAup() { return !!(VIEWER && (VIEWER.role === 'aup' || VIEWER.role === 'admin')); }
+  function nameOf(code) {
+    var h = (CACHE || []).filter(function (i) { return String(i.code) === String(code); })[0];
+    return h ? (h.name || String(code)) : String(code);
+  }
+  function byName(a, b) { return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0); }
+  function ropOptions() {
+    var seen = {}, out = [];
+    function add(c) { c = String(c); if (!seen[c]) { seen[c] = 1; out.push({ code: c, name: nameOf(c) }); } }
+    (CACHE || []).forEach(function (i) { if (i && i.role === 'rop' && i.code != null) add(i.code); });
+    ((STARS && STARS.entries) || []).forEach(function (e) { if (e && e.rop != null) add(e.rop); });
+    out.sort(byName);
+    return out;
+  }
+  function mopRopMap() {
+    var m = {};
+    (CACHE || []).forEach(function (i) {
+      if (i && i.role === 'mop' && i.code != null && i.rop != null) m[String(i.code)] = String(i.rop);
+    });
+    ((STARS && STARS.entries) || []).forEach(function (e) {
+      if (e && e.mop != null && e.rop != null && !m[String(e.mop)]) m[String(e.mop)] = String(e.rop);
+    });
+    return m;
+  }
+  function mopOptions(rop) {
+    var map = mopRopMap(), info = {};
+    (CACHE || []).forEach(function (i) {
+      if (i && i.role === 'mop' && i.code != null) info[String(i.code)] = i.name || String(i.code);
+    });
+    ((STARS && STARS.entries) || []).forEach(function (e) {
+      if (e && e.mop != null && !info[String(e.mop)]) info[String(e.mop)] = nameOf(e.mop);
+    });
+    var out = [];
+    Object.keys(info).forEach(function (c) {
+      var r = map[c];
+      if (rop && r && String(r) !== String(rop)) return;  // чужая группа — скрыть; без привязки — показать
+      out.push({ code: c, name: info[c] });
+    });
+    out.sort(byName);
+    return out;
   }
 
   function ini(name) { var p = String(name || '?').trim().split(/\s+/); return ((p[0] || '')[0] || '') + ((p[1] || '')[0] || ''); }
@@ -116,35 +180,46 @@
       });
       return;
     }
-    var arr = starRows();
+    var ranked = starRowsRanked();
     var v = STARS.viewer || {};
     var myIdx = -1;
-    for (var i = 0; i < arr.length; i++) { if (String(arr[i].code) === String(v.code)) { myIdx = i; break; } }
+    for (var i = 0; i < ranked.length; i++) { if (String(ranked[i].x.code) === String(v.code)) { myIdx = i; break; } }
     var def = metricDef();
-    var myM = myIdx >= 0 ? (arr[myIdx][PERIOD] || {}) : null;
+    var myM = myIdx >= 0 ? (ranked[myIdx].x[PERIOD] || {}) : null;
+    var myRank = myIdx >= 0 ? ranked[myIdx].rank : 0;
 
     var PER = 8;
-    var totalPages = Math.max(1, Math.ceil(arr.length / PER));
+    var totalPages = Math.max(1, Math.ceil(ranked.length / PER));
     if (PAGE > totalPages) PAGE = totalPages;
     if (PAGE < 1) PAGE = 1;
     var from = (PAGE - 1) * PER;
-    var page = arr.slice(from, from + PER);
+    var page = ranked.slice(from, from + PER);
 
     var pchips = [['day', 'За день'], ['week', 'За неделю'], ['month', 'За месяц']].map(function (p) {
       return '<button class="hd-chip' + (PERIOD === p[0] ? ' on' : '') + '" onclick="__starsPeriod(\'' + p[0] + '\')">' + p[1] + '</button>';
     }).join('');
     var schips = '';
-    if (v.mop) schips += '<button class="hd-chip' + (SS === 'group' ? ' on' : '') + '" onclick="__starsScope(\'group\')">Моя группа</button>';
-    if (v.rop) schips += '<button class="hd-chip' + (SS === 'dept' ? ' on' : '') + '" onclick="__starsScope(\'dept\')">Мой отдел</button>';
-    schips += '<button class="hd-chip' + (SS === 'company' ? ' on' : '') + '" onclick="__starsScope(\'company\')">Компания</button>';
+    if (isAup()) {
+      var rops = ropOptions(), mops = mopOptions(FAUP_ROP);
+      schips = '<select class="hd-sel" onchange="__starsAupRop(this.value)">' +
+        '<option value="">РОП: все</option>' +
+        rops.map(function (r) { return '<option value="' + esc(r.code) + '"' + (String(FAUP_ROP) === String(r.code) ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') + '</select>' +
+        '<select class="hd-sel" onchange="__starsAupMop(this.value)">' +
+        '<option value="">МОП: все</option>' +
+        mops.map(function (m) { return '<option value="' + esc(m.code) + '"' + (String(FAUP_MOP) === String(m.code) ? ' selected' : '') + '>' + esc(m.name) + '</option>'; }).join('') + '</select>';
+    } else {
+      if (v.mop) schips += '<button class="hd-chip' + (SS === 'group' ? ' on' : '') + '" onclick="__starsScope(\'group\')">Моя группа</button>';
+      if (v.rop) schips += '<button class="hd-chip' + (SS === 'dept' ? ' on' : '') + '" onclick="__starsScope(\'dept\')">Мой отдел</button>';
+      schips += '<button class="hd-chip' + (SS === 'company' ? ' on' : '') + '" onclick="__starsScope(\'company\')">Компания</button>';
+    }
 
     var when = PERIOD === 'day' ? 'за ' + dtHuman(STARS.date)
       : PERIOD === 'week' ? ('с ' + dtHuman(STARS.week_start) + ' по ' + dtHuman(STARS.date))
       : 'за ' + (STARS.date ? RU_M_NOM[+STARS.date.slice(5, 7) - 1] : '');
     var meLine = myIdx >= 0
-      ? (myIdx < PER
+      ? (myRank <= 3
         ? '<div class="st-meline">⭐ Вы — звезда этого списка!</div>'
-        : '<div class="st-meline">⭐ Вы в списке: ' + metricHtml(myM, def) + ' — ' + (myIdx + 1) + '-е место</div>')
+        : '<div class="st-meline">⭐ Вы в списке: ' + metricHtml(myM, def) + ' — ' + myRank + '-е место</div>')
       : '';
 
     var pager = totalPages > 1
@@ -152,20 +227,28 @@
         '<button class="st-pg" ' + (PAGE <= 1 ? 'disabled' : '') + ' onclick="__starsPage(-1)">←</button>' +
         '<span>' + PAGE + ' / ' + totalPages + '</span>' +
         '<button class="st-pg" ' + (PAGE >= totalPages ? 'disabled' : '') + ' onclick="__starsPage(1)">→</button>' +
-        '<span class="hd-meta" style="margin:0 0 0 6px">' + (from + 1) + '–' + Math.min(from + PER, arr.length) + ' из ' + arr.length + '</span></div>'
+        '<span class="hd-meta" style="margin:0 0 0 6px">' + (from + 1) + '–' + Math.min(from + PER, ranked.length) + ' из ' + ranked.length + '</span></div>'
       : '';
 
     body.innerHTML = metricBar() +
       '<div class="hd-bar"><div class="hd-chips">' + pchips + '</div><div class="hd-chips">' + schips + '</div></div>' +
       '<div class="hd-meta">' + esc(when) + '</div>' +
       meLine +
-      '<div class="st-grid">' + (page.map(function (x, i) { return starCard(x, from + i); }).join('') || '<div class="hd-empty">Пока пусто — данные приходят к утру</div>') + '</div>' +
+      '<div class="st-grid">' + (page.map(function (r) { return starCard(r.x, r.rank - 1); }).join('') || '<div class="hd-empty">Пока пусто — данные приходят к утру</div>') + '</div>' +
       pager;
   }
 
   window.__starsMetric = function (k) { METRIC = k; PAGE = 1; renderStars(); };
   window.__starsPeriod = function (p) { PERIOD = p; PAGE = 1; renderStars(); };
   window.__starsScope = function (s) { SS = s; PAGE = 1; renderStars(); };
+  window.__starsAupRop = function (code) {
+    FAUP_ROP = code || '';
+    // смена РОП сбрасывает МОП, если он из другого отдела
+    var map = mopRopMap();
+    if (FAUP_MOP && FAUP_ROP && map[FAUP_MOP] && String(map[FAUP_MOP]) !== String(FAUP_ROP)) FAUP_MOP = '';
+    PAGE = 1; renderStars();
+  };
+  window.__starsAupMop = function (code) { FAUP_MOP = code || ''; PAGE = 1; renderStars(); };
   window.__starsPage = function (d) { PAGE += d; renderStars(); };
   window.__openStars = function () { window.openHofDir(); };
 
@@ -208,6 +291,7 @@
       '#modalHofDir .hd-bar{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}' +
       '#modalHofDir .hd-chips{display:flex;gap:6px;flex-wrap:wrap}' +
       '#modalHofDir .hd-chip{border:1px solid var(--line,#e6e8ee);background:var(--surface,#fff);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:var(--muted,#7a8194);cursor:pointer;font-family:inherit}' +
+      '#modalHofDir .hd-sel{border:1px solid var(--line,#e6e8ee);background:var(--surface,#fff);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--ink,#1a1f2e);cursor:pointer;font-family:inherit;max-width:220px}' +
       '#modalHofDir .hd-chip.on{background:var(--brand,#2b6cb0);border-color:var(--brand,#2b6cb0);color:#fff}' +
       '#modalHofDir .hd-meta{font-size:11.5px;color:var(--muted,#7a8194);margin:2px 0 8px}' +
       '#modalHofDir .hd-empty{padding:26px 10px;text-align:center;color:var(--muted,#7a8194);font-size:13px}' +
