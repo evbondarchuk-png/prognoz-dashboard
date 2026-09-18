@@ -670,7 +670,9 @@ function membersTableHTML(state) {
   // Егор 17.09: единый ИР — irMonthOf + ступенчатая норма irPaceNorm (как таб «Команда» МОП)
   const norm = irPaceNorm();
   const row = (m) => {
-    const irV = irMonthOf(m);
+    // Группа 0: ИР не считается — прочерк (статус 🛌 уже выставляется ниже).
+    const isG0 = m.is_group_zero === true;
+    const irV = isG0 ? null : irMonthOf(m);
     const irM = irV != null ? irV : '—';
     const irClr = irV == null ? 'var(--muted)' : irMonthColor(irV, norm);
     const status = m.is_group_zero ? '🛌 группа 0' : m.is_newbie ? '🌱 новичок' : m.risk_level >= 1 ? `🔴 Н${Math.min(4, m.risk_level)}` : '✅';
