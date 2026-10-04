@@ -8,7 +8,7 @@
 
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-functions.js';
-import { getDatabase, ref as dbRef, query, orderByChild, equalTo, get as dbGet, update as dbUpdate } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+import { getDatabase, ref as dbRef, query, orderByChild, equalTo, limitToLast, get as dbGet, update as dbUpdate } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 
 let ctxData = null;
 let opened = false;
@@ -88,6 +88,18 @@ const CSS = `
 .p-send{background:var(--brand);color:#fff;border:none;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
 .p-send:disabled{opacity:.4;cursor:not-allowed}
 .p-typing{font-size:12px;color:var(--muted);padding:4px 8px}
+
+/* 04.10: микрофон + озвучка + действия под ответом */
+.p-mic{background:var(--surface-2);border:1px solid var(--line);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
+.p-mic.rec{background:var(--bad);border-color:var(--bad);animation:pMicPulse 1.1s ease-in-out infinite}
+@keyframes pMicPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.p-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.p-act{font-size:11px;padding:4px 10px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:12px;cursor:pointer;font-family:inherit}
+.p-act:hover{border-color:var(--brand);color:var(--brand)}
+.p-rep{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);width:100%;background:transparent;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;font-family:inherit}
+.p-rep:hover{background:var(--surface-2)}
+.p-head .p-voice{background:rgba(255,255,255,.14);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex-shrink:0}
+.p-head .p-voice.off{opacity:.5}
 
 /* Рисованный маскот (картинка) — круглый аватар */
 .fox-img{width:100%;height:100%;object-fit:cover;object-position:50% 28%;border-radius:50%;display:block}
@@ -369,10 +381,12 @@ export function initAssistant(data) {
         <div class="p-title">Прогноша</div>
         <div class="p-sub">твой ассистент по продажам</div>
       </div>
+      <button class="p-voice ${voiceOn() ? '' : 'off'}" id="p-voice" title="Говорить ответы голосом" onclick="window.__pVoiceToggle()">🔊</button>
       <button class="p-close" onclick="window.__pClose()">✕</button>
     </div>
     <div class="p-body" id="p-body"></div>
     <div class="p-foot">
+      <button class="p-mic" id="p-mic" title="Голосом" onclick="window.__pMic()">🎤</button>
       <input class="p-input" id="p-input" placeholder="Спроси Прогношу…" onkeydown="if(event.key==='Enter')window.__pSend()">
       <button class="p-send" id="p-send" onclick="window.__pSend()">↑</button>
     </div>
@@ -390,6 +404,15 @@ function toggleSheet(open) {
   if (shouldOpen) setTimeout(() => document.getElementById('p-input').focus(), 300);
 }
 window.__pClose = () => toggleSheet(false);
+// 🔊 автоозвучка ответов (тумблер в шапке; состояние в localStorage).
+window.__pVoiceToggle = () => {
+  const on = !voiceOn();
+  setVoice(on);
+  const b = document.getElementById('p-voice');
+  if (b) { b.classList.toggle('off', !on); b.textContent = '🔊'; }
+  if (!on && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) {} }
+  if (on) speak('Хорошо, теперь я говорю голосом!');
+};
 
 function renderBrief() {
   const d = ctxData;
@@ -428,6 +451,13 @@ function renderBrief() {
       <button class="p-suggest" onclick="window.__pShowTasks()">📋 Мои задачи</button>
       <button class="p-suggest" onclick="window.__pAsk('Что сделать сегодня?')">📋 Что сделать сегодня?</button>
       <button class="p-suggest" onclick="window.__pAsk('Дай бриф на сегодня')">📊 Мой бриф</button>
+      ${(() => {
+        const role = d.user && d.user.role;
+        if (!['mop', 'rop', 'aup'].includes(role)) return '';
+        return `<button class="p-suggest" onclick="window.__pAsk('Кто из моих не справляется?')">🔍 Кто не справляется?</button>
+      <button class="p-suggest" onclick="window.__pAsk('сделай отчёт по группе')">📄 Отчёт по группе</button>
+      <button class="p-suggest" onclick="window.__pReports()">🗂 Мои отчёты</button>`;
+      })()}
       <button class="p-suggest" onclick="window.__pAsk('Про доход и вал')">💰 Про доход и вал</button>
       <button class="p-suggest" onclick="window.__pAsk('Как поднять доход?')">🎯 Как поднять доход?</button>
       <button class="p-suggest" onclick="window.__pAsk('Кто в моей группе?')">👥 Моя группа</button>
@@ -475,11 +505,123 @@ window.__pAsk = async (q) => {
   try {
     const res = await callPrognosha(q);
     typing.remove();
-    addMsg('bot', res && res.answer ? fmtAnswer(res.answer) : generateAnswer(q));
+    const answer = res && res.answer ? res.answer : generateAnswer(q);
+    addBotAnswer(answer);
   } catch (e) {
     typing.remove();
-    addMsg('bot', generateAnswer(q));
+    addBotAnswer(generateAnswer(q));
     console.warn('[prognosha] ИИ недоступен, показал шаблон:', e && e.message);
+  }
+};
+
+// Ответ бота + ряд действий под ним (04.10): «отправить в чат-бот», озвучить.
+function addBotAnswer(answerPlain) {
+  const html = fmtAnswer(answerPlain);
+  const body = document.getElementById('p-body');
+  const wrap = document.createElement('div');
+  wrap.className = 'p-msg bot';
+  wrap.innerHTML = `<div class="p-bubble">${html}</div>
+    <div class="p-actions">
+      <button class="p-act" title="Продиктовать в MAX-бот" onclick="window.__pSendToBot(this)">✉️ Отправить в чат-бот</button>
+      <button class="p-act" title="Озвучить" onclick="window.__pSpeak(this)">🔊 Озвучить</button>
+    </div>`;
+  body.appendChild(wrap);
+  wrap.dataset.plain = answerPlain;
+  body.scrollTop = body.scrollHeight;
+  if (voiceOn()) speak(answerPlain);
+}
+
+// ✉️ «за меня написал»: через чат-бот (себе в MAX; продиктовал — бот доставил).
+window.__pSendToBot = async (btn) => {
+  const wrap = btn.closest('.p-msg');
+  const text = (wrap && wrap.dataset.plain) || '';
+  if (!text) return;
+  btn.disabled = true; btn.textContent = '⏳ Отправляю…';
+  try {
+    if (!_sendBotFn) _sendBotFn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'sendViaBotApp', { timeout: 30000 });
+    const r = await _sendBotFn({ text: text.slice(0, 2000) });
+    btn.textContent = r && r.data && r.data.ok ? '✅ Отправлено в MAX' : '⚠️ Не ушло';
+  } catch (e) {
+    const code = e && e.code || '';
+    btn.textContent = code.includes('bot_not_connected') ? '🚫 Бот не подключен' : '⚠️ Ошибка отправки';
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = '✉️ Отправить в чат-бот'; }, 4000);
+};
+
+// 🔊 Озвучка (Android Chrome: встроенный русский голос, бесплатно).
+function voiceOn() { try { return localStorage.getItem('prognosha_voice') === '1'; } catch (e) { return false; } }
+function setVoice(on) { try { localStorage.setItem('prognosha_voice', on ? '1' : '0'); } catch (e) {} }
+function speak(text) {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    const clean = String(text).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/[*_#•—]+/g, ' ').slice(0, 900);
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = 'ru-RU'; u.rate = 1.03; u.pitch = 1.12; // чуть выше и живее — лиса
+    const v = speechSynthesis.getVoices().find((x) => /ru/i.test(x.lang));
+    if (v) u.voice = v;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch (e) { /* без озвучки */ }
+}
+window.__pSpeak = (btn) => {
+  const wrap = btn.closest('.p-msg');
+  speak((wrap && wrap.dataset.plain) || '');
+};
+
+// 🎤 Микрофон: SpeechRecognition Android Chrome (ru). Результат — сразу в вопрос.
+window.__pMic = () => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mic = document.getElementById('p-mic');
+  if (!SR) {
+    mic && addMsg('bot', '<div class="p-bubble" style="font-size:12px;color:var(--muted)">🎤 Голосовой ввод тут не поддерживается — скажи в MAX-боте или напиши текстом.</div>');
+    return;
+  }
+  try {
+    const rec = new SR();
+    rec.lang = 'ru-RU'; rec.interimResults = false; rec.maxAlternatives = 1;
+    if (mic) mic.classList.add('rec');
+    rec.onresult = (e) => {
+      const said = e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript;
+      if (said) window.__pAsk(String(said).trim());
+    };
+    rec.onend = () => { if (mic) mic.classList.remove('rec'); };
+    rec.onerror = () => { if (mic) mic.classList.remove('rec'); };
+    rec.start();
+  } catch (e) {
+    if (mic) mic.classList.remove('rec');
+    addMsg('bot', '<div class="p-bubble" style="font-size:12px;color:var(--muted)">🎤 Не смог включить микрофон — разреши доступ к нему для сайта.</div>');
+  }
+};
+
+// 📄 Мои отчёты (история /assistant/{код}/reports, пишет бэкенд при «сделай отчёт…»).
+let _sendBotFn = null;
+window.__pReports = async () => {
+  addMsg('bot', '<div class="p-bubble" style="color:var(--muted)">Ищу отчёты…</div>');
+  try {
+    const code = ctxData && ctxData.user && ctxData.user.code;
+    const snap = await dbGet(query(dbRef(getDatabase(), `/assistant/${code}/reports`), limitToLast(10)));
+    const items = [];
+    if (snap && snap.exists()) snap.forEach((ch) => { const r = ch.val(); if (r && r.title) items.push({ id: ch.key, ...r }); });
+    items.reverse();
+    const body = document.getElementById('p-body');
+    body.lastElementChild && body.lastElementChild.remove();
+    if (!items.length) { addMsg('bot', '<div class="p-bubble">Отчётов пока нет. Скажи «сделай отчёт по группе» — соберу первый.</div>'); return; }
+    const dLbl = (ts) => new Date(ts).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const rows = items.map((r) => `<button class="p-rep" onclick="window.__pShowReport('${r.id}')"><span>📄 <b>${esc(r.title)}</b></span><span style="margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap">${dLbl(r.created_at)}</span></button>`).join('');
+    addMsg('bot', `<div class="p-bubble">Твои отчёты (свежие сверху):<br>${rows}</div>`);
+  } catch (e) {
+    addMsg('bot', `<div class="p-bubble" style="color:var(--bad)">Не смог прочитать отчёты: ${esc(e.message || e)}</div>`);
+  }
+};
+window.__pShowReport = async (id) => {
+  const code = ctxData && ctxData.user && ctxData.user.code;
+  try {
+    const snap = await dbGet(dbRef(getDatabase(), `/assistant/${code}/reports/${id}`));
+    const r = snap && snap.exists() ? snap.val() : null;
+    if (!r || !r.text) { addMsg('bot', '<div class="p-bubble">Отчёт не нашёлся — история чистилась?</div>'); return; }
+    addBotAnswer(r.text);
+  } catch (e) {
+    addMsg('bot', `<div class="p-bubble" style="color:var(--bad)">Ошибка: ${esc(e.message || e)}</div>`);
   }
 };
 
