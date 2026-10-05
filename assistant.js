@@ -563,9 +563,25 @@ function speak(text) {
     speechSynthesis.speak(u);
   } catch (e) { /* без озвучки */ }
 }
+// 🔊/⏹ Кнопка-выключатель (Егор 05.10): повторное нажатие останавливает речь.
 window.__pSpeak = (btn) => {
+  if (window.__pSpeaking && !btn.dataset.rearm) {
+    try { speechSynthesis.cancel(); } catch (e) {}
+    window.__pSpeaking = false;
+    btn.textContent = '🔊 Озвучить';
+    return;
+  }
   const wrap = btn.closest('.p-msg');
-  speak((wrap && wrap.dataset.plain) || '');
+  const text = (wrap && wrap.dataset.plain) || '';
+  if (!text) return;
+  btn.textContent = '⏹ Стоп';
+  btn.dataset.rearm = '1';
+  window.__pSpeaking = true;
+  speak(text);
+  // после окончания фразы вернуть кнопку в исходный вид
+  const done = () => { btn.textContent = '🔊 Озвучить'; delete btn.dataset.rearm; window.__pSpeaking = false; };
+  const iv = setInterval(() => { if (!speechSynthesis.speaking) { clearInterval(iv); done(); } }, 500);
+  setTimeout(() => clearInterval(iv), 120000);
 };
 
 // 🎤 Микрофон: SpeechRecognition Android Chrome (ru). Результат — сразу в вопрос.
