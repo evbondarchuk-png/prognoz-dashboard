@@ -455,8 +455,7 @@ function renderBrief() {
         const role = d.user && d.user.role;
         if (!['mop', 'rop', 'aup'].includes(role)) return '';
         return `<button class="p-suggest" onclick="window.__pAsk('Кто из моих не справляется?')">🔍 Кто не справляется?</button>
-      <button class="p-suggest" onclick="window.__pAsk('сделай отчёт по группе')">📄 Отчёт по группе</button>
-      <button class="p-suggest" onclick="window.__pReports()">🗂 Мои отчёты</button>`;
+      <button class="p-suggest" onclick="window.__pAsk('сделай отчёт по группе')">📄 Отчёт по группе</button>`;
       })()}
       <button class="p-suggest" onclick="window.__pAsk('Про доход и вал')">💰 Про доход и вал</button>
       <button class="p-suggest" onclick="window.__pAsk('Как поднять доход?')">🎯 Как поднять доход?</button>
@@ -532,6 +531,7 @@ function addBotAnswer(answerPlain) {
 }
 
 // ✉️ «за меня написал»: через чат-бот (себе в MAX; продиктовал — бот доставил).
+let _sendBotFn = null;
 window.__pSendToBot = async (btn) => {
   const wrap = btn.closest('.p-msg');
   const text = (wrap && wrap.dataset.plain) || '';
@@ -606,38 +606,6 @@ window.__pMic = () => {
   } catch (e) {
     if (mic) mic.classList.remove('rec');
     addMsg('bot', '<div class="p-bubble" style="font-size:12px;color:var(--muted)">🎤 Не смог включить микрофон — разреши доступ к нему для сайта.</div>');
-  }
-};
-
-// 📄 Мои отчёты (история /assistant/{код}/reports, пишет бэкенд при «сделай отчёт…»).
-let _sendBotFn = null;
-window.__pReports = async () => {
-  addMsg('bot', '<div class="p-bubble" style="color:var(--muted)">Ищу отчёты…</div>');
-  try {
-    const code = ctxData && ctxData.user && ctxData.user.code;
-    const snap = await dbGet(query(dbRef(getDatabase(), `/assistant/${code}/reports`), limitToLast(10)));
-    const items = [];
-    if (snap && snap.exists()) snap.forEach((ch) => { const r = ch.val(); if (r && r.title) items.push({ id: ch.key, ...r }); });
-    items.reverse();
-    const body = document.getElementById('p-body');
-    body.lastElementChild && body.lastElementChild.remove();
-    if (!items.length) { addMsg('bot', '<div class="p-bubble">Отчётов пока нет. Скажи «сделай отчёт по группе» — соберу первый.</div>'); return; }
-    const dLbl = (ts) => new Date(ts).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    const rows = items.map((r) => `<button class="p-rep" onclick="window.__pShowReport('${r.id}')"><span>📄 <b>${esc(r.title)}</b></span><span style="margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap">${dLbl(r.created_at)}</span></button>`).join('');
-    addMsg('bot', `<div class="p-bubble">Твои отчёты (свежие сверху):<br>${rows}</div>`);
-  } catch (e) {
-    addMsg('bot', `<div class="p-bubble" style="color:var(--bad)">Не смог прочитать отчёты: ${esc(e.message || e)}</div>`);
-  }
-};
-window.__pShowReport = async (id) => {
-  const code = ctxData && ctxData.user && ctxData.user.code;
-  try {
-    const snap = await dbGet(dbRef(getDatabase(), `/assistant/${code}/reports/${id}`));
-    const r = snap && snap.exists() ? snap.val() : null;
-    if (!r || !r.text) { addMsg('bot', '<div class="p-bubble">Отчёт не нашёлся — история чистилась?</div>'); return; }
-    addBotAnswer(r.text);
-  } catch (e) {
-    addMsg('bot', `<div class="p-bubble" style="color:var(--bad)">Ошибка: ${esc(e.message || e)}</div>`);
   }
 };
 
