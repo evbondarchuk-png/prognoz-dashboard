@@ -925,7 +925,13 @@ function renderList(state, calEl, inbox, scheduled) {
       e.stopPropagation();
       const id = b.dataset.id;
       const act = b.dataset.act;
-      if (act === 'done') await callTask('updateTaskStatus', { task_id: id, status: 'done' });
+      if (act === 'done') {
+        // 13.10 (решение Егора): закрытие — всегда с комментарием → открываем
+        // карточку задачи (там поле комментария), без молчаливого «✓»
+        const row = b.closest('[data-open]') || b.closest('.cal-row');
+        openDetail(state, calEl, row ? row.dataset.open || id : id);
+        return;
+      }
       else if (act === 'reopen') await callTask('reopenTask', { task_id: id });
     };
   });
