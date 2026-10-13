@@ -927,9 +927,11 @@ function renderList(state, calEl, inbox, scheduled) {
       const act = b.dataset.act;
       if (act === 'done') {
         // 13.10 (решение Егора): закрытие — всегда с комментарием → открываем
-        // карточку задачи (там поле комментария), без молчаливого «✓»
+        // карточку задачи (там поле комментария), без молчаливого «✓».
+        // 13.10 (находка тестировщика): модалка — сестра .cal, ищем на mount
+        const mountEl = calEl.closest('.cal-mount') || calEl.closest('.cal-root') || calEl.parentElement || calEl;
         const row = b.closest('[data-open]') || b.closest('.cal-row');
-        openDetail(state, calEl, row ? row.dataset.open || id : id);
+        openDetail(state, mountEl, row ? row.dataset.open || id : id);
         return;
       }
       else if (act === 'reopen') await callTask('reopenTask', { task_id: id });
@@ -1195,7 +1197,7 @@ function openDetail(state, mount, id) {
     // События Google Calendar — не задачи в /tasks, их нельзя «выполнить»
     // (старый код писал мусорную запись /tasks/{id события}).
     if (!t.event) {
-      comment = `<textarea class="cal-m-input" data-comment rows="2" placeholder="Комментарий к выполнению (необязательно)…" style="margin:14px 0 0;resize:vertical"></textarea>`;
+      comment = `<textarea class="cal-m-input" data-comment rows="2" placeholder="Коротко: что по задаче (обязательно)…" style="margin:14px 0 0;resize:vertical"></textarea>`;
       if (!t.day) actions += `<button class="cal-dbtn primary" data-act="place">📅 На календарь</button>`;
       actions += `<button class="cal-dbtn done" data-act="done">✓ ${verb}</button>`;
     }
